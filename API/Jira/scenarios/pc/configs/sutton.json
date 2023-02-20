@@ -1,0 +1,12 @@
+{
+    "jira_content": {
+        "epic": "Sutton",
+        "reporter": "<Your launchpad ID> | empty",
+        "labels": {
+            "fixed": ["Sutton"]
+        },
+        "milestones": {
+            "rts": ["alpha", "beta", "gm"]
+        }
+    }
+}
