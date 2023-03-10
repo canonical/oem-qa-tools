@@ -20,14 +20,19 @@ run_stress-ng() {
     echo "Remaing stressors: $count"
     stressor=$(head -n 1 $STRESSORS_FILE)
     
-    read -p "Is this stressor $stressor test failed?"$'\n\t'"input [yes] to skip it."$'\n\t'"Or"$'\n\t'"press [Enter] to run" awnser
+    echo "Is this stressor $stressor test failed?"
+    echo -e "\tinput [yes] to skip it."
+    echo -e "\tOr"
+    echo -e "\tpress [Enter] to run"
+    read -r awnser
+    
     if [[ "$awnser" == "yes" ]]; then
         # Remove stressor from config file 
         sed -i '1d' $STRESSORS_FILE
 	echo "$stressor,fail" >> $TEMP_RESULT
     fi
     
-    while [[ $count > 0 ]];
+    while [[ $count -gt 0 ]];
     do
 	stressor=$(head -n 1 $STRESSORS_FILE)
 	echo "# Running stress-ng with this $stressor stressor.."
