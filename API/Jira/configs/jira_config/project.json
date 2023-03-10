@@ -1,0 +1,18 @@
+{
+    "id": "10350",
+    "key": "VS",
+    "name": "Vic's Sandbox",
+    "issue_type": {
+        "Task": "10635",
+        "Story": "10634"
+    },
+    "epic": {
+        "Somerville": "69110",
+        "Stella": "69111",
+        "Sutton": "69112",
+        "Tooling & Process": "63215"
+    },
+    "card_fields": {
+        "Test result": "customfield_10186"
+    }
+}

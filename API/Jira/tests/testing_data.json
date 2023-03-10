@@ -1,0 +1,74 @@
+{
+    "somerville": {
+        "online_update": [],
+        "prts": [
+            {
+                "platform_name": ["Test 123"],
+                "platform_tag": "jellycat-bbq",
+                "status": "in-flight",
+                "pm": "Rock",
+                "fe": "",
+                "swe": "",
+                "qa": "",
+                "bug_link": "https://bugs.launchpad.net/somerville/+bugs?field.tag=jellycat-bbq",
+                "request": "1. Enable 82BBC\n2. Fix #19961369876 Microphone LED",
+                "request_date": "2023-01-20",
+                "start_date": ["2023-02-17", "", ""],
+                "end_date": ["2023-02-24", "", ""]
+            }
+        ],
+        "rts": [
+            {
+                "status": "in-flight",
+                "pm": "Rock",
+                "fe": "lulu",
+                "swe": "kfc",
+                "qa": "",
+                "bug_link": "https://bugs.launchpad.net/+bugs?field.tag=jellycat-bbq",
+                "start_date": ["2022-09-14", "2022-12-08", ""],
+                "end_date": ["2022-09-22", "2022-12-16", ""],
+                "platform_name": ["GG 16 SSC", "GG 15 SSC"],
+                "product_name": ["G16 8830", "G15 7730"],
+                "platform_tag": "jellycat-bbq"
+            }
+        ]
+    },
+    "sutton": {
+        "prts": [],
+        "rts": [
+            {
+                "platform_tag": "jellybacon-hello",
+                "status": "in-flight",
+                "pm": "",
+                "fe": "",
+                "swe": "ohno",
+                "qa": "",
+                "bug_link": "https://bugs.launchpad.net/+bugs?field.tag=jellybacon-hello",
+                "start_date": ["2023-02-13", "2023-03-06", "2023-03-27"],
+                "prts": false,
+                "platform_name": ["IPhoen 27"],
+                "product_name": ["I14 9487"],
+                "lp_tag": "IPhoen27"
+            }
+        ]
+    },
+    "stella": {
+        "prts": [],
+        "rts": [
+            {
+                "platform_tag": "fossa-123",
+                "status": "in-flight",
+                "pm": "pmer",
+                "fe": "",
+                "swe": "world",
+                "qa": "",
+                "bug_link": "https://bugs.launchpad.net/+bugs?field.tag=fossa-123",
+                "rts_stage": "pre",
+                "start_date": ["2022-05-06", "2022-08-26", "2022-10-28"],
+                "platform_name": ["God"],
+                "product_name": ["G876 G55555"],
+                "lp_tag": "stella-monseegod"
+            }
+        ]
+    }
+}
