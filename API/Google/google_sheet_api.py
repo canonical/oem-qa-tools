@@ -14,6 +14,7 @@ API_ACCOUNT_TYPE = os.environ.get("GOOGLE_API_ACCOUNT_TYPE")
 
 class GoogleSheetOperator():
     DEFAULT_API_TYPE = "service-account"
+
     def __init__(self):
         self._sheet_obj = None
         self._spreadsheet_id = None
@@ -29,10 +30,11 @@ class GoogleSheetOperator():
         self._spreadsheet_id = value
 
     def _prepare_credential(self):
+        cred = None
 
         if self._api_type == "service-account":
             cred = service_account.Credentials.from_service_account_file(
-                        filename = SERVICE_ACCOUNT_FILE)
+                        filename=SERVICE_ACCOUNT_FILE)
         elif self._api_type == "user-account":
             scopes = ["https://www.googleapis.com/auth/spreadsheets"]
             if os.path.exists(TOKEN_FILE):
@@ -64,7 +66,7 @@ class GoogleSheetOperator():
     def _check_service(self):
         return all([self._sheet_obj, self.spreadsheet])
 
-    def get_range_data(self, data_range: str, major_dimension: str="ROWS"):
+    def get_range_data(self, data_range: str, major_dimension: str = "ROWS"):
         if self._check_service():
             result = self._sheet_obj.values().get(
                         spreadsheetId=self.spreadsheet,
@@ -73,7 +75,7 @@ class GoogleSheetOperator():
             return result.get("values", [])
 
     def update_range_data(self, data_range: str, values: list,
-                          input_option: str="USER_ENTERED"):
+                          input_option: str = "USER_ENTERED"):
         if self._check_service():
             req_body = {
                 "valueInputOption": input_option,
@@ -87,7 +89,7 @@ class GoogleSheetOperator():
     def insert_empty_rows(self,
                           sheet_id: int,
                           start_index: int,
-                          num: int=1):
+                          num: int = 1):
         if self._check_service():
             req_body = {
                 "requests": [
@@ -109,7 +111,7 @@ class GoogleSheetOperator():
             print(result)
 
     def insert_empty_columns(self, sheet_id: int,
-                             start_index: int, num: int=1):
+                             start_index: int, num: int = 1):
         if self._check_service():
             req_body = {
                 "requests": [

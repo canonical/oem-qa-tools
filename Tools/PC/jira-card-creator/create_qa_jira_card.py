@@ -4,16 +4,19 @@ import copy
 from argparse import ArgumentParser
 
 from pc_platform_tracker import generate_platform_tracker
-from Jira.scenarios.pc import create_task_card
+from Jira.scenarios.pc.pc import create_task_card
 
-sub_folders = ["config", "projects"]
-if os.path.split(os.getcwd())[-1] != "qa_jira":
-    sub_folders.insert(0, "qa_jira")
-sub_folders.insert(0, os.getcwd())
+# Get path of the configs of PC project from PC scenario in Jira API
+project_conf_folders = os.path.join(
+    os.getcwd(), "Jira", "scenarios", "pc", "configs")
 
-SUPPORTED_PROJECTS = [os.path.splitext(i)[0] \
-                      for i in os.listdir(os.path.join(*sub_folders)) \
-                      if os.path.splitext(i)[1] == ".json"]
+if not os.path.exists(project_conf_folders):
+    raise Exception("Fail to find the path of PC configs")
+
+SUPPORTED_PROJECTS = [
+    os.path.splitext(i)[0] for i in os.listdir(project_conf_folders)
+    if os.path.splitext(i)[1] == ".json"
+]
 
 
 def combine_duplicate_tag(data, primary_key):
@@ -62,10 +65,6 @@ def register_arguments():
         help="select one of supported projects",
         type=str, required=True,
         choices=options,
-    )
-    parser.add_argument(
-        "--dev", action="store_true",
-        default=False, help="apply to non-production jira project",
     )
     return parser.parse_args()
 
