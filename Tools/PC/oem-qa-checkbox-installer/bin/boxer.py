@@ -71,7 +71,7 @@ def main():
     boxercfg = config["boxer"]
     username = boxercfg["username"]
     ppa_password = boxercfg["ppa_password"]
-    provider = args.provider or boxercfg["provider"] or "sutton"
+    provider = args.provider or boxercfg["provider"]
     repository = args.repository or boxercfg["repository"] or "stable"
 
     pre_install()

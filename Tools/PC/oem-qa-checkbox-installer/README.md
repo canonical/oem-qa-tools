@@ -1,7 +1,7 @@
-# install_checkbox-provider
+# Install OEM Checkbox providers
 
 ## Introduce
-This is a tool to help you set up the test environment, like installing the main package `checkbox-cli`, and also other essential packages.
+This is a tool to help you set up the test environment, like installing the main package `checkbox-ng`, and also other essential packages.
 
 ## Usage
 1. Copy this folder to your computer.
