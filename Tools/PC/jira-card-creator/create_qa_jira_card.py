@@ -22,16 +22,23 @@ SUPPORTED_PROJECTS = [
 def combine_duplicate_tag(data, primary_key):
     for milestone, platform_data in data.items():
         needed_data = {}
-        if milestone != "rts":
-            continue
+
         for platform in platform_data:
             tag = platform.pop(primary_key)
             platform_name = platform.pop("platform_name", "")
             new_name = platform_name.split("(")[0]
 
+            # Put the platform_name into a list even though there's only one
+            # record for this tag
+            if milestone != "rts":
+                platform.update({"platform_name": [new_name]})
+                needed_data.update({tag: platform})
+                continue
+
             if "product_name" not in platform.keys() or \
                platform_name == "":
                 continue
+
             product_name = platform.pop("product_name")
 
             if tag in needed_data.keys():

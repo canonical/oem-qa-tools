@@ -195,7 +195,6 @@ class SOMERVILLE_PLATFORM_RECORD(MD_PLATFORM_RECORD):
             mapping = cls.rts_mapping()
         elif record_type == "prts":
             mapping = cls.prts_mapping()
-
         elif record_type == "online udpate":
             mapping = cls.online_update_mapping()
         else:
@@ -378,14 +377,13 @@ class MD_PC_PROJECT_BOOK():
         return json.dumps(self.dump_to_dict(filters), indent=4)
 
 
-def get_somerville_platform_tracker():
-
+def get_somerville_platform_tracker(google_sheet_conf={}):
     somerville_project = MD_PC_PROJECT_BOOK()
     test_obj = GoogleSheetOperator()
     test_obj.prepare_sheet_obj()
-    test_obj.spreadsheet = "1l6P9NGzHk1GinIos0KaIcXv1hSm5wZPLiZOK4iaYL3Q"
+    test_obj.spreadsheet = google_sheet_conf["sheet_link"]
 
-    rts_range = "Platforms!A1:BC"
+    rts_range = google_sheet_conf["rts_range"]
     key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
     mapping = SOMERVILLE_PLATFORM_RECORD._expand_mapping(
         SOMERVILLE_PLATFORM_RECORD.rts_mapping()
@@ -403,7 +401,7 @@ def get_somerville_platform_tracker():
         except ValueError as err:
             logging.warning(err)
 
-    prts_range = "Post RTS!A1:BC"
+    prts_range = google_sheet_conf["prts_range"]
     key_data = test_obj.get_range_data(prts_range, major_dimension="ROWS")
     mapping = SOMERVILLE_PLATFORM_RECORD._expand_mapping(
         SOMERVILLE_PLATFORM_RECORD.prts_mapping()
@@ -432,12 +430,12 @@ def get_somerville_platform_tracker():
     return somerville_project
 
 
-def get_stella_platform_tracker():
+def get_stella_platform_tracker(google_sheet_conf={}):
     stella_project = MD_PC_PROJECT_BOOK()
     test_obj = GoogleSheetOperator()
     test_obj.prepare_sheet_obj()
-    test_obj.spreadsheet = "1R8S1fwJTiPTYTqdLu85fZ4kCseUrEsvPl09aoM0AZKU"
-    rts_range = "Platforms!B2:BDD"
+    test_obj.spreadsheet = google_sheet_conf["sheet_link"]
+    rts_range = google_sheet_conf["rts_range"]
     key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
     mapping = STELLA_PLATFORM_RECORD._expand_mapping(
         STELLA_PLATFORM_RECORD.rts_mapping()
@@ -460,13 +458,13 @@ def get_stella_platform_tracker():
     return stella_project
 
 
-def get_sutton_platform_tracker():
+def get_sutton_platform_tracker(google_sheet_conf={}):
     sutton_project = MD_PC_PROJECT_BOOK()
     test_obj = GoogleSheetOperator()
     test_obj.prepare_sheet_obj()
 
-    test_obj.spreadsheet = "1ay9Smg_GF_PMBk1-ATrXKAwKnJxgrImjdYnoQk9JndY"
-    rts_range = "Platforms!C1:AP"
+    test_obj.spreadsheet = google_sheet_conf["sheet_link"]
+    rts_range = google_sheet_conf["rts_range"]
     key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
     mapping = SUTTON_PLATFORM_RECORD._expand_mapping(
         SUTTON_PLATFORM_RECORD.rts_mapping()
@@ -489,13 +487,30 @@ def get_sutton_platform_tracker():
     return sutton_project
 
 
+def read_config(config_name="google_sheet_link.json"):
+    if not config_name.endswith(".json"):
+        raise Exception(f"Expect JSON config file but got {config_name}")
+    with open(f"./configs/{config_name}") as config_file:
+        file_contents = config_file.read()
+        return json.loads(file_contents)
+
+
 def generate_platform_tracker(project_name):
+    # Get google sheet info by reading config file
+    conf = read_config()
+    # Get the records by project
     if project_name == "somerville":
-        obj_pj_book = get_somerville_platform_tracker()
+        obj_pj_book = get_somerville_platform_tracker(
+            google_sheet_conf=conf[project_name]
+        )
     elif project_name == "stella":
-        obj_pj_book = get_stella_platform_tracker()
+        obj_pj_book = get_stella_platform_tracker(
+            google_sheet_conf=conf[project_name]
+        )
     elif project_name == "sutton":
-        obj_pj_book = get_sutton_platform_tracker()
+        obj_pj_book = get_sutton_platform_tracker(
+            google_sheet_conf=conf[project_name]
+        )
     else:
         raise KeyError("Unsupported project name")
 
