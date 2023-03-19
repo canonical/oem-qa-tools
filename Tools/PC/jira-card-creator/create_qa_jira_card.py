@@ -22,6 +22,7 @@ SUPPORTED_PROJECTS = [
 def combine_duplicate_tag(data, primary_key):
     for milestone, platform_data in data.items():
         needed_data = {}
+        new_data = []
 
         for platform in platform_data:
             tag = platform.pop(primary_key)
@@ -32,7 +33,7 @@ def combine_duplicate_tag(data, primary_key):
             # record for this tag
             if milestone != "rts":
                 platform.update({"platform_name": [new_name]})
-                needed_data.update({tag: platform})
+                new_data.append(platform)
                 continue
 
             if "product_name" not in platform.keys() or \
@@ -51,7 +52,7 @@ def combine_duplicate_tag(data, primary_key):
                     platform.update({"product_name": [product_name]})
                 needed_data.update({tag: platform})
 
-        new_data = []
+        # rts only
         if needed_data:
             for tag, value in needed_data.items():
                 value.update({primary_key: tag})
@@ -73,6 +74,11 @@ def register_arguments():
         type=str, required=True,
         choices=options,
     )
+    parser.add_argument(
+        "-d", "--dry-run",
+        help="get project data from project book only, won't create Jira Card",
+        action='store_true'
+    )
     return parser.parse_args()
 
 
@@ -89,13 +95,18 @@ def main():
 
         obj_pj_book = generate_platform_tracker(project)
         project_payload = obj_pj_book.dump_to_dict("status.eq=in-flight")
+        # print(json.dumps(project_payload, indent=2))
+
         new_payload = combine_duplicate_tag(project_payload, primary_key)
+        print(json.dumps(new_payload, indent=2))
+        
         if new_payload:
             payload.update({project: new_payload})
 
     if payload:
-        print(json.dumps(payload, indent=4))
-        create_task_card(payload)
+        # print(json.dumps(payload, indent=4))
+        if not args.dry_run:
+            create_task_card(payload)
 
 
 if __name__ == "__main__":
