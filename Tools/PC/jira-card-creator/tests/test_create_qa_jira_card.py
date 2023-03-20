@@ -72,7 +72,8 @@ class CreateQaJiraCardTest(unittest.TestCase):
                     "request_date": "2023-01-16",
                     "start_date": ["2023-03-10", "", ""],
                     "end_date": ["2023-03-17", "", ""],
-                    "platform_name": ["Dolphin N"]
+                    "platform_name": ["Dolphin N"],
+                    "platform_tag": "fossa-davos-adl"
                 },
                 {
                     "status": "in-flight",
@@ -85,7 +86,8 @@ class CreateQaJiraCardTest(unittest.TestCase):
                     "request_date": "2023-01-16",
                     "start_date": ["2023-03-10", "", ""],
                     "end_date": ["2023-03-17", "", "" ],
-                    "platform_name": ["Dolphin V MT"]
+                    "platform_name": ["Dolphin V MT"],
+                    "platform_tag": "fossa-davos-adl"
                 }
             ]
         }
