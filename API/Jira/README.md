@@ -37,11 +37,12 @@ Before developing, here are some necessary preparations you have to follow
 - Generate your Jira api token named `api_token.json` and put it under the `configs/jira_config` directory
 - Copy the `members.json` from [Lyoncore](https://git.launchpad.net/~lyoncore-team/lyoncore/+git/oem-kpitool/tree/qa_jira/config/jira_config) and put it under the `configs/jira_config` directory
 
-For more detail of preparation, please visit this [docs](https://not-creat-yet)
+For more detail of preparation, please visit this [QA Jira API Guide Line](https://docs.google.com/document/d/1s5CV6HqIWiPed2jJxGrcg49A-zJlX7yhIRMZoBbruho/edit?usp=sharing)
 
 ### Start developing
 
 If you are working on a `huge project`, I highly recommend you put your business logic under `scenarios` directory, `pc project` for instance.
+  - [jira-card-creator](https://github.com/canonical/oem-qa-tools/tree/main/Tools/PC/jira-card-creator) is a good example to learn how to leverage APIs with your idea.
 
 Otherwise, please put your code snippet under `Tools` directory.
 
