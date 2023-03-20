@@ -25,6 +25,7 @@ To sum up, the `api access token` for `Jira` and `service-account` or `OAuth cre
     └── google_sheet_link.json
 ├── tests
 ├── pc_platform_tracker.py
+├── setup.sh
 └── create_qa_jira_card.py
 ```
 
@@ -33,9 +34,16 @@ Here is a brief explanation about each part:
 - `Jira`: The Jira API service
 - `Google`: The Google API service
 - `configs`: The configure files used by this tool
+- `setup.sh`: The script helps you to create running environment
 - `create_qa_jira_card.py`: The `entry scripts` for this tool
 
 ### Example
+
+#### 0. Setup virtual environment
+
+```bash
+$ source setup.sh
+```
 
 #### 1. Show help message
 
