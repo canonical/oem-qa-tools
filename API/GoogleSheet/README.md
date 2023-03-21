@@ -1,6 +1,6 @@
-# Google
+# GoogleSheet API
 
-Goole is a tool to communicate with all of the service of Google.
+GoogleSheet API is a tool to communicate with the Google Sheet.
 
 For example, you can access project book (google sheet) via this tool.
 

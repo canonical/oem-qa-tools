@@ -2,7 +2,7 @@ import re
 import json
 import logging
 from datetime import datetime
-from Google.google_sheet_api import GoogleSheetOperator
+from GoogleSheet.google_sheet_api import GoogleSheetOperator
 
 
 LP_BUG_URL = "https://bugs.launchpad.net/{}/+bugs?field.tag={}"

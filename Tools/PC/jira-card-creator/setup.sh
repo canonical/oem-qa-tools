@@ -17,7 +17,7 @@
 
 # Name of virtual environment
 VENV="jira-creator-env"
-DEPENDENCIES=("Jira" "Google")
+DEPENDENCIES=("Jira" "GoogleSheet")
 
 # Check dependency api
 check_dependency_api()

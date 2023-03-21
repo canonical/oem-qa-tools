@@ -6,21 +6,21 @@ This tool creates card based on Project Books.
 
 ## How To Use
 
-This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and [Google](https://github.com/canonical/oem-qa-tools/blob/main/API/Google) APIs services. Please `Copy` these two APIs to this directory, you should see the following structure before you start.
+This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and [GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services. Please `Copy` these two APIs to this directory, you will see the following structure before you start.
 
 ### APIs preparation
 
 Please follow API's README to set them up.
 - [Jira Readme](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira/README.md)
-- [Google Readme](https://github.com/canonical/oem-qa-tools/blob/main/API/Google/README.md)
+- [GoogleSheet Readme](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet/README.md)
 
-To sum up, the `api access token` for `Jira` and `service-account` or `OAuth credentials` for `Google` are must needed.
+To sum up, the `api access token` for `Jira` and `service-account` or `OAuth credentials` for `GoogleSheet` are must needed.
 
 ### Structure
 ```
 .
 ├── Jira
-├── Google
+├── GoogleSheet
 ├── configs
     └── google_sheet_link.json
 ├── tests
@@ -32,7 +32,7 @@ To sum up, the `api access token` for `Jira` and `service-account` or `OAuth cre
 Here is a brief explanation about each part:
 
 - `Jira`: The Jira API service
-- `Google`: The Google API service
+- `GoogleSheet`: The GoogleSheet API service
 - `configs`: The configure files used by this tool
 - `setup.sh`: The script helps you to create running environment
 - `create_qa_jira_card.py`: The `entry scripts` for this tool
