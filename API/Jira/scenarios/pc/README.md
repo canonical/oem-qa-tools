@@ -8,7 +8,7 @@ PC is in charge of generating the PC task card for each platform based on projec
 
 Before developing, here are some necessary preparations you have to follow
 
-- Copy the `somerville.json`, `stella.json` and `sutton.json` from [Lyoncore](https://git.launchpad.net/~lyoncore-team/lyoncore/+git/oem-kpitool/tree/qa_jira/config/projects) and put it under the `configs/projects/pc` directory
+- Copy the `somerville.json`, `stella.json` and `sutton.json` from [Lyoncore](https://git.launchpad.net/~lyoncore-team/lyoncore/+git/oem-kpitool/tree/qa_jira/config/projects) and put them under the `configs/projects/pc` directory
 
 
 ### Start developing
