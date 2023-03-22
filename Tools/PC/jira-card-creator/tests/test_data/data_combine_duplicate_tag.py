@@ -67,7 +67,7 @@ somerville_rts_raw_data = {
 }
 
 somerville_prts_raw_data = {
-"prts": [
+  "prts": [
     {
       "platform_name": "Dolphin N",
       "platform_tag": "fossa-davos-adl",
