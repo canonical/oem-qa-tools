@@ -1,8 +1,9 @@
 #!/bin/bash
 
 pwd='u'
+output_file='./hardware_info.txt'
 
-echo -e "\nGetting hardware info..."
+printf "\nGetting hardware info...\n"
 
 # Get hardware info
 myCPU=$(echo ${pwd} | sudo -S dmidecode -s processor-version)
@@ -13,12 +14,13 @@ myManifest=$(ubuntu-report show | grep DCD | awk '{print $2}' | sed 's/"//g')
 myKernel=$(uname -r)
 myBIOSvers=$(echo ${pwd} | sudo -S dmidecode -s bios-version)
 
+# output hardware info to output file
 {
-    echo -e "CPU:\t\t${myCPU} "
-    echo -e "GPU:\t\t${myGPU} "
-    echo -e "Wireless:\t\t${myWireless} "
-    echo -e "WiFi Sub ID:\t${myWiFiSub} "
-    echo -e "Manifest Info:\t${myManifest}"
-    echo -e "Kernel Version:\t${myKernel}"
-    echo -e "BIOS:\t\t${myBIOSvers} "
-}   >> "./hardware_info.txt"
+    printf "CPU: %s\n" "${myCPU}"
+    printf "GPU: %s\n" "${myGPU}"
+    printf "Wireless: %s\n" "${myWireless}"
+    printf "WiFi Sub ID: %s\n" "${myWiFiSub}"
+    printf "Manifest Info: %s\n" "${myManifest}"
+    printf "Kernel Version: %s\n" "${myKernel}"
+    printf "BIOS: %s\n" "${myBIOSvers}"
+} >> "${output_file}"
