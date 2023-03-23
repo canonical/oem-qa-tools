@@ -4,7 +4,7 @@
 This script is uses to launch stress-ng tests with different stressors directly. 
 
 ## Requirement
-1. Install stress-ng snap from snap store
+1. Install stress-ng snap in devmode from snap store 
 2. Install checkbox provider snap
 3. Install generic checkbox snap or project checkbox 
 
