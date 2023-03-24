@@ -40,7 +40,7 @@ in_python_venv()
 
     # Enter virtual env
     echo "Entering the virtual environment ..."
-    . jira-creator-env/bin/activate
+    . $VENV/bin/activate
 
     # Check we're in virtual env
     echo "Checking we are in virtual environment or not..."
