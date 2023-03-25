@@ -1,4 +1,5 @@
 import json
+import re
 
 from Jira.apis.base import JiraAPI
 
@@ -6,22 +7,60 @@ from Jira.apis.base import JiraAPI
 def get_table_content_from_a_jira_card(key: str) -> list[dict]:
     """ Get the content of table in a specific Jira card
 
-        @param: key, the key of jira card. e.g. CQT-1234
+        @param:key, the key of jira card. e.g. CQT-1234
+
+        @return, a list contains dictionary. Please see the value of
+                'VALID_TEST_RESULT_CONTENT' in tests/testdata
+    """
+    # Get the content of specific Jira card via API
+    response, target_field = api_get_jira_card(key)
+    if 'errorMessages' in response:
+        err_msg = 'Error: Failed to get the card \'{}\'. {}'.format(
+            key, response['errorMessages']
+        )
+        raise Exception(err_msg)
+
+    # Check if only one issue we got
+    if len(response['issues']) != 1:
+        err_msg = 'Error: expect only 1 jira issue but got {} issues'.format(
+            len(response['issues'])
+        )
+        raise Exception(err_msg)
+
+    # Retrieve candidate DUT info from table
+    try:
+        # Index is 0 because we search the Jira card by key,
+        # only one issue is expected.
+        # By design, the "Test result" field is the default field
+        # in each Jira card on QA's Jira project.
+        test_result_field = response['issues'][0]['fields'][target_field]
+
+        # Get the table content
+        table_idx = None
+        for idx in range(len(test_result_field['content'])):
+            # Find the index fo 'table' dict in the content list
+            if 'type' in test_result_field['content'][idx] and \
+                    test_result_field['content'][idx]['type'] == 'table':
+                table_idx = idx
+                break
+        # Get the content list from table dict
+        table_content = test_result_field['content'][table_idx]['content']
+    except TypeError:
+        print(f'Error: Failed to get the table content from card \'{key}\'')
+        raise
+
+    return table_content
+
+
+def api_get_jira_card(key: str) -> tuple[dict, str]:
+    """ Get the content of specific Jira card via API
+
+        @param:key, the key of jira card. e.g. CQT-1234
 
         @return
-            [
-                {
-                    'cid': '202212-12345',
-                    'sku': '',
-                    'location:': 'TEL-L3-F24-S5-P1'
-                }
-            ]
+            @parsed, the respone returned from Jira API. Type: dict
+            @field, the 'Test reulst' field in specific Jira project. Type: str
     """
-    # Check parameter type
-    if not isinstance(key, str):
-        raise TypeError()
-
-    # Get Jira content via API
     jira_api = JiraAPI()
     payload = {
         'jql': 'project = {} AND issuekey = "{}"'.format(
@@ -30,42 +69,103 @@ def get_table_content_from_a_jira_card(key: str) -> list[dict]:
         'fields': [jira_api.jira_project['card_fields']['Test result']],
     }
     response = jira_api.get_issues(payload=payload)
-    # print(type)
     parsed = json.loads(response.text)
-    print(json.dumps(parsed, indent=2))
 
-    # Retrieve candidate DUT info from table
-    try:
-        # Index is 0 because we searched by the key of Jira card
-        # Only one issue is expected
-        card_fields = parsed['issues'][0]['fields']
-        # By design, the "Test result" field is the default field
-        # in each Jira card on QA's Jira project
-        test_result_field = card_fields[
-            jira_api.jira_project['card_fields']['Test result']]
-        # Get the table content, by design, index of table is 1
-        table_content = test_result_field['content'][1]['content']
-    except TypeError:
-        print(f'Error: Failed to get the table content of card \'{key}\'')
-        raise
-
-    return table_content
+    # By design, the "Test result" field is the default field
+    # in each Jira card on QA's Jira project
+    return parsed, jira_api.jira_project['card_fields']['Test result']
 
 
-def get_candidate_dut(key: str) -> list[dict]:
+def is_valid_cid(cid: str) -> bool:
+    """ Check the format of CID
     """
+    pattern = re.compile(
+        r'^20\d{2}0[1-9]-\d{5}$|^20\d{2}1[0-2]-\d{5}$'
+    )
+    return True if re.match(pattern, cid) else False
+
+
+def is_valid_location(location: str) -> bool:
+    """ Check the format of Location
     """
+    pattern = re.compile(
+        r'^TEL-L\d-F\d{2}-S\d-P[12]$|^TEL-L\d-R\d{2}-S\d{1,2}-P0$')
+    return True if re.match(pattern, location) else False
+
+
+def sanitize_row_data(data: dict) -> tuple[bool, list]:
+    """ Sanitize the data to see whether it's valid or not by checking
+        the value of cid and location.
+
+        @param:key, the key of jira card. e.g. CQT-1234
+
+        @return
+            @is_valid, the data is valid or not. True / False
+            @row, a list data in ['cid', 'sku', 'location'] format
+    """
+    is_valid = False
+    row = []
+
+    # Retrieve (CID, SKU, Location) and append them to row list
+    for i in data['content']:
+        if i['content'][0]['content']:
+            row.append(i['content'][0]['content'][0]['text'])
+        else:
+            row.append('')
+
+    is_valid = is_valid_cid(row[0]) and is_valid_location(row[2])
+
+    return is_valid, row
+
+
+def get_candidate_duts(key: str) -> dict:
+    """ Get the candidate DUT(s)
+
+        @param:key, the key of jira card. e.g. CQT-1234
+
+        @return
+        {
+            'valid': [{
+                'cid': '202212-12345',
+                'sku': '',
+                'location:': 'TEL-L3-F24-S5-P1'
+            }],
+            'invalid': [{
+                'cid': '202212-123xcc',
+                'sku': '',
+                'location:': 'TELAc-L309-F24-S5-P1c'
+            }]
+        }
+    """
+    # Return dictionary
+    re_dict = {
+        'valid': [],
+        'invalid': []
+    }
+
     table = get_table_content_from_a_jira_card(key)
 
-    # Check format CID, Location
-    start_idx = 2
-    # print(table[2])
-    return []
+    # Sanitize each dut
+    #
+    # Why start from 2?
+    # Ans:
+    #   According to our Jira template
+    #     - idx 0 is table's header
+    #     - idx 1, aka row 1, is the example
+    #   So the real data should be started from idx 2
+    if len(table) < 3:
+        err_msg = 'Error: expect more than 2 rows in table but got {}'.format(
+            len(table)
+        )
+        raise Exception(err_msg)
 
+    for i in range(2, len(table)):
+        valid, data = sanitize_row_data(table[i])
+        re_dict['valid'].append(data) if valid else \
+            re_dict['invalid'].append(data)
 
-def sanitize_record(record: dict) -> dict:
-    pass
+    return re_dict
 
 
 if __name__ == '__main__':
-    get_candidate_dut(key='VS-2623')
+    get_candidate_duts(key='VS-2623')
