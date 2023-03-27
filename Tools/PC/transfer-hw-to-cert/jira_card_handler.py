@@ -5,26 +5,25 @@ from Jira.apis.base import JiraAPI
 
 
 def get_table_content_from_a_jira_card(key: str) -> list[dict]:
-    """ Get the content of table in a specific Jira card
+    """ Get the content of table from the 'Test result' field in a specific
+        Jira card.
 
         @param:key, the key of jira card. e.g. CQT-1234
 
         @return, a list contains dictionary. Please see the value of
-                'VALID_TEST_RESULT_CONTENT' in tests/testdata
+                'VALID_RESULT_FROM_API' in tests/testdata
     """
     # Get the content of specific Jira card via API
     response, target_field = api_get_jira_card(key)
     if 'errorMessages' in response:
         err_msg = 'Error: Failed to get the card \'{}\'. {}'.format(
-            key, response['errorMessages']
-        )
+            key, re.sub('\[\]', '', response['errorMessages']))  # noqa: W605
         raise Exception(err_msg)
 
     # Check if only one issue we got
     if len(response['issues']) != 1:
         err_msg = 'Error: expect only 1 jira issue but got {} issues'.format(
-            len(response['issues'])
-        )
+            len(response['issues']))
         raise Exception(err_msg)
 
     # Retrieve candidate DUT info from table
@@ -63,9 +62,9 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
     """
     jira_api = JiraAPI()
     payload = {
-        'jql': 'project = {} AND issuekey = "{}"'.format(
-            jira_api.jira_project['key'], key
-        ),
+        'jql':
+        'project = {} AND issuekey = "{}"'.format(jira_api.jira_project['key'],
+                                                  key),
         'fields': [jira_api.jira_project['card_fields']['Test result']],
     }
     response = jira_api.get_issues(payload=payload)
@@ -77,16 +76,14 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
 
 
 def is_valid_cid(cid: str) -> bool:
-    """ Check the format of CID
+    """ Check if it's valid of the format of CID
     """
-    pattern = re.compile(
-        r'^20\d{2}0[1-9]-\d{5}$|^20\d{2}1[0-2]-\d{5}$'
-    )
+    pattern = re.compile(r'^20\d{2}0[1-9]-\d{5}$|^20\d{2}1[0-2]-\d{5}$')
     return True if re.match(pattern, cid) else False
 
 
 def is_valid_location(location: str) -> bool:
-    """ Check the format of Location
+    """ Check if it's valid of the format of Location
     """
     pattern = re.compile(
         r'^TEL-L\d-F\d{2}-S\d-P[12]$|^TEL-L\d-R\d{2}-S\d{1,2}-P0$')
@@ -97,11 +94,12 @@ def sanitize_row_data(data: dict) -> tuple[bool, list]:
     """ Sanitize the data to see whether it's valid or not by checking
         the value of cid and location.
 
-        @param:key, the key of jira card. e.g. CQT-1234
+        @param:data, it's a row record in Jira table. Please see the
+                    VALID_ROW_DATA to know its structure.
 
         @return
             @is_valid, the data is valid or not. True / False
-            @row, a list data in ['cid', 'sku', 'location'] format
+            @row, a list in ['cid', 'sku', 'location'] format
     """
     is_valid = False
     row = []
@@ -119,7 +117,7 @@ def sanitize_row_data(data: dict) -> tuple[bool, list]:
 
 
 def get_candidate_duts(key: str) -> dict:
-    """ Get the candidate DUT(s)
+    """ Get the candidate DUT(s) from specific Jira Card's table
 
         @param:key, the key of jira card. e.g. CQT-1234
 
@@ -138,10 +136,7 @@ def get_candidate_duts(key: str) -> dict:
         }
     """
     # Return dictionary
-    re_dict = {
-        'valid': [],
-        'invalid': []
-    }
+    re_dict = {'valid': [], 'invalid': []}
 
     table = get_table_content_from_a_jira_card(key)
 
@@ -151,12 +146,11 @@ def get_candidate_duts(key: str) -> dict:
     # Ans:
     #   According to our Jira template
     #     - idx 0 is table's header
-    #     - idx 1, aka row 1, is the example
+    #     - idx 1, aka row 1, is the example placeholder
     #   So the real data should be started from idx 2
     if len(table) < 3:
         err_msg = 'Error: expect more than 2 rows in table but got {}'.format(
-            len(table)
-        )
+            len(table))
         raise Exception(err_msg)
 
     for i in range(2, len(table)):
@@ -168,4 +162,4 @@ def get_candidate_duts(key: str) -> dict:
 
 
 if __name__ == '__main__':
-    get_candidate_duts(key='VS-2623')
+    print(get_candidate_duts(key='VS-2623'))
