@@ -6,7 +6,7 @@ on:
   push:
     paths: ['Tools/PC/transfer-hw-to-cert/**']
   pull_request:
-    branches: ['Tools/PC/transfer-hw-to-cert/**']
+    paths: ['Tools/PC/transfer-hw-to-cert/**']
 
 jobs:
   build:
