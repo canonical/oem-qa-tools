@@ -2,6 +2,7 @@ import json
 import re
 
 from Jira.apis.base import JiraAPI
+from utils.common import is_valid_cid, is_valid_location
 
 
 def get_table_content_from_a_jira_card(key: str) -> list[dict]:
@@ -73,21 +74,6 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
     # By design, the "Test result" field is the default field
     # in each Jira card on QA's Jira project
     return parsed, jira_api.jira_project['card_fields']['Test result']
-
-
-def is_valid_cid(cid: str) -> bool:
-    """ Check if it's valid of the format of CID
-    """
-    pattern = re.compile(r'^20\d{2}0[1-9]-\d{5}$|^20\d{2}1[0-2]-\d{5}$')
-    return True if re.match(pattern, cid) else False
-
-
-def is_valid_location(location: str) -> bool:
-    """ Check if it's valid of the format of Location
-    """
-    pattern = re.compile(
-        r'^TEL-L\d-F\d{2}-S\d-P[12]$|^TEL-L\d-R\d{2}-S\d{1,2}-P0$')
-    return True if re.match(pattern, location) else False
 
 
 def sanitize_row_data(data: dict) -> tuple[bool, list]:
