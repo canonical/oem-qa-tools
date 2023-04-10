@@ -54,6 +54,14 @@ def is_valid_input_data(data: list[dict]) -> tuple[bool, list]:
     return not len(invalid_list), invalid_list
 
 
+def are_sheet_cells_empty(data: list[dict]) -> tuple[bool, list]:
+    """ Check the cells are empty on Cert Lab Google Sheet
+        Currently, this function checks the value of CID and
+        Certified_OEM_Image
+    """
+    pass
+
+
 def update_cert_lab_google_sheet(data: list[dict]) -> bool:
     """ Fill the DUT information to the Cert Lab Google Sheet
 

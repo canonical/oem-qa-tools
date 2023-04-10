@@ -2,7 +2,8 @@ import unittest
 
 from utils.common import (
     is_valid_cid,
-    is_valid_location
+    is_valid_location,
+    parse_location
 )
 
 
@@ -107,6 +108,44 @@ class IsValidLocationTest(unittest.TestCase):
                 case['expect_value'], valid,
                 'case: \'{}\' expects {} but got {}'.format(
                     case['name'], case['expect_value'], valid))
+
+
+class ParseLocationTest(unittest.TestCase):
+    def test_parse_valid_location(self):
+        """ Parse the valid location
+        """
+        actual_result = parse_location(location='TEL-L3-F24-S5-P1')
+        expected_result = {
+            'Lab': 'TEL-L3',
+            'Frame': 'F24',
+            'Shelf': '5',
+            'Partition': '1'
+        }
+        self.assertCountEqual(expected_result, actual_result)
+
+    def test_parse_invalid_location(self):
+        """ Parse the invalid location
+        """
+        actual_result = parse_location(location='TE00L-L3-F24-S5-PK1')
+        expected_result = {
+            'Lab': '',
+            'Frame': 'F24',
+            'Shelf': '5',
+            'Partition': ''
+        }
+        self.assertCountEqual(expected_result, actual_result)
+
+    def test_parse_empty_location(self):
+        """ Parse the invalid location
+        """
+        actual_result = parse_location(location='')
+        expected_result = {
+            'Lab': '',
+            'Frame': '',
+            'Shelf': '',
+            'Partition': ''
+        }
+        self.assertCountEqual(expected_result, actual_result)
 
 
 if __name__ == '__main__':
