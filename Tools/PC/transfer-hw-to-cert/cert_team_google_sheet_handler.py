@@ -1,6 +1,11 @@
 import pprint
 
-from utils.common import is_valid_cid, is_valid_location, read_json_config
+from utils.common import (
+    is_valid_cid,
+    is_valid_location,
+    read_json_config,
+    parse_location
+)
 
 from GoogleSheet.google_sheet_api import GoogleSheetOperator
 
@@ -135,7 +140,7 @@ def get_sheet_data() -> dict:
                 'P' + v[columns['Partition']]
             )
             indexed_table[location] = {
-                'row_index': idx+2,
+                'row_index': idx + offset,
                 'CID': v[columns['CID']],
                 'Certified_OEM_Image': v[columns['Certified_OEM_Image']]
             }
@@ -148,36 +153,71 @@ def find_sheet_row_index() -> int:
     pass
 
 
-def are_sheet_cells_empty(data: list[dict]) -> tuple[bool, list]:
+def are_candidated_sheet_cells_empty(
+        data: list[dict], sheet_data: dict) -> tuple[bool, list]:
     """ Check the cells are empty on Cert Lab Google Sheet
         Currently, this function checks the value of CID and
         Certified_OEM_Image
+
+        @param:data, a list contains the bunch of dictionary data, each
+                    data has the following keys, cid, location and the
+                    gm_image_link
+        @param:sheet_data, a dictionary which is from get_sheet_data function
+
+        @return
+            bool: True if all candidated cells are empty, otherwise False
+            list: non empty list. It shows all record whose CID cell is empty
     """
-    test_obj = GoogleSheetOperator()
-    test_obj.prepare_sheet_obj()
-    test_obj.spreadsheet = GOOGLE_SHEET_CONF["sheet_link"]
+    all_empty = True
+    non_empty_list = []
+    for d in data:
+        table = parse_location(d['location'])['Lab']
+        indexed_table = sheet_data[table]['indexed_table']
+        # check the CID cell is not empty
+        if indexed_table[d['location']]['CID']:
+            all_empty = False
+            message = 'try to fill \'{}\' in the CID cell but there\'s '\
+                '\'{}\' occupies the cell'
+            non_empty_list.append({
+                'message': message.format(
+                    d['cid'],
+                    indexed_table[d['location']]['CID']
+                ),
+                'row_index': indexed_table[d['location']]['row_index'],
+                'location': d['location']
+            })
 
-    rts_range = 'test!Q1:T'
-    key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
-    print(key_data)
+    return all_empty, non_empty_list
 
 
-def test_update():
-    test_obj = GoogleSheetOperator()
-    test_obj.prepare_sheet_obj()
-    test_obj.spreadsheet = GOOGLE_SHEET_CONF["sheet_link"]
+def fill_in_google_sheet(data: list[dict], sheet_data: dict) -> bool:
+    """ Fill the data in the Google Sheet
+    """
+    gs_obj = create_google_sheet_instance()
+    batch_update_data = []
 
-    data = [{
-        'range': 'test!A3',
-        'values': [['202304-00000']]
-    }, {
-        'range': 'test!J3',
-        'values': [['http://yahoo2.com.tw']]
-    }, {
-        'range': 'test!A2',
-        'values': [['nonono']]
-    }]
-    res = test_obj.update_range_data(data=data)
+    for d in data:
+        table = parse_location(d['location'])['Lab']
+        headers = sheet_data[table]['headers']
+        indexed_table = sheet_data[table]['indexed_table']
+        row_index = indexed_table[d['location']]['row_index']
+        cid_column_chr = chr(65 + headers['CID'])
+        gm_image_link_chr = chr(65 + headers['Certified_OEM_Image'])
+        # append cid data who is to be filled in
+        cid_data = {
+            'range': f'{table}!{cid_column_chr}{row_index}',
+            'values': [[d['cid']]]
+        }
+        batch_update_data.append(cid_data)
+
+        # append gm_image_link_data data who is to be filled in
+        gm_image_link_data = {
+            'range': f'{table}!{gm_image_link_chr}{row_index}',
+            'values': [[d['gm_image_link']]]
+        }
+        batch_update_data.append(gm_image_link_data)
+
+    res = gs_obj.update_range_data(data=batch_update_data)
     print(res)
 
 
@@ -185,18 +225,18 @@ def update_cert_lab_google_sheet(data: list[dict]) -> bool:
     """ Fill the DUT information to the Cert Lab Google Sheet
 
         @param:data, a list contains the bunch of dictionary data, each
-                    data has the following keys, CID, Location and the link
-                    of GM image.
+                    data has the following keys, cid, location and the
+                    gm_image_link
             e.g.
                 data = [
                     {
                         'cid': '20230405-12345',
-                        'location': 'TEL-L3-F24-S5-P2'
+                        'location': 'TEL-L3-F24-S5-P2',
                         'gm_image_link': ''
                     },
                     {
                         'cid': '20230405-12346',
-                        'location': 'TEL-L3-F23-S5-P2'
+                        'location': 'TEL-L3-F23-S5-P2',
                         'gm_image_link': 'http://oem-share'
                     }
                 ]
@@ -207,10 +247,35 @@ def update_cert_lab_google_sheet(data: list[dict]) -> bool:
     # Sanitize data
     is_valid_input_data(data)
 
-    # Check the google sheet
+    # Get Google Sheet data
+    sheet_data = get_sheet_data()
 
-    # fill the data to google sheet
+    # Check the google sheet
+    empty, non_empty_list = are_candidated_sheet_cells_empty(
+        data,
+        sheet_data
+    )
+    print(empty)
+    print(non_empty_list)
+    if empty:
+        # fill the data to google sheet
+        fill_in_google_sheet(data, sheet_data)
+    else:
+        print(non_empty_list)
 
 
 if __name__ == '__main__':
-    get_sheet_data()
+    # get_sheet_data()
+    data = [
+        {
+            'cid': '20230405-12345',
+            'location': 'TEL-L3-F24-S5-P2',
+            'gm_image_link': ''
+        },
+        {
+            'cid': '20230405-12346',
+            'location': 'TEL-L5-F20-S1-P1',
+            'gm_image_link': 'http://oem-share'
+        }
+    ]
+    update_cert_lab_google_sheet(data)
