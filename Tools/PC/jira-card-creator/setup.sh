@@ -23,10 +23,14 @@ DEPENDENCIES=("Jira" "GoogleSheet")
 check_dependency_api()
 {
     for dependency in ${DEPENDENCIES[@]}; do
+        # Copy the dependency if it doesn't exist
         if [ ! -d "./$dependency" ]; then
-            echo "Error: no dependency \"$dependency\" api found."
-            echo "Please check the README first"
-            return 1
+            echo "Copying the dependency \"$dependency\" ..."
+            cp -r "../API/$dependency" .
+            if [[ "$?" -ne 0 ]]; then
+                echo "Error: fail to copy the dependency \"$dependency\""
+                return 1
+            fi
         fi
     done
     return 0
