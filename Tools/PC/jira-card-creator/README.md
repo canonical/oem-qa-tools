@@ -8,7 +8,7 @@ This tool creates card based on Project Books.
 
 This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and [GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services.
 
-Please see [example sextion](#example) to learn how to use it.
+Please see [example section](#example) to learn how to use it.
 
 ### APIs preparation
 
