@@ -29,6 +29,9 @@ printf "\nCopying plainbox.conf to ~/.conf and /etc/xdg ...\n"
 sudo cp ./conf/plainbox.conf "$HOME"/.config/
 sudo cp ./conf/plainbox.conf /etc/xdg/
 
+# check MAC of net devices aren't in black list
+./bin/check-net-mac.sh -f ./conf/black_MAC_list.conf
+
 while true; do
     read -r -p "Press 'r' to reboot or 'e' to exit: " rse
     case $rse in
