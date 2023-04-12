@@ -1,4 +1,15 @@
 import unittest
+import os
+
+from unittest.mock import patch, MagicMock
+
+# Make sure mock_import must need to be imported before our own modules
+from . import mock_import  # noqa: F401
+
+# Mock the project_conf_folders folder is existed
+os.path.exists = MagicMock(return_value=True)
+# Mock there are three projects' profiles
+os.listdir = MagicMock(return_value=['somerville.json', 'stella.json', 'sutton.json'])
 
 from create_qa_jira_card import combine_duplicate_tag
 

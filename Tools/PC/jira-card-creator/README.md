@@ -6,7 +6,9 @@ This tool creates card based on Project Books.
 
 ## How To Use
 
-This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and [GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services. Please `Copy` these two APIs to this directory, you will see the following structure before you start.
+This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and [GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services.
+
+Please see [example section](#example) to learn how to use it.
 
 ### APIs preparation
 
@@ -44,6 +46,9 @@ Here is a brief explanation about each part:
 ```bash
 $ source setup.sh
 ```
+
+- After finishing the step above, don't forget to put the configures to the right place. See [APIs preparation](#apis-preparation)
+- You will see the [structure](#structure) before you start.
 
 #### 1. Show help message
 
