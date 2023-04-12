@@ -2,7 +2,7 @@
 
 help()
 {
-    echo "Usage:sh $0 -f black_mac_address_list_file"
+    echo "Usage:sh $0 -f [black_mac_address_list_file]"
 }
 
 check_black_list_file_is_exist()
@@ -19,9 +19,9 @@ check_no_black_mac_on_dut()
     ERROR_FLAG=0
     while IFS= read -r BLACK_MAC
     do
-      TMP="$(grep -irl "${BLACK_MAC}" /sys/class/net/*/address | grep -v "lo")"
+      TMP="$(grep -irlE "${BLACK_MAC}" /sys/class/net/*/address | grep -v "lo")"
       if [ "${TMP}" != "" ];then
-	      echo -e "\033[0;31mBLACK_MAC_DEVICE:[$(echo "${TMP}" | cut -d '/' -f 5)], MAC:[$(grep -irh "${BLACK_MAC}" /sys/class/net/*/address | grep -v "lo")]\033[0m"
+	      echo -e "\033[0;31mBLACK_MAC_DEVICE:[$(echo "${TMP}" | cut -d '/' -f 5)], MAC:[$(grep -irhE "${BLACK_MAC}" /sys/class/net/*/address | grep -v "lo")]\033[0m"
           ERROR_FLAG=1
       fi
     done < "$1"
@@ -30,6 +30,7 @@ check_no_black_mac_on_dut()
         exit 1
     fi
 }
+
 
 while getopts ":hf:" option; do
     case ${option} in
@@ -49,4 +50,7 @@ while getopts ":hf:" option; do
     esac
 done
 
-
+if [ ${OPTIND} -lt 2 ];then
+    help
+    exit 1
+fi
