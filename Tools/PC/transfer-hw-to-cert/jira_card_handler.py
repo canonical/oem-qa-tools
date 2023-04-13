@@ -1,21 +1,21 @@
 import json
 import re
 
-from Jira.apis.base import JiraAPI
+from Jira.apis.base import JiraAPI, get_jira_members
 from utils.common import is_valid_cid, is_valid_location
 
 
-def get_table_content_from_a_jira_card(key: str) -> list[dict]:
-    """ Get the content of table from the 'Test result' field in a specific
-        Jira card.
+def get_content_from_a_jira_card(key: str) -> dict:
+    """ Get the content from the 'Test result' field in a specific Jira card.
 
         @param:key, the key of jira card. e.g. CQT-1234
 
-        @return, a list contains dictionary. Please see the value of
-                'VALID_RESULT_FROM_API' in tests/testdata
+        @return, a dictionary contains gm_image_link, qa_launchpad_id and
+                 table list. Please see the value of
+                 'VALID_CONTENT_FROM_API' in tests/testdata
     """
     # Get the content of specific Jira card via API
-    response, target_field = api_get_jira_card(key)
+    response, test_result_field_id = api_get_jira_card(key)
     if 'errorMessages' in response:
         err_msg = 'Error: Failed to get the card \'{}\'. {}'.format(
             key, re.sub('\[\]', '', response['errorMessages']))  # noqa: W605
@@ -27,15 +27,47 @@ def get_table_content_from_a_jira_card(key: str) -> list[dict]:
             len(response['issues']))
         raise Exception(err_msg)
 
+    # Index is 0 because we search the Jira card by key,
+    # only one issue is expected.
+    # By design, the "Description" field is the default field
+    # in each Jira card.
+    # By design, the "Test result" field is the default field
+    # in each Jira card on CQT Jira project.
+    description_field = response['issues'][0]['fields']['description']
+    test_result_field = response['issues'][0]['fields'][test_result_field_id]
+
+    # Return dictionary
+    re_dict = {
+        'gm_image_link': '',
+        'qa_launchpad_id': '',
+        'table': []
+    }
+
+    # Get the link of gm image
+    try:
+        if len(description_field['content']):
+            for idx in range(len(description_field['content'][0]['content'])):
+                c = description_field['content'][0]['content'][idx]
+                # Find the name first
+                if 'text' in c and c['text'].strip() == 'GM Image Path:':
+                    # The link will be in the next content if it's not empty
+                    # value on Jira card
+                    link = description_field['content'][0]['content'][idx+1]
+                    if 'attrs' in link['marks'][0]:
+                        # attrs could be one of href or url
+                        attr_type = ['href', 'url']
+                        for at in attr_type:
+                            if at in link['marks'][0]['attrs']:
+                                re_dict['gm_image_link'] = \
+                                    link['marks'][0]['attrs'][at]
+                                break
+                        break
+    except TypeError:
+        print(f'Error: Failed to get the GM Image Path from card \'{key}\'')
+        raise
+
     # Retrieve candidate DUT info from table
     try:
-        # Index is 0 because we search the Jira card by key,
-        # only one issue is expected.
-        # By design, the "Test result" field is the default field
-        # in each Jira card on QA's Jira project.
-        test_result_field = response['issues'][0]['fields'][target_field]
-
-        # Get the table content
         table_idx = None
         for idx in range(len(test_result_field['content'])):
             # Find the index fo 'table' dict in the content list
@@ -45,11 +77,36 @@ def get_table_content_from_a_jira_card(key: str) -> list[dict]:
                 break
         # Get the content list from table dict
         table_content = test_result_field['content'][table_idx]['content']
+        re_dict['table'] = table_content
     except TypeError:
         print(f'Error: Failed to get the table content from card \'{key}\'')
         raise
 
-    return table_content
+    # Get QA launchpad ID
+    try:
+        for idx in range(len(test_result_field['content'][0]['content'])):
+            c = test_result_field['content'][0]['content'][idx]
+            # Find the name first
+            if 'text' in c and c['text'].strip() == 'QA:':
+                # The launchpad id will be in the next content
+                next = test_result_field['content'][0]['content'][idx+1]
+                if 'text' in next and next['text'].strip() != '<launchpad ID>':
+                    lp_id = next['text'].strip()
+                    members = get_jira_members()
+                    # check launchpad id is one of QAs
+                    if lp_id not in members:
+                        err_msg = 'Error: Invalid Launchpad ID, couldn\'t' + \
+                            ' find this person'
+                        raise Exception(err_msg)
+                    re_dict['qa_launchpad_id'] = lp_id
+                else:
+                    err_msg = 'Error: Please give the Launchpad ID'
+                    raise Exception(err_msg)
+    except TypeError:
+        print(f'Error: Failed to get the QA launchpad ID from card \'{key}\'')
+        raise
+
+    return re_dict
 
 
 def api_get_jira_card(key: str) -> tuple[dict, str]:
@@ -58,15 +115,18 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
         @param:key, the key of jira card. e.g. CQT-1234
 
         @return
-            @parsed, the respone returned from Jira API. Type: dict
-            @field, the 'Test reulst' field in specific Jira project. Type: str
+            @parsed, the respone returned from Jira API.
+            @field, the 'Test reulst' field in specific Jira project.
     """
     jira_api = JiraAPI()
     payload = {
         'jql':
         'project = {} AND issuekey = "{}"'.format(jira_api.jira_project['key'],
                                                   key),
-        'fields': [jira_api.jira_project['card_fields']['Test result']],
+        'fields': [
+            'description',
+            jira_api.jira_project['card_fields']['Test result']
+        ],
     }
     response = jira_api.get_issues(payload=payload)
     parsed = json.loads(response.text)
@@ -93,7 +153,7 @@ def sanitize_row_data(data: dict) -> tuple[bool, list]:
     # Retrieve (CID, SKU, Location) and append them to row list
     for i in data['content']:
         if i['content'][0]['content']:
-            row.append(i['content'][0]['content'][0]['text'])
+            row.append(i['content'][0]['content'][0]['text'].strip())
         else:
             row.append('')
 
@@ -109,6 +169,8 @@ def get_candidate_duts(key: str) -> dict:
 
         @return
         {
+            'gm_image_link': '',
+            'qa_launchpad_id': '',
             'valid': [{
                 'cid': '202212-12345',
                 'sku': '',
@@ -121,10 +183,15 @@ def get_candidate_duts(key: str) -> dict:
             }]
         }
     """
-    # Return dictionary
-    re_dict = {'valid': [], 'invalid': []}
+    content = get_content_from_a_jira_card(key)
 
-    table = get_table_content_from_a_jira_card(key)
+    # Return dictionary
+    re_dict = {
+        'valid': [],
+        'invalid': [],
+        'gm_image_link': content['gm_image_link'],
+        'qa_launchpad_id': content['qa_launchpad_id']
+    }
 
     # Sanitize each dut
     #
@@ -134,18 +201,14 @@ def get_candidate_duts(key: str) -> dict:
     #     - idx 0 is table's header
     #     - idx 1, aka row 1, is the example placeholder
     #   So the real data should be started from idx 2
-    if len(table) < 3:
+    if len(content['table']) < 3:
         err_msg = 'Error: expect more than 2 rows in table but got {}'.format(
-            len(table))
+            len(content['table']))
         raise Exception(err_msg)
 
-    for i in range(2, len(table)):
-        valid, data = sanitize_row_data(table[i])
+    for i in range(2, len(content['table'])):
+        valid, data = sanitize_row_data(content['table'][i])
         re_dict['valid'].append(data) if valid else \
             re_dict['invalid'].append(data)
 
     return re_dict
-
-
-if __name__ == '__main__':
-    print(get_candidate_duts(key='VS-2623'))
