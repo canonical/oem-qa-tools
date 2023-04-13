@@ -5,6 +5,9 @@ import traceback
 
 from Jira.apis.base import JiraAPI, get_jira_members, JIRA_DIR_PATH
 from Jira.utils.logging_utils import get_logger
+
+from .templates.transfer_hw_template import TEMPLATE_TEST_RESULT_FIELD
+
 logger = get_logger(__name__)
 
 
@@ -82,7 +85,7 @@ class QaPcJira():
             JIRA_DIR_PATH,
             'scenarios',
             'pc',
-            'configs'
+            'configs',
             f'{self.project}.json')
         ) as f:
             pf = json.load(f)
@@ -622,9 +625,12 @@ class QaPcJira():
         fields['description']['content'].append(
             self._generate_transfer_cert_description())
 
-        # Add the table into the description content
-        fields['description']['content'].append(
-            self._generate_transfer_cert_table_description())
+        # Add the content into the Test Result field
+        fields[self.jira_api.jira_project['card_fields']['Test result']] = {
+            "version": 1,
+            "type": "doc",
+            "content": TEMPLATE_TEST_RESULT_FIELD
+        }
 
         # link task to story task
         update_link = {}
