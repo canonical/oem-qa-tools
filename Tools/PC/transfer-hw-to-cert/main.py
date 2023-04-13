@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 
 from jira_card_handler import get_candidate_duts
+from cert_team_google_sheet_handler import update_cert_lab_google_sheet
 
 
 def register_arguments():
@@ -22,6 +23,9 @@ def main():
     data = get_candidate_duts(key)
 
     # TODO: Update Cert Lab Google Sheet
+    response = update_cert_lab_google_sheet()
+
+    # TODO: Update C3 holder
 
 
 if __name__ == '__main__':

@@ -1,5 +1,3 @@
-import pprint
-
 from utils.common import (
     is_valid_cid,
     is_valid_location,
@@ -13,8 +11,6 @@ from GoogleSheet.google_sheet_api import GoogleSheetOperator
     This python script handles the procedure of filling the DUT's information
     in the Cert Team's Google Sheet.
 """
-
-pp = pprint.PrettyPrinter(indent=2)
 
 GOOGLE_SHEET_CONF = read_json_config('./configs/google_sheet_link.json')
 
@@ -36,12 +32,12 @@ def is_valid_input_data(data: list[dict]) -> tuple[bool, list]:
             e.g.
                 data = [
                     {
-                        'cid': '20230405-12345',
+                        'cid': '202304-12345',
                         'location': 'TEL-L3-F24-S5-P2'
                         'gm_image_link': ''
                     },
                     {
-                        'cid': '20230405-12346',
+                        'cid': '202311-12346',
                         'location': 'TEL-L3-F23-S5-P2'
                         'gm_image_link': 'http://oem-share'
                     }
@@ -149,10 +145,6 @@ def get_sheet_data() -> dict:
     return sheet_data
 
 
-def find_sheet_row_index() -> int:
-    pass
-
-
 def are_candidated_sheet_cells_empty(
         data: list[dict], sheet_data: dict) -> tuple[bool, list]:
     """ Check the cells are empty on Cert Lab Google Sheet
@@ -172,6 +164,9 @@ def are_candidated_sheet_cells_empty(
     non_empty_list = []
     for d in data:
         table = parse_location(d['location'])['Lab']
+        if table not in sheet_data:
+            err_msg = 'Error: Table \'{}\' not in indexed table'.format(table)
+            raise Exception(err_msg)
         indexed_table = sheet_data[table]['indexed_table']
         # check the CID cell is not empty
         if indexed_table[d['location']]['CID']:
@@ -221,7 +216,7 @@ def fill_in_google_sheet(data: list[dict], sheet_data: dict) -> bool:
     print(res)
 
 
-def update_cert_lab_google_sheet(data: list[dict]) -> bool:
+def update_cert_lab_google_sheet(data: list[dict]) -> dict:
     """ Fill the DUT information to the Cert Lab Google Sheet
 
         @param:data, a list contains the bunch of dictionary data, each
@@ -230,12 +225,12 @@ def update_cert_lab_google_sheet(data: list[dict]) -> bool:
             e.g.
                 data = [
                     {
-                        'cid': '20230405-12345',
+                        'cid': '202312-12345',
                         'location': 'TEL-L3-F24-S5-P2',
                         'gm_image_link': ''
                     },
                     {
-                        'cid': '20230405-12346',
+                        'cid': '202302-12346',
                         'location': 'TEL-L3-F23-S5-P2',
                         'gm_image_link': 'http://oem-share'
                     }
@@ -245,23 +240,30 @@ def update_cert_lab_google_sheet(data: list[dict]) -> bool:
             list: invalid list. It shows all invalid data in a list
     """
     # Sanitize data
-    is_valid_input_data(data)
+    valid, invalid_list = is_valid_input_data(data)
+
+    if valid:
+        err_msg = 'Error: input data is invalid. Invalid data list: {}'.format(
+            invalid_list)
+        raise Exception(err_msg)
 
     # Get Google Sheet data
     sheet_data = get_sheet_data()
 
-    # Check the google sheet
+    # Check those cells are empty
     empty, non_empty_list = are_candidated_sheet_cells_empty(
         data,
         sheet_data
     )
-    print(empty)
-    print(non_empty_list)
-    if empty:
-        # fill the data to google sheet
-        fill_in_google_sheet(data, sheet_data)
-    else:
-        print(non_empty_list)
+
+    if not empty:
+        err_msg = 'Error: some cells are not empty. Empty cell: {}'.format(
+            non_empty_list)
+        raise Exception(err_msg)
+
+    # fill the data to google sheet
+    response = fill_in_google_sheet(data, sheet_data)
+    return response
 
 
 if __name__ == '__main__':
@@ -270,7 +272,8 @@ if __name__ == '__main__':
         {
             'cid': '20230405-12345',
             'location': 'TEL-L3-F24-S5-P2',
-            'gm_image_link': ''
+            'gm_image_link': '',
+            'sku': ''
         },
         {
             'cid': '20230405-12346',
