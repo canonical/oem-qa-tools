@@ -21,9 +21,14 @@ def main():
 
     # Get data from specific Jira Card
     data = get_candidate_duts(key)
+    print(data)
 
     # TODO: Update Cert Lab Google Sheet
-    response = update_cert_lab_google_sheet()
+    gm_image_link = data['gm_image_link']
+    for d in data['valid']:
+        d['gm_image_link'] = gm_image_link
+    print(data)
+    # response = update_cert_lab_google_sheet()
 
     # TODO: Update C3 holder
 
