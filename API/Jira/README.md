@@ -9,14 +9,34 @@ You can find some interesting use cases under scenarios folder.
 ```
 .
 ├── apis
+│   ├── base.py
+│   └── __init__.py
 ├── configs
-    ├── jira_config
-    └── projects
-        └── pc
+│   └── jira_config
+│       └── project.json
+├── __init__.py
+├── README.md
 ├── scenarios
-    └── pc
+│   ├── __init__.py
+│   └── pc
+│       ├── configs
+│       │   ├── somerville.json
+│       │   ├── stella.json
+│       │   └── sutton.json
+│       ├── __init__.py
+│       ├── pc.py
+│       ├── README.md
+│       └── templates
+│           ├── __init__.py
+│           └── transfer_hw_template.py
 ├── tests
+│   ├── dev_create_pc_tasks.py
+│   ├── __init__.py
+│   ├── test_base_api.py
+│   └── testing_data.json
 └── utils
+    ├── __init__.py
+    └── logging_utils.py
 ```
 
 Here is a brief explanation about each part:
