@@ -208,7 +208,11 @@ def get_candidate_duts(key: str) -> dict:
 
     for i in range(2, len(content['table'])):
         valid, data = sanitize_row_data(content['table'][i])
-        re_dict['valid'].append(data) if valid else \
-            re_dict['invalid'].append(data)
+        tmp_d = {
+            'cid': data[0],
+            'sku': data[1],
+            'location': data[2],
+        }
+        re_dict['valid' if valid else 'invalid'].append(tmp_d)
 
     return re_dict

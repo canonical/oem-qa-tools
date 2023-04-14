@@ -242,7 +242,7 @@ def update_cert_lab_google_sheet(data: list[dict]) -> dict:
     # Sanitize data
     valid, invalid_list = is_valid_input_data(data)
 
-    if valid:
+    if not valid:
         err_msg = 'Error: input data is invalid. Invalid data list: {}'.format(
             invalid_list)
         raise Exception(err_msg)

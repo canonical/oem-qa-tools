@@ -9,62 +9,75 @@ from utils.common import (
 
 class IsValidCIDTest(unittest.TestCase):
 
-    def test_is_valid_cid(self):
-        """ Check if the format of cid is wrong
+    def test_valid_cid(self):
+        """ Check the valid CID
         """
         test_cases = [{
             'name': 'correct cid',
-            'cid': '202303-23456',
-            'expect_value': True
+            'cid': '202303-23456'
         }, {
             'name': 'correct cid 2',
-            'cid': '204312-39768',
-            'expect_value': True
-        }, {
-            'name': 'cid has too many numbers',
-            'cid': '2023010-2956754',
-            'expect_value': False
-        }, {
-            'name': 'cid contains non-numeric character',
-            'cid': '2023@k-2okhel',
-            'expect_value': False
-        }, {
-            'name': 'no hyphen in cid',
-            'cid': '20230329123',
-            'expect_value': False
-        }, {
-            'name': 'cid not starts with 20',
-            'cid': '302303-29123',
-            'expect_value': False
-        }, {
-            'name': 'cid not in 12 month',
-            'cid': '202399-29123',
-            'expect_value': False
+            'cid': '204312-39768'
         }]
 
         for case in test_cases:
             valid = is_valid_cid(case['cid'])
             self.assertEqual(
-                case['expect_value'], valid,
-                'case: \'{}\' expects {} but got {}'.format(
-                    case['name'], case['expect_value'], valid))
+                True, valid,
+                'case: \'{}\' expects True but got False'.format(case['name']))
+
+    def test_invalid_cid(self):
+        """ Check the invalid CID
+        """
+        test_cases = [{
+            'name': 'cid has too many numbers',
+            'cid': '2023010-2956754'
+        }, {
+            'name': 'cid contains non-numeric character',
+            'cid': '2023@k-2okhel'
+        }, {
+            'name': 'no hyphen in cid',
+            'cid': '20230329123'
+        }, {
+            'name': 'cid not starts with 20',
+            'cid': '302303-29123'
+        }, {
+            'name': 'cid not in 12 month',
+            'cid': '202399-29123'
+        }]
+
+        for case in test_cases:
+            valid = is_valid_cid(case['cid'])
+            self.assertEqual(
+                False, valid,
+                'case: \'{}\' expects False but got True'.format(case['name']))
 
 
 class IsValidLocationTest(unittest.TestCase):
-    def test_is_valid_location(self):
-        """ Check if the format of location is wrong
+    def test_valid_location(self):
+        """ Check the valid location
         """
         test_cases = [
             {
                 'name': 'correct location',
                 'location': 'TEL-L3-F24-S5-P1',
-                'expect_value': True
             },
             {
                 'name': 'correct location 2',
                 'location': 'TEL-L3-R01-S10-P0',
-                'expect_value': True
-            },
+            }
+        ]
+
+        for case in test_cases:
+            valid = is_valid_location(case['location'])
+            self.assertEqual(
+                True, valid,
+                'case: \'{}\' expects True but got False'.format(case['name']))
+
+    def test_invalid_location(self):
+        """ Check the invalid location
+        """
+        test_cases = [
             {
                 'name': 'wrong start',
                 'location': 'ATEL-L3-R01-S10-P0',
@@ -105,9 +118,8 @@ class IsValidLocationTest(unittest.TestCase):
         for case in test_cases:
             valid = is_valid_location(case['location'])
             self.assertEqual(
-                case['expect_value'], valid,
-                'case: \'{}\' expects {} but got {}'.format(
-                    case['name'], case['expect_value'], valid))
+                False, valid,
+                'case: \'{}\' expects False but got True'.format(case['name']))
 
 
 class ParseLocationTest(unittest.TestCase):

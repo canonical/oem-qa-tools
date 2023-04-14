@@ -135,11 +135,37 @@ class GetCandidateDutsTest(unittest.TestCase):
         expected_result = {
             'gm_image_link': 'https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso',  # noqa: E501
             'qa_launchpad_id': 'fake-valid-launchpad_id',
-            'valid': [['202303-23456', '', 'TEL-L3-F24-S5-P1']],
-            'invalid': [['202305-24689', '', 'Adc-L3-@34-S2-p0'], ['', '', ''],
-                        ['ABCmar-98765', '', 'TEL-L3-F24-S5-P2'],
-                        ['309041-3345534', '', 'TEL-L3-F24-S5-P99'],
-                        ['202303-28754', '', '']]
+            'valid': [
+                {
+                    'cid': '202303-23456',
+                    'sku': '',
+                    'location': 'TEL-L3-F24-S5-P1'
+                }
+            ],
+            'invalid': [
+                {
+                    'cid': '202305-24689',
+                    'sku': '',
+                    'location': 'Adc-L3-@34-S2-p0'},
+                {
+                    'cid': '',
+                    'sku': '',
+                    'location': ''
+                },
+                {
+                    'cid': 'ABCmar-98765',
+                    'sku': '',
+                    'location': 'TEL-L3-F24-S5-P2'},
+                {
+                    'cid': '309041-3345534',
+                    'sku': '',
+                    'location': 'TEL-L3-F24-S5-P99'},
+                {
+                    'cid': '202303-28754',
+                    'sku': '',
+                    'location': ''
+                }
+            ]
         }
 
         test_result = get_candidate_duts(key='any')
