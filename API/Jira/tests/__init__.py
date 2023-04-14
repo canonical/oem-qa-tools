@@ -13,7 +13,7 @@ with open(
 ) as f:
     api_token = json.load(f)
     if not api_token['email'] or not api_token['api_token']:
-        raise Exception('Invalid Jira API token') 
+        raise Exception('Invalid Jira API token')
 
 # Load testing data
 dummy_payload = {}

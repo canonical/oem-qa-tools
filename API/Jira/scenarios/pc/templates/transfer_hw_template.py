@@ -1,4 +1,5 @@
-# TEMPLATE_TEST_RESULT_FIELD is the template shows the content at "Test Result" field
+# TEMPLATE_TEST_RESULT_FIELD is the template shows the
+# content at "Test Result" field
 TEMPLATE_TEST_RESULT_FIELD = [
   {
     "type": "paragraph",

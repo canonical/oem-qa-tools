@@ -18,7 +18,7 @@ class JiraAPITest(unittest.TestCase):
         self.assertEqual(
             self.jira_api.base_url, 'https://warthogs.atlassian.net')
         self.assertEqual(self.jira_api.jira_api_path, 'rest/api/3')
-        
+
         dev_jira_project = {
             'id': '10350',
             'key': 'VS',
@@ -40,7 +40,8 @@ class JiraAPITest(unittest.TestCase):
         self.assertDictEqual(self.jira_api.jira_project, dev_jira_project)
 
     def test_create_jira_fields_template(self):
-        """ Check the most basic part of card's content is correct with those given ids
+        """ Check the most basic part of card's content is correct with those
+            given ids
 
             The id of project and issuetype are mandatory value.
         """
@@ -140,7 +141,7 @@ class JiraAPITest(unittest.TestCase):
                     'marks': [
                         {
                             'type': 'link',
-                            'attrs': 
+                            'attrs':
                                 {
                                     'href': 'https://launchpad.net/'
                                 }
@@ -314,6 +315,7 @@ class JiraAPITest(unittest.TestCase):
             self.jira_api.create_table_content(desired_table),
             expected_result
         )
+
 
 if __name__ == '__main__':
     unittest.main()
