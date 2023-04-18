@@ -36,8 +36,6 @@ class DUTPayloadAttrs:
     """
     holder: str = None
     location: TaipeiLocation = None
-    holder: str = None
-    location: str = None
     canonical_contact: str = None
     date_received: str = None
     hardware_build: str = None
@@ -110,7 +108,7 @@ class C3API:
         response = self._request(url=self._base_url, params=params)
         return response
 
-    def update_dut(self, cid, payload):
+    def update_dut_by_cid(self, cid, payload):
         """ Update the information of specific DUT by CID
         """
         # To dictionary and filter None attrs
