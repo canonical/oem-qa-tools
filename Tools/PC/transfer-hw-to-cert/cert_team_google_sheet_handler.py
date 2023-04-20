@@ -257,7 +257,7 @@ def update_cert_lab_google_sheet(data: list[dict]) -> dict:
     )
 
     if not empty:
-        err_msg = 'Error: some cells are not empty. Empty cell: {}'.format(
+        err_msg = 'Error: some cells are not empty. Non empty list: {}'.format(
             non_empty_list)
         raise Exception(err_msg)
 

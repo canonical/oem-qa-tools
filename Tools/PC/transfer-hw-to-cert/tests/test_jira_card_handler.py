@@ -24,12 +24,12 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         """ Should raise exception while getting non-exist jira card
         """
         fake_key = 'fake-12345'
-        jira_error_msg = '\'Issue does not exist or you do not have ' + \
-            'permission to see it.\''
+        jira_error_msg = 'Issue does not exist or you do not have ' + \
+            'permission to see it.'
 
         # Second returned value doesn't matter
         mock_api_get_jira_card.return_value = [{
-            'errorMessages': jira_error_msg
+            'errorMessages': [jira_error_msg]
         }, '_']
 
         with self.assertRaisesRegex(
@@ -54,8 +54,14 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         mock_api_get_jira_card.return_value = [
             EMPTY_TABLE_RESULT_FROM_API, 'customfield_10186']
 
-        with self.assertRaises(TypeError):
-            get_content_from_a_jira_card(key='fake_key')
+        # with self.assertRaises(TypeError):
+        #     get_content_from_a_jira_card(key='fake_key')
+        fake_key = 'fake-2345'
+        with self.assertRaisesRegex(
+            Exception,
+            'Error: Failed to get the table content from card \'{}\''.format(
+                fake_key)):
+            get_content_from_a_jira_card(key=fake_key)
 
         # release stdout
         sys.stdout = sys.__stdout__
@@ -67,7 +73,7 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         mock_get_jira_members,
         mock_api_get_jira_card
     ):
-        """ Should get valid data from table on hw transfer jira card
+        """ Should get valid data from hw transfer jira card
         """
 
         # Second returned value does matter, it's the Jira specific code of

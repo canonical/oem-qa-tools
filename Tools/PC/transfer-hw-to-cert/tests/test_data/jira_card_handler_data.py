@@ -1,4 +1,4 @@
-# The full content of Jira Card's "Test result" field retrieved via API
+# The full content of Jira Card retrieved via API
 # It's a completed golden sample of valid response.
 VALID_RESULT_FROM_API = {
     "expand": "names,schema",

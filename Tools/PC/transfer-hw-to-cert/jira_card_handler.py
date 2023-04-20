@@ -1,5 +1,4 @@
 import json
-import re
 
 from Jira.apis.base import JiraAPI, get_jira_members
 from utils.common import is_valid_cid, is_valid_location
@@ -17,8 +16,9 @@ def get_content_from_a_jira_card(key: str) -> dict:
     # Get the content of specific Jira card via API
     response, test_result_field_id = api_get_jira_card(key)
     if 'errorMessages' in response:
+        print(response['errorMessages'][0])
         err_msg = 'Error: Failed to get the card \'{}\'. {}'.format(
-            key, re.sub('\[\]', '', response['errorMessages']))  # noqa: W605
+            key, response['errorMessages'][0])
         raise Exception(err_msg)
 
     # Check if only one issue we got
@@ -43,29 +43,6 @@ def get_content_from_a_jira_card(key: str) -> dict:
         'table': []
     }
 
-    # Get the link of gm image
-    try:
-        if len(description_field['content']):
-            for idx in range(len(description_field['content'][0]['content'])):
-                c = description_field['content'][0]['content'][idx]
-                # Find the name first
-                if 'text' in c and c['text'].strip() == 'GM Image Path:':
-                    # The link will be in the next content if it's not empty
-                    # value on Jira card
-                    link = description_field['content'][0]['content'][idx+1]
-                    if 'attrs' in link['marks'][0]:
-                        # attrs could be one of href or url
-                        attr_type = ['href', 'url']
-                        for at in attr_type:
-                            if at in link['marks'][0]['attrs']:
-                                re_dict['gm_image_link'] = \
-                                    link['marks'][0]['attrs'][at]
-                                break
-                        break
-    except TypeError:
-        print(f'Error: Failed to get the GM Image Path from card \'{key}\'')
-        raise
-
     # Retrieve candidate DUT info from table
     try:
         table_idx = None
@@ -78,9 +55,10 @@ def get_content_from_a_jira_card(key: str) -> dict:
         # Get the content list from table dict
         table_content = test_result_field['content'][table_idx]['content']
         re_dict['table'] = table_content
-    except TypeError:
-        print(f'Error: Failed to get the table content from card \'{key}\'')
-        raise
+    except Exception as e:
+        print(e)
+        raise Exception(
+            f'Error: Failed to get the table content from card \'{key}\'')
 
     # Get QA launchpad ID
     try:
@@ -102,9 +80,36 @@ def get_content_from_a_jira_card(key: str) -> dict:
                 else:
                     err_msg = 'Error: Please give the Launchpad ID'
                     raise Exception(err_msg)
-    except TypeError:
-        print(f'Error: Failed to get the QA launchpad ID from card \'{key}\'')
-        raise
+    except Exception as e:
+        print(e)
+        raise Exception(
+            f'Error: Failed to get the QA launchpad ID from card \'{key}\'')
+
+    # Get the link of gm image
+    try:
+        if len(description_field['content']):
+            for idx in range(len(description_field['content'][0]['content'])):
+                c = description_field['content'][0]['content'][idx]
+                # Find the name first
+                if 'text' in c and c['text'].strip() == 'GM Image Path:':
+                    # The link will be in the next content if it's not empty
+                    # value on Jira card
+                    link = description_field['content'][0]['content'][idx+1]
+                    if 'attrs' in link['marks'][0]:
+                        # attrs could be one of href or url
+                        attr_type = ['href', 'url']
+                        for at in attr_type:
+                            if at in link['marks'][0]['attrs']:
+                                re_dict['gm_image_link'] = \
+                                    link['marks'][0]['attrs'][at]
+                                break
+                        break
+    except Exception as e:
+        print(e)
+        # Non mandatory field
+        # TODO: Need a way to notify us instead of stdout
+        print(
+            f'Warning: Failed to get the GM Image Path from card \'{key}\'')
 
     return re_dict
 
