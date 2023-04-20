@@ -47,7 +47,7 @@ setup_user()
 		echo "The ${user} user already exist"
 	fi
 	echo ''
-	echo " \033[1;35mPlease set ${user} account with 'u' password \033[0m"
+	printf " \033[1;35mPlease set %s account with 'u' password \033[0m" "${user}"
 	sudo passwd ${user}
 	echo ''
 	sudo usermod -aG sudo ${user}

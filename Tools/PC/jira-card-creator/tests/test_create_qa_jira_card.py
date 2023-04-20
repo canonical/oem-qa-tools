@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 # Make sure mock_import must need to be imported before our own modules
 from . import mock_import  # noqa: F401
@@ -9,11 +9,12 @@ from . import mock_import  # noqa: F401
 # Mock the project_conf_folders folder is existed
 os.path.exists = MagicMock(return_value=True)
 # Mock there are three projects' profiles
-os.listdir = MagicMock(return_value=['somerville.json', 'stella.json', 'sutton.json'])
+os.listdir = MagicMock(return_value=['somerville.json',
+                                     'stella.json',
+                                     'sutton.json'])
+from create_qa_jira_card import combine_duplicate_tag  # noqa: E402
 
-from create_qa_jira_card import combine_duplicate_tag
-
-from .test_data.data_combine_duplicate_tag import (
+from .test_data.data_combine_duplicate_tag import (  # noqa: E402
     somerville_rts_raw_data,
     somerville_prts_raw_data
 )
@@ -25,7 +26,7 @@ class CreateQaJiraCardTest(unittest.TestCase):
 
             For somerville project, we expect the records who have same
             value of platform_tag should be combined together as one record
-            in rts milestone. 
+            in rts milestone.
         """
         primary_key = "platform_tag"
         excepted_result = {
@@ -67,7 +68,7 @@ class CreateQaJiraCardTest(unittest.TestCase):
 
             For somerville project, we expect the records who have same
             value of platform_tag should NOT be combined together as one record
-            in prts milestone. 
+            in prts milestone.
         """
         primary_key = "platform_tag"
         excepted_result = {
@@ -96,7 +97,7 @@ class CreateQaJiraCardTest(unittest.TestCase):
                     "request": "Fix rear audio port",
                     "request_date": "2023-01-16",
                     "start_date": ["2023-03-10", "", ""],
-                    "end_date": ["2023-03-17", "", "" ],
+                    "end_date": ["2023-03-17", "", ""],
                     "platform_name": ["Dolphin V MT"],
                     "platform_tag": "fossa-davos-adl"
                 }
