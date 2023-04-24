@@ -107,7 +107,7 @@ class MD_PLATFORM_RECORD():
             datetime.strptime(value, "%Y-%m-%d")
             return value
         except Exception as err:
-            # logging.warning("Incorrect time format: %s", value)
+            logging.warning(err)
             return ""
 
     @staticmethod
@@ -329,7 +329,7 @@ class MD_PC_PROJECT_BOOK():
             e.g.
             status.eq=in-flight&platform.contains=fossa
         """
-        re_pattern = "(\w*).(\w*)=([\w -]*)"
+        re_pattern = "(\\w*).(\\w*)=([\\w -]*)"
         patterns = pattern.split("&")
         for validation in patterns:
             re_check = re.search(re_pattern, validation)
