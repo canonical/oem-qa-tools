@@ -435,6 +435,24 @@ class JiraAPI:
 
         return t
 
+    def add_comment_to_issue(self, keyOrID='', comment_data={}):
+        """ Add a comment to an issue
+
+            Parameters:
+                keyOrID {str}: The key or ID of Jira issue
+                    e.g. key -> CQT-1234
+                comment_data {dict}: The valid format of Jira comment
+                    ref:
+                        https://developer.atlassian.com/cloud/jira/platform/
+                        rest/v3/api-group-issue-comments/#api-rest-api-3-
+                        issue-issueidorkey-comment-post
+        """
+        api_endpoint = "{}/{}/issue/{}/comment".format(
+            self._base_url, self._jira_api_path, keyOrID)
+        payload = {'body': comment_data}
+        response = self._request('POST', url=api_endpoint, payload=payload)
+
+        return response
 
 def get_jira_members():
     """ Get the members who have the permission to access the Jira Project
