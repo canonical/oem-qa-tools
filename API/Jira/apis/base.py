@@ -454,6 +454,7 @@ class JiraAPI:
 
         return response
 
+
 def get_jira_members():
     """ Get the members who have the permission to access the Jira Project
 
