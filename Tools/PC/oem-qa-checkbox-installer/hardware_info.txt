@@ -1,0 +1,11 @@
+CID:		201712-26032
+Secure ID:	ZSa7hTrigL5PWy9cwa7ycC
+C3:		https://certification.canonical.com/hardware/201712-26032
+SKU:		ITA-PLT-C6
+CPU:		Intel(R) Core(TM) i5-8350U CPU @ 1.70GHz 
+GPU:		VGA compatible controller [0300]: Intel Corporation UHD Graphics 620 [8086:5917] (rev 07) (prog-if 00 [VGA controller]) 
+Wireless:		Intel Corporation Wireless 8265 / 8275 [8086:24fd] (rev 78) 
+WiFi Sub ID:	Intel Corporation Wireless 8265 / 8275 [8086:8050] 
+Manifest Info:	
+Kernel Version:	Linux baconyao-ubuntu-pc 5.15.0-27-generic #28-Ubuntu SMP Thu Apr 14 04:55:28 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
+BIOS:		1.12.1 
