@@ -133,31 +133,26 @@ class ParseLocationTest(unittest.TestCase):
             'Shelf': '5',
             'Partition': '1'
         }
-        self.assertCountEqual(expected_result, actual_result)
+        self.assertEqual(expected_result, actual_result)
 
     def test_parse_invalid_location(self):
         """ Parse the invalid location
         """
-        actual_result = parse_location(location='TE00L-L3-F24-S5-PK1')
-        expected_result = {
-            'Lab': '',
-            'Frame': 'F24',
-            'Shelf': '5',
-            'Partition': ''
-        }
-        self.assertCountEqual(expected_result, actual_result)
 
-    def test_parse_empty_location(self):
-        """ Parse the invalid location
-        """
-        actual_result = parse_location(location='')
-        expected_result = {
-            'Lab': '',
-            'Frame': '',
-            'Shelf': '',
-            'Partition': ''
-        }
-        self.assertCountEqual(expected_result, actual_result)
+        test_cases = [
+            {
+                'name': 'wrong start',
+                'location': 'TE00L-L3-F24-S5-PK1',
+            },
+            {
+                'name': 'empty location',
+                'location': '',
+            }
+        ]
+
+        for case in test_cases:
+            actual_result = parse_location(location=case['location'])
+            self.assertEqual({}, actual_result)
 
 
 if __name__ == '__main__':

@@ -37,8 +37,7 @@ To sum up, the `api access token` for `Jira` and `service-account` or `OAuth cre
 │   ├── test_cert_team_google_sheet_handler.py
 │   ├── test_data
 │   │   ├── __init__.py
-│   │   ├── jira_card_handler_data.py
-│   │   └── __pycache__
+│   │   └── jira_card_handler_data.py
 │   │       ├── __init__.cpython-310.pyc
 │   │       └── jira_card_handler_data.cpython-310.pyc
 │   ├── test_jira_card_handler.py

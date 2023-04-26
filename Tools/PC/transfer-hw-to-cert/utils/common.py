@@ -4,6 +4,9 @@ import re
 
 def is_valid_cid(cid: str) -> bool:
     """ Check if it's valid of the format of CID
+        The format of CID is yyyymm-{5 random number}
+        Valid range of yyyy is from 2000 to 2099
+        Valid range of mm is 01 to 12
     """
     pattern = re.compile(r'^20\d{2}0[1-9]-\d{5}$|^20\d{2}1[0-2]-\d{5}$')
     return True if re.match(pattern, cid) else False
@@ -28,22 +31,13 @@ def read_json_config(config_path: str) -> dict:
 def parse_location(location: str) -> dict:
     """ Parse the location data
     """
-    return_dict = {
-        'Lab': '',
-        'Frame': '',
-        'Shelf': '',
-        'Partition': ''
-    }
     part_re = re.compile(
         '(?P<Lab>TEL-L\d)-(?P<Frame>F\d+)-S(?P<Shelf>\d+)-P(?P<Partition>\d+)'  # noqa: W605, E501
     )
     match = re.search(part_re, location)
-    if match:
-        return_dict = {
-            'Lab': match.group('Lab'),
-            'Frame': match.group('Frame'),
-            'Shelf': match.group('Shelf'),
-            'Partition': match.group('Partition')
-        }
-
-    return return_dict
+    return {} if not match else {
+        'Lab': match.group('Lab'),
+        'Frame': match.group('Frame'),
+        'Shelf': match.group('Shelf'),
+        'Partition': match.group('Partition')
+    }

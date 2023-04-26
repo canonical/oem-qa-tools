@@ -154,6 +154,19 @@ def are_candidated_sheet_cells_empty(
         @param:data, a list contains the bunch of dictionary data, each
                     data has the following keys, cid, location and the
                     gm_image_link
+                    e.g.
+                        data = [
+                            {
+                                'cid': '202312-12345',
+                                'location': 'TEL-L3-F24-S5-P2',
+                                'gm_image_link': ''
+                            },
+                            {
+                                'cid': '202302-12346',
+                                'location': 'TEL-L3-F23-S5-P2',
+                                'gm_image_link': 'http://oem-share'
+                            }
+                        ]
         @param:sheet_data, a dictionary which is from get_sheet_data function
 
         @return
@@ -163,11 +176,12 @@ def are_candidated_sheet_cells_empty(
     all_empty = True
     non_empty_list = []
     for d in data:
-        table = parse_location(d['location'])['Lab']
-        if table not in sheet_data:
-            err_msg = 'Error: Table \'{}\' not in indexed table'.format(table)
+        lab = parse_location(d['location']).get('Lab', None)
+        if not lab or lab not in sheet_data:
+            err_msg = 'Error: Lab \'{}\' is not in indexed table'.format(lab)
             raise Exception(err_msg)
-        indexed_table = sheet_data[table]['indexed_table']
+        # get the indexed table of specific lab
+        indexed_table = sheet_data[lab]['indexed_table']
         # check the CID cell is not empty
         if indexed_table[d['location']]['CID']:
             all_empty = False
@@ -187,6 +201,24 @@ def are_candidated_sheet_cells_empty(
 
 def fill_in_google_sheet(data: list[dict], sheet_data: dict) -> bool:
     """ Fill the data in the Google Sheet
+
+        @param:data, a list contains the bunch of dictionary data, each
+                    data has the following keys, cid, location and the
+                    gm_image_link
+                    e.g.
+                        data = [
+                            {
+                                'cid': '202312-12345',
+                                'location': 'TEL-L3-F24-S5-P2',
+                                'gm_image_link': ''
+                            },
+                            {
+                                'cid': '202302-12346',
+                                'location': 'TEL-L3-F23-S5-P2',
+                                'gm_image_link': 'http://oem-share'
+                            }
+                        ]
+        @param:sheet_data, a dictionary which is from get_sheet_data function
     """
     gs_obj = create_google_sheet_instance()
     batch_update_data = []
