@@ -438,7 +438,7 @@ class QaPcJira():
                 milestone tasks
         """
         rts_milestone = self.project_profile['milestones']['rts']
-        issueUpdates = []  # Put tasks in this list
+        issue_updates = []  # Put tasks in this list
 
         for idx in range(len(rts_milestone)):
             # Template of "fields" payload in Jira's request
@@ -487,10 +487,10 @@ class QaPcJira():
                 target_issues=[{'key': story_task['key']}]) \
                 if story_task['key'] else {}
 
-            issueUpdates.append({'fields': fields, 'update': update_link})
+            issue_updates.append({'fields': fields, 'update': update_link})
 
         response = self.jira_api.create_issues(
-            payload={'issueUpdates': issueUpdates})
+            payload={'issue_updates': issue_updates})
         if not response.ok:
             logger.warn('  Milestone tasks ... Fail')
             return {}
