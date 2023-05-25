@@ -6,20 +6,26 @@ This tool creates card based on Project Books.
 
 ## How To Use
 
-This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and [GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services.
+<!-- markdownlint-configure-file { "MD013": { "line_length": 100 } } -->
+This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and
+[GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services.
 
 Please see [example section](#example) to learn how to use it.
 
 ### APIs preparation
 
 Please follow API's README to set them up.
+<!-- markdownlint-configure-file { "MD013": { "line_length": 90 } } -->
 - [Jira Readme](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira/README.md)
+<!-- markdownlint-configure-file { "MD013": { "line_length": 110 } } -->
 - [GoogleSheet Readme](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet/README.md)
 
-To sum up, the `api access token` for `Jira` and `service-account` or `OAuth credentials` for `GoogleSheet` are must needed.
+To sum up, the `api access token` for `Jira` and `service-account`
+or `OAuth credentials` for `GoogleSheet` are must needed.
 
 ### Structure
-```
+
+```shell
 .
 ├── Jira
 ├── GoogleSheet
@@ -44,10 +50,11 @@ Here is a brief explanation about each part:
 #### 0. Setup virtual environment
 
 ```bash
-$ source setup.sh
+source setup.sh
 ```
 
-- After finishing the step above, don't forget to put the configures to the right place. See [APIs preparation](#apis-preparation)
+- After finishing the step above, don't forget to put the configures
+  to the right place. See [APIs preparation](#apis-preparation)
 - You will see the [structure](#structure) before you start.
 
 #### 1. Show help message
@@ -61,7 +68,8 @@ optional arguments:
   -p {sutton,somerville,stella,all}, --project {sutton,somerville,stella,all}
                         select one of supported projects
   -o {console,file}, --output {console,file}
-                        select one of supported output type. Default is 'console', it will show you the result on console in JSON format.
+                        select one of supported output type. Default is 'console',
+                        it will show you the result on console in JSON format.
                         Option 'file' will log the data to 'output.json' file
   -d, --dry-run         get project data from project book only, won't create Jira Card
 ```
@@ -86,7 +94,8 @@ $ python create_qa_jira_card.py -p somerville -d
 
 Please make sure the test cases are passed before commit.
 
-`Dry run` is a super helpful way to get and check the information from project book. Please reference Example 3 to see how to use it.
+`Dry run` is a super helpful way to get and check the information
+from project book. Please reference Example 3 to see how to use it.
 
 ### Unit Test
 
