@@ -490,7 +490,7 @@ class QaPcJira():
             issue_updates.append({'fields': fields, 'update': update_link})
 
         response = self.jira_api.create_issues(
-            payload={'issue_updates': issue_updates})
+            payload={'issueUpdates': issue_updates})
         if not response.ok:
             logger.warn('  Milestone tasks ... Fail')
             return {}
