@@ -6,7 +6,7 @@ You can find some interesting use cases under scenarios folder.
 
 ## Structure
 
-```shell
+```sh
 .
 ├── apis
 │   ├── base.py
@@ -77,7 +77,7 @@ Please make sure the test cases are passed before commit.
 
 - Once you update the codes in `apis` directory.
 
-    ``` bash
+    ```sh
     # Change direcotry to Jira
     $ pwd
     # /home/.../oem-qa-tools/API/Jira

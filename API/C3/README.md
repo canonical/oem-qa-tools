@@ -4,7 +4,7 @@ C3 is a tool to interact with the Certification Canonical website.
 
 ## Structure
 
-```shell
+```sh
 .
 ├── apis
 │   ├── base.py
@@ -58,7 +58,7 @@ Please make sure the test cases are passed before commit.
 
 - Once you update the codes in `apis` directory.
 
-    ``` bash
+    ```sh
     # Change direcotry to C3
     $ pwd
     # /home/.../oem-qa-tools/API/C3

@@ -16,7 +16,7 @@ Before developing, here are some necessary preparations you have to follow
 
 Create the real Jira card to Vic's Jira porject
 
-``` bash
+```sh
 $ pwd
 # /home/.../oem-qa-tools/API/Jira          
 
@@ -29,7 +29,7 @@ Please make sure the test cases are passed before commit.
 
 - Once you update the codes in `apis` directory.
 
-    ``` bash
+    ```sh
     # Change direcotry to Jira
     $ pwd
     # /home/.../oem-qa-tools/API/Jira

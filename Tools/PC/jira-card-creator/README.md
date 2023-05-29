@@ -25,7 +25,7 @@ or `OAuth credentials` for `GoogleSheet` are must needed.
 
 ### Structure
 
-```shell
+```sh
 .
 ├── Jira
 ├── GoogleSheet
@@ -49,7 +49,7 @@ Here is a brief explanation about each part:
 
 #### 0. Setup virtual environment
 
-```bash
+```sh
 source setup.sh
 ```
 
@@ -59,7 +59,7 @@ source setup.sh
 
 #### 1. Show help message
 
-```bash
+```sh
 $ python create_qa_jira_card.py -h
 usage: create_qa_jira_card.py [-h] -p {sutton,somerville,stella,all} [-d]
 
@@ -76,7 +76,7 @@ optional arguments:
 
 #### 2. Get Somerville data and create Jira task card
 
-```bash
+```sh
 $ pwd
 # /oem-qa-tools/Tools/PC/jira-card-creator
 $ python create_qa_jira_card.py -p somerville
@@ -84,7 +84,7 @@ $ python create_qa_jira_card.py -p somerville
 
 #### 3. `Dry run` to get Somerville data from Project book only
 
-```bash
+```sh
 $ pwd
 # /oem-qa-tools/Tools/PC/jira-card-creator
 $ python create_qa_jira_card.py -p somerville -d
@@ -99,7 +99,7 @@ from project book. Please reference Example 3 to see how to use it.
 
 ### Unit Test
 
-``` bash
+```sh
 $ pwd
 # /oem-qa-tools/Tools/PC/jira-card-creator
 
