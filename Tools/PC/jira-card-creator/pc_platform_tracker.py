@@ -9,7 +9,7 @@ LP_BUG_URL = "https://bugs.launchpad.net/{}/+bugs?field.tag={}"
 LOWER_KEYS = ["platform_tag", "status"]
 
 
-class MD_PLATFORM_RECORD():
+class ModelPlatformRecord():
 
     def __init__(self):
         self._platform_name = ""
@@ -143,7 +143,7 @@ class MD_PLATFORM_RECORD():
         return obj
 
 
-class SOMERVILLE_PLATFORM_RECORD(MD_PLATFORM_RECORD):
+class SomervillePlatformRecord(ModelPlatformRecord):
     project_name = "somerville"
 
     @classmethod
@@ -220,7 +220,7 @@ class SOMERVILLE_PLATFORM_RECORD(MD_PLATFORM_RECORD):
         return obj
 
 
-class STELLA_PLATFORM_RECORD(MD_PLATFORM_RECORD):
+class StellaPlatfromRecord(ModelPlatformRecord):
     project_name = "stella"
 
     @classmethod
@@ -261,7 +261,7 @@ class STELLA_PLATFORM_RECORD(MD_PLATFORM_RECORD):
         return obj
 
 
-class SUTTON_PLATFORM_RECORD(MD_PLATFORM_RECORD):
+class SuttonPlatformRecord(ModelPlatformRecord):
     project_name = "sutton"
 
     @classmethod
@@ -305,7 +305,7 @@ class SUTTON_PLATFORM_RECORD(MD_PLATFORM_RECORD):
         return obj
 
 
-class MD_PC_PROJECT_BOOK():
+class ModelPCProjectBook():
 
     _allow_filter_keys = [
         "status", "platform_tag", "platform_name"
@@ -360,7 +360,7 @@ class MD_PC_PROJECT_BOOK():
         for key, records in self.__dict__.items():
             new_records = []
             for record in records:
-                if isinstance(record, MD_PLATFORM_RECORD):
+                if isinstance(record, ModelPlatformRecord):
                     dict_record = self._handle_record(record)
                     if filters:
                         wanted = self._filter_record(dict_record, filters)
@@ -378,15 +378,15 @@ class MD_PC_PROJECT_BOOK():
 
 
 def get_somerville_platform_tracker(google_sheet_conf={}):
-    somerville_project = MD_PC_PROJECT_BOOK()
+    somerville_project = ModelPCProjectBook()
     test_obj = GoogleSheetOperator()
     test_obj.prepare_sheet_obj()
     test_obj.spreadsheet = google_sheet_conf["sheet_link"]
 
     rts_range = google_sheet_conf["rts_range"]
     key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
-    mapping = SOMERVILLE_PLATFORM_RECORD._expand_mapping(
-        SOMERVILLE_PLATFORM_RECORD.rts_mapping()
+    mapping = SomervillePlatformRecord._expand_mapping(
+        SomervillePlatformRecord.rts_mapping()
     )
     key_index = [key_data[0].index(key) for key in mapping]
     for data in key_data[2:]:
@@ -395,7 +395,7 @@ def get_somerville_platform_tracker(google_sheet_conf={}):
             value = data[record_idx] if len(data) > record_idx else ""
             tmp_dict.update({mapping[idx]: value})
         try:
-            record = SOMERVILLE_PLATFORM_RECORD.generate_record(
+            record = SomervillePlatformRecord.generate_record(
                                                     tmp_dict, "rts")
             somerville_project.rts.append(record)
         except ValueError as err:
@@ -403,8 +403,8 @@ def get_somerville_platform_tracker(google_sheet_conf={}):
 
     prts_range = google_sheet_conf["prts_range"]
     key_data = test_obj.get_range_data(prts_range, major_dimension="ROWS")
-    mapping = SOMERVILLE_PLATFORM_RECORD._expand_mapping(
-        SOMERVILLE_PLATFORM_RECORD.prts_mapping()
+    mapping = SomervillePlatformRecord._expand_mapping(
+        SomervillePlatformRecord.prts_mapping()
     )
     # To get online update field to identify task type
     str_online_update = "Online\nUpdate"
@@ -418,7 +418,7 @@ def get_somerville_platform_tracker(google_sheet_conf={}):
             tmp_dict.update({mapping[idx]: value})
         try:
             online_update = tmp_dict.pop(str_online_update)
-            record = SOMERVILLE_PLATFORM_RECORD.generate_record(
+            record = SomervillePlatformRecord.generate_record(
                     tmp_dict, "prts")
             if online_update == "No":
                 somerville_project.prts.append(record)
@@ -431,14 +431,14 @@ def get_somerville_platform_tracker(google_sheet_conf={}):
 
 
 def get_stella_platform_tracker(google_sheet_conf={}):
-    stella_project = MD_PC_PROJECT_BOOK()
+    stella_project = ModelPCProjectBook()
     test_obj = GoogleSheetOperator()
     test_obj.prepare_sheet_obj()
     test_obj.spreadsheet = google_sheet_conf["sheet_link"]
     rts_range = google_sheet_conf["rts_range"]
     key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
-    mapping = STELLA_PLATFORM_RECORD._expand_mapping(
-        STELLA_PLATFORM_RECORD.rts_mapping()
+    mapping = StellaPlatfromRecord._expand_mapping(
+        StellaPlatfromRecord.rts_mapping()
     )
     key_index = [key_data[0].index(key) for key in mapping]
     for data in key_data[2:]:
@@ -447,7 +447,7 @@ def get_stella_platform_tracker(google_sheet_conf={}):
             value = data[record_idx] if len(data) > record_idx else ""
             tmp_dict.update({mapping[idx]: value})
         try:
-            record = STELLA_PLATFORM_RECORD.generate_record(tmp_dict)
+            record = StellaPlatfromRecord.generate_record(tmp_dict)
             if record.rts_stage == "post":
                 stella_project.prts.append(record)
             else:
@@ -459,15 +459,15 @@ def get_stella_platform_tracker(google_sheet_conf={}):
 
 
 def get_sutton_platform_tracker(google_sheet_conf={}):
-    sutton_project = MD_PC_PROJECT_BOOK()
+    sutton_project = ModelPCProjectBook()
     test_obj = GoogleSheetOperator()
     test_obj.prepare_sheet_obj()
 
     test_obj.spreadsheet = google_sheet_conf["sheet_link"]
     rts_range = google_sheet_conf["rts_range"]
     key_data = test_obj.get_range_data(rts_range, major_dimension="ROWS")
-    mapping = SUTTON_PLATFORM_RECORD._expand_mapping(
-        SUTTON_PLATFORM_RECORD.rts_mapping()
+    mapping = SuttonPlatformRecord._expand_mapping(
+        SuttonPlatformRecord.rts_mapping()
     )
     key_index = [key_data[0].index(key) for key in mapping]
     for data in key_data[2:]:
@@ -476,7 +476,7 @@ def get_sutton_platform_tracker(google_sheet_conf={}):
             value = data[record_idx] if len(data) > record_idx else ""
             tmp_dict.update({mapping[idx]: value})
         try:
-            record = SUTTON_PLATFORM_RECORD.generate_record(tmp_dict)
+            record = SuttonPlatformRecord.generate_record(tmp_dict)
             if record.prts:
                 sutton_project.prts.append(record)
             else:

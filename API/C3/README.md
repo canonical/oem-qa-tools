@@ -2,10 +2,9 @@
 
 C3 is a tool to interact with the Certification Canonical website.
 
-
 ## Structure
 
-```
+```sh
 .
 ├── apis
 │   ├── base.py
@@ -36,17 +35,20 @@ Here is a brief explanation about each part:
 
 Before developing, here are some necessary preparations you have to follow
 
-- Generate your C3 api token and put it into `api_token.json` file, you can find it under the `configs` directory
+- Generate your C3 api token and put it into `api_token.json` file,
+  you can find it under the `configs` directory
   - Content of `api_token.json`
+
     ```json
     {
         "launchpad_id": "<launchpad_id>",
         "api_token": "<c3_api_token>"
     }
     ```
+
   - Get the token by visiting C3 website
-    - Production: https://certification.canonical.com/me/
-    - Staging: https://certification.staging.canonical.com/me/
+    - Production: <https://certification.canonical.com/me/>
+    - Staging: <https://certification.staging.canonical.com/me/>
 
 ### Start developing
 
@@ -55,7 +57,8 @@ Before developing, here are some necessary preparations you have to follow
 Please make sure the test cases are passed before commit.
 
 - Once you update the codes in `apis` directory.
-    ``` bash
+
+    ```sh
     # Change direcotry to C3
     $ pwd
     # /home/.../oem-qa-tools/API/C3
