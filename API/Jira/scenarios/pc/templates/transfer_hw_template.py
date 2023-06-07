@@ -62,26 +62,6 @@ TEMPLATE_TEST_RESULT_FIELD = [
                 "content": [
                   {
                     "type": "text",
-                    "text": "SKU Name",
-                    "marks": [
-                      {
-                        "type": "strong"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "tableHeader",
-            "attrs": {},
-            "content": [
-              {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
                     "text": "Location",
                     "marks": [
                       {
@@ -151,36 +131,6 @@ TEMPLATE_TEST_RESULT_FIELD = [
                     "content": [
                       {
                         "type": "text",
-                        "text": "Optional"
-                      },
-                      {
-                        "type": "hardBreak"
-                      },
-                      {
-                        "type": "text",
-                        "text": "Example: Canonical-Like-DVT2"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "tableCell",
-            "attrs": {},
-            "content": [
-              {
-                "type": "panel",
-                "attrs": {
-                  "panelType": "info"
-                },
-                "content": [
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
                         "text": "Mandatory",
                         "marks": [
                           {
@@ -211,16 +161,6 @@ TEMPLATE_TEST_RESULT_FIELD = [
       {
         "type": "tableRow",
         "content": [
-          {
-            "type": "tableCell",
-            "attrs": {},
-            "content": [
-              {
-                "type": "paragraph",
-                "content": []
-              }
-            ]
-          },
           {
             "type": "tableCell",
             "attrs": {},
