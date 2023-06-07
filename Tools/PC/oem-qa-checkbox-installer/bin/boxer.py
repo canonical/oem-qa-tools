@@ -44,7 +44,7 @@ OqboGUSfWwcOY7fN98NQj1aJGCiDr2Jy9tE=
 
 
 # Colors for messages output
-class tcolors:
+class TColors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
@@ -215,7 +215,7 @@ def run_command(command, shell=False, check=True):
     try:
         subprocess.run(command, shell=shell, check=check)
     except subprocess.CalledProcessError as e:
-        raise SystemExit(f"{tcolors.FAIL}Error:{tcolors.ENDC} {e}")
+        raise SystemExit(f"{TColors.FAIL}Error:{TColors.ENDC} {e}")
 
 
 def pre_install():
