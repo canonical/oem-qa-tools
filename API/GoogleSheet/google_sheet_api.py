@@ -74,17 +74,17 @@ class GoogleSheetOperator():
                         majorDimension=major_dimension).execute()
             return result.get("values", [])
 
-    def update_range_data(self, data_range: str, values: list,
+    def update_range_data(self, data: list[dict],
                           input_option: str = "USER_ENTERED"):
         if self._check_service():
             req_body = {
                 "valueInputOption": input_option,
-                "data": [{"range": data_range, "values": values}]
+                "data": data
             }
             result = self._sheet_obj.values().batchUpdate(
                 spreadsheetId=self.spreadsheet,
                 body=req_body).execute()
-            print(result)
+            return result
 
     def insert_empty_rows(self,
                           sheet_id: int,
