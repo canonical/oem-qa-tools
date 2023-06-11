@@ -17,7 +17,7 @@
 
 # Name of virtual environment
 VENV="transfer-hw-to-cert-env"
-DEPENDENCIES=("Jira" "GoogleSheet")
+DEPENDENCIES=("Jira" "GoogleSheet" "C3")
 
 # Check dependency api
 check_dependency_api()

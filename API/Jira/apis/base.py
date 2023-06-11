@@ -19,11 +19,13 @@ class JiraAPI:
     def __init__(
             self,
             base_url='https://warthogs.atlassian.net',
-            jira_api_path='rest/api/3'
+            jira_api_path='rest/api/3',
+            path_of_jira_board_conf=JIRA_CONF_DIR_PATH,
+            jira_board_conf='project.json'
     ):
         self._base_url = base_url
         self._jira_api_path = jira_api_path
-        with open(os.path.join(JIRA_CONF_DIR_PATH, 'project.json')) as f:
+        with open(os.path.join(path_of_jira_board_conf, jira_board_conf)) as f:
             self._jira_project = json.load(f)
 
         with open(os.path.join(JIRA_CONF_DIR_PATH, 'api_token.json')) as f:

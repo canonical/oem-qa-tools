@@ -1,7 +1,10 @@
+'''
+    CQT Jira Board Handler
+'''
+
 import json
 
 from Jira.apis.base import JiraAPI, get_jira_members
-from utils.common import is_valid_cid, is_valid_location
 
 
 def get_content_from_a_jira_card(key: str) -> dict:
@@ -141,30 +144,25 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
     return parsed, jira_api.jira_project['card_fields']['Test result']
 
 
-def sanitize_row_data(data: dict) -> tuple[bool, list]:
-    """ Sanitize the data to see whether it's valid or not by checking
-        the value of cid and location.
+def retrieve_row_data(data: dict) -> list:
+    """ Retrieve the data from table
 
         @param:data, it's a row record in Jira table. Please see the
                     VALID_ROW_DATA to know its structure.
 
         @return
-            @is_valid, the data is valid or not. True / False
-            @row, a list in ['cid', 'sku', 'location'] format
+            @row, a list in ['cid', 'location'] format
     """
-    is_valid = False
     row = []
 
-    # Retrieve (CID, SKU, Location) and append them to row list
+    # Retrieve (CID, Location) and append them to row list
     for i in data['content']:
         if i['content'][0]['content']:
             row.append(i['content'][0]['content'][0]['text'].strip())
         else:
             row.append('')
 
-    is_valid = is_valid_cid(row[0]) and is_valid_location(row[2])
-
-    return is_valid, row
+    return row
 
 
 def get_candidate_duts(key: str) -> dict:
@@ -192,8 +190,7 @@ def get_candidate_duts(key: str) -> dict:
 
     # Return dictionary
     re_dict = {
-        'valid': [],
-        'invalid': [],
+        'data': [],
         'gm_image_link': content['gm_image_link'],
         'qa_launchpad_id': content['qa_launchpad_id']
     }
@@ -212,12 +209,14 @@ def get_candidate_duts(key: str) -> dict:
         raise Exception(err_msg)
 
     for i in range(2, len(content['table'])):
-        valid, data = sanitize_row_data(content['table'][i])
+        data = retrieve_row_data(content['table'][i])
+        # Empty row
+        if not data[0] and not data[1]:
+            continue
         tmp_d = {
             'cid': data[0],
-            'sku': data[1],
-            'location': data[2],
+            'location': data[1],
         }
-        re_dict['valid' if valid else 'invalid'].append(tmp_d)
+        re_dict['data'].append(tmp_d)
 
     return re_dict
