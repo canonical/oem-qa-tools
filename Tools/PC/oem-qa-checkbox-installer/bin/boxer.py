@@ -75,7 +75,7 @@ def main():
     username = boxercfg["username"]
     ppa_password = boxercfg["ppa_password"]
     provider = args.provider or boxercfg["provider"]
-    repository = args.repository or boxercfg["repository"] or "stable"
+    repository = args.repository or boxercfg["repository"] or "testing"
 
     pre_install()
     # We remove any existing PPA before adding the new ones

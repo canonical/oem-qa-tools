@@ -19,7 +19,7 @@ and also other essential packages.
    3. `api_key`:
       1. Get your api key from [here](https://certification.canonical.com/me).
    4. `provider`: `stella`, `somerville` or `sutton`.
-   5. `repository`: `stable`, `testing` or `daily`.
+   5. `repository`: `stable`, `testing` or `daily`(QA should use `testing` as default).
 4. Run command `$ sh oem-qa-checkbox-installer.sh`.
 5. Follow the instructions of the script.
 6. Test environment setup done! Now you can run `stella-cli`, `somerville-cli`
