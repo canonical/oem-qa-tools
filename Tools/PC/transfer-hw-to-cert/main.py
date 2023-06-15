@@ -3,12 +3,12 @@ from argparse import ArgumentParser
 
 from handlers.cqt_handler import get_candidate_duts
 from handlers.telops_handler import create_send_dut_to_cert_card_in_telops
-from handlers.certsetup_handler import create_card_in_certsetup
 from handlers.cert_team_google_sheet_handler import (
     update_cert_lab_google_sheet
 )
 from handlers.c3_handler import update_duts_info_on_c3
 from handlers.notifier import add_comment
+from handlers.hic_handler import delete_duts as delete_duts_from_hic
 from utils.common import is_valid_cid, is_valid_location
 
 
@@ -51,14 +51,20 @@ def main():
         # Get data from specific Jira Card
         data = get_candidate_duts(key)
         print(json.dumps(data, indent=2))
+        return
+        # Sanitize
+        for d in data['data']:
+            # Don't care the Location data
+            if not is_valid_cid(d['cid']):
+                raise Exception(
+                    f'Error: Invalid CID in Jira Card {key}')
 
         if args.scenario == 'qa_process':
             # Sanitize
             for d in data['data']:
-                if not is_valid_cid(d['cid']) \
-                        or not is_valid_location(d['location']):
+                if not is_valid_location(d['location']):
                     raise Exception(
-                        f'Error: invalid CID or Location in Jira Card {key}')
+                        f'Error: Invalid Location in Jira Card {key}')
 
             # Update Cert Lab Google Sheet
             gm_image_link = data['gm_image_link']
@@ -72,24 +78,20 @@ def main():
             print('-' * 5 + 'Updating C3' + '-' * 5)
             update_duts_info_on_c3(
                 data=data['data'], new_holder=args.c3_holder)
-        else:
-            # Sanitize
-            for d in data['data']:
-                # Don't care the Location data
-                if not is_valid_cid(d['cid']):
-                    raise Exception(
-                        f'Error: invalid CID in Jira Card {key}')
-            # Create Jira card to TELOPS board
-            print('-' * 5 + 'Creating card to TELOPS board' + '-' * 5)
-            create_send_dut_to_cert_card_in_telops(
-                cqt_card=key,
-                reporter=data['qa_launchpad_id'],
-                data=data['data']
-            )
 
-        # Create Jira card to CERTSETUP board
-        print('-' * 5 + 'Creating card to CERTSETUP board' + '-' * 5)
-        create_card_in_certsetup(data=data['data'])
+            # Remove DUTs from HIC site
+            print('-' * 5 + 'Removing from HIC' + '-' * 5)
+            delete_duts_from_hic(cids=[d['cid'] for d in data['data']])
+
+        # Create Jira card to TELOPS board
+        # No matter the process is qa_process or contractor process
+        # There's always need cards in TELOPS board
+        print('-' * 5 + 'Creating card to TELOPS board' + '-' * 5)
+        create_send_dut_to_cert_card_in_telops(
+            cqt_card=key,
+            reporter=data['qa_launchpad_id'],
+            data=data['data']
+        )
 
         #  notify: leave successful comment to Jira card
         add_comment(

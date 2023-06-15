@@ -174,15 +174,12 @@ def get_candidate_duts(key: str) -> dict:
         {
             'gm_image_link': '',
             'qa_launchpad_id': '',
-            'valid': [{
+            'data': [{
                 'cid': '202212-12345',
-                'sku': '',
                 'location:': 'TEL-L3-F24-S5-P1'
-            }],
-            'invalid': [{
+            }, {
                 'cid': '202212-123xcc',
-                'sku': '',
-                'location:': 'TELAc-L309-F24-S5-P1c'
+                'location:': ''
             }]
         }
     """
@@ -210,7 +207,7 @@ def get_candidate_duts(key: str) -> dict:
 
     for i in range(2, len(content['table'])):
         data = retrieve_row_data(content['table'][i])
-        # Empty row
+        # Filter out empty row. data[0] is cid, data[1] is location
         if not data[0] and not data[1]:
             continue
         tmp_d = {
