@@ -11,13 +11,12 @@ on:
 jobs:
   build:
 
-    matrix:
-      os: [ubuntu-20.04, ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
         python-version: ["3.9", "3.10"]
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v3
