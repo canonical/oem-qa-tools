@@ -51,7 +51,7 @@ def main():
         # Get data from specific Jira Card
         data = get_candidate_duts(key)
         print(json.dumps(data, indent=2))
-        return
+
         # Sanitize
         for d in data['data']:
             # Don't care the Location data
