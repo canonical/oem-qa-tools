@@ -1,4 +1,4 @@
-name: Test with markdownlint-cli2
+name: Test with markdownlint-cli2 shellcheck
 
 on:
   push:
@@ -17,3 +17,8 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v10
         with:
           globs: '**/*.md'
+      - uses: actions/checkout@v3
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          format: tty
