@@ -12,7 +12,7 @@ os.path.exists = MagicMock(return_value=True)
 os.listdir = MagicMock(return_value=['somerville.json',
                                      'stella.json',
                                      'sutton.json'])
-from create_qa_jira_card import combine_duplicate_tag  # noqa: E402
+from pc_platform_tracker import combine_duplicate_tag  # noqa: E402
 
 from .test_data.data_combine_duplicate_tag import (  # noqa: E402
     somerville_rts_raw_data,
