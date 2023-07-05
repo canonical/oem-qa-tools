@@ -34,7 +34,7 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
 
         with self.assertRaisesRegex(
             Exception,
-            f"Error: Failed to get the card {fake_key}. {jira_error_msg}"
+            f"Error: Failed to get the card '{fake_key}'. {jira_error_msg}"
         ):
             get_content_from_a_jira_card(key=fake_key)
 
@@ -55,12 +55,10 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         mock_api_get_jira_card.return_value = [
             EMPTY_TABLE_RESULT_FROM_API, 'customfield_10186']
 
-        # with self.assertRaises(TypeError):
-        #     get_content_from_a_jira_card(key='fake_key')
         fake_key = 'fake-2345'
         with self.assertRaisesRegex(
             Exception,
-            f"Error: Failed to get the table content from card {fake_key}"
+            f"Error: Failed to get the table content from card '{fake_key}'"
         ):
             get_content_from_a_jira_card(key=fake_key)
 

@@ -21,7 +21,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
     if 'errorMessages' in response:
         print(response['errorMessages'][0])
         raise Exception(
-            f"Error: Failed to get the card \'{key}\'. "
+            f"Error: Failed to get the card '{key}'. "
             f"{response['errorMessages'][0]}"
         )
 
@@ -63,7 +63,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
     except Exception as e:
         print(e)
         raise Exception(
-            f'Error: Failed to get the table content from card \'{key}\'')
+            f"Error: Failed to get the table content from card '{key}'")
 
     # Get QA launchpad ID
     try:
@@ -88,7 +88,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
     except Exception as e:
         print(e)
         raise Exception(
-            f'Error: Failed to get the QA launchpad ID from card \'{key}\'')
+            f"Error: Failed to get the QA launchpad ID from card '{key}'")
 
     # Get the link of gm image
     try:
@@ -114,7 +114,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
         # Non mandatory field
         # TODO: Need a way to notify us instead of stdout
         print(
-            f'Warning: Failed to get the GM Image Path from card \'{key}\'')
+            f"Warning: Failed to get the GM Image Path from card '{key}'")
 
     return re_dict
 
