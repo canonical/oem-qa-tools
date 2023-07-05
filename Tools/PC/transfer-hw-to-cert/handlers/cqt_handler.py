@@ -20,15 +20,17 @@ def get_content_from_a_jira_card(key: str) -> dict:
     response, test_result_field_id = api_get_jira_card(key)
     if 'errorMessages' in response:
         print(response['errorMessages'][0])
-        err_msg = 'Error: Failed to get the card \'{}\'. {}'.format(
-            key, response['errorMessages'][0])
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: Failed to get the card \'{key}\'. "
+            f"{response['errorMessages'][0]}"
+        )
 
     # Check if only one issue we got
     if len(response['issues']) != 1:
-        err_msg = 'Error: expect only 1 jira issue but got {} issues'.format(
-            len(response['issues']))
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: expect only 1 jira issue "
+            f"but got {response['issues']} issues"
+        )
 
     # Index is 0 because we search the Jira card by key,
     # only one issue is expected.
@@ -129,8 +131,7 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
     jira_api = JiraAPI()
     payload = {
         'jql':
-        'project = {} AND issuekey = "{}"'.format(jira_api.jira_project['key'],
-                                                  key),
+        f"project = {jira_api.jira_project['key']} AND issuekey = \"{key}\"",
         'fields': [
             'description',
             jira_api.jira_project['card_fields']['Test result']
@@ -201,9 +202,10 @@ def get_candidate_duts(key: str) -> dict:
     #     - idx 1, aka row 1, is the example placeholder
     #   So the real data should be started from idx 2
     if len(content['table']) < 3:
-        err_msg = 'Error: expect more than 2 rows in table but got {}'.format(
-            len(content['table']))
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: expect more than 2 rows in table "
+            f"but got {len(content['table'])}"
+        )
 
     for i in range(2, len(content['table'])):
         data = retrieve_row_data(content['table'][i])

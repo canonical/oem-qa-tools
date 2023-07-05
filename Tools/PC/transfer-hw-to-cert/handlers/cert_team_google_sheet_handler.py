@@ -129,11 +129,9 @@ def get_sheet_data() -> dict:
         # Build the indexed table (indexed by Location)
         indexed_table = {}
         for idx, v in enumerate(data):
-            location = '{}-{}-{}-{}'.format(
-                v[columns['Lab']],
-                v[columns['Frame']],
-                'S' + v[columns['Shelf']],
-                'P' + v[columns['Partition']]
+            location = (
+                f"{v[columns['Lab']]}-{v[columns['Frame']]}-"
+                f"{'S' + v[columns['Shelf']]}-{'P' + v[columns['Partition']]}"
             )
             indexed_table[location] = {
                 'row_index': idx + offset,
@@ -178,20 +176,18 @@ def are_candidated_sheet_cells_empty(
     for d in data:
         lab = parse_location(d['location']).get('Lab', None)
         if not lab or lab not in sheet_data:
-            err_msg = 'Error: Lab \'{}\' is not in indexed table'.format(lab)
-            raise Exception(err_msg)
+            raise Exception(f"Error: Lab \'{lab}\' is not in indexed table")
         # get the indexed table of specific lab
         indexed_table = sheet_data[lab]['indexed_table']
         # check the CID cell is not empty
         if indexed_table[d['location']]['CID']:
             all_empty = False
-            message = 'try to fill \'{}\' in the CID cell but there\'s '\
-                '\'{}\' occupies the cell'
+            message = (
+                f"try to fill \'{d['cid']}\' in the CID cell but there\'s "
+                f"\'{indexed_table[d['location']]['CID']}\' occupies the cell"
+            )
             non_empty_list.append({
-                'message': message.format(
-                    d['cid'],
-                    indexed_table[d['location']]['CID']
-                ),
+                'message': message,
                 'row_index': indexed_table[d['location']]['row_index'],
                 'location': d['location']
             })
@@ -275,9 +271,9 @@ def update_cert_lab_google_sheet(data: list[dict]) -> dict:
     valid, invalid_list = is_valid_input_data(data)
 
     if not valid:
-        err_msg = 'Error: input data is invalid. Invalid data list: {}'.format(
-            invalid_list)
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: input data is invalid. Invalid data list: {invalid_list}"
+        )
 
     # Get Google Sheet data
     sheet_data = get_sheet_data()
@@ -289,9 +285,9 @@ def update_cert_lab_google_sheet(data: list[dict]) -> dict:
     )
 
     if not empty:
-        err_msg = 'Error: some cells are not empty. Non empty list: {}'.format(
-            non_empty_list)
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: some cells aren't empty. Non empty list: {non_empty_list}"
+        )
 
     # fill the data to google sheet
     response = fill_in_google_sheet(data, sheet_data)

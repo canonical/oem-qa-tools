@@ -33,8 +33,9 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         }, '_']
 
         with self.assertRaisesRegex(
-            Exception, 'Error: Failed to get the card \'{}\'. {}'.format(
-                fake_key, jira_error_msg)):
+            Exception,
+            f"Error: Failed to get the card {fake_key}. {jira_error_msg}"
+        ):
             get_content_from_a_jira_card(key=fake_key)
 
     @patch('handlers.cqt_handler.api_get_jira_card')
@@ -59,8 +60,8 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         fake_key = 'fake-2345'
         with self.assertRaisesRegex(
             Exception,
-            'Error: Failed to get the table content from card \'{}\''.format(
-                fake_key)):
+            f"Error: Failed to get the table content from card {fake_key}"
+        ):
             get_content_from_a_jira_card(key=fake_key)
 
         # release stdout

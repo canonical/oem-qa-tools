@@ -29,11 +29,10 @@ def add_comment(comment_type: str, key: str, data: dict) -> None:
         ]
     }]
 
+    title_type = 'Successful' if comment_type == 'success' else 'Failed'
     comment_content = generate_bot_message(
         panel_type=comment_type,
-        title='Transfer Hardware {}'.format(
-            'Successful' if comment_type == 'success' else 'Failed'
-        ),
+        title=f"Transfer Hardware {title_type}",
         content=my_content
     )
     jira_api.add_comment_to_issue(

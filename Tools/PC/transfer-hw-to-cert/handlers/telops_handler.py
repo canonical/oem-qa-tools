@@ -43,7 +43,7 @@ def create_send_dut_to_cert_card_in_telops(
             task_type='DUT_Send_To_Cert')
 
         # Assign Summary
-        fields['summary'] = 'Send CID#{} to Cert Lab'.format(d['cid'])
+        fields['summary'] = f"Send CID#{d['cid']} to Cert Lab"
 
         # Assign Reporter
         fields['reporter']['id'] = qa_members[reporter]['jira_uid']
@@ -61,7 +61,7 @@ def create_send_dut_to_cert_card_in_telops(
         print(json.dumps(issue_updates, indent=2))
         raise Exception(
             'Error: Failed to create card to TELOPS board',
-            'Reason: {}'.format(response.text)
+            f"Reason: {response.text}"
         )
     print('Created the following cards to TELOPS board successfully')
     print(json.dumps(response.json(), indent=2))

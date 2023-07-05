@@ -22,7 +22,7 @@ def query_database() -> dict:
             response.raise_for_status()
         return response.json()
     except Exception as e:
-        print('Unable to query the HIC database. Error: {}'.format(e))
+        print(f"Unable to query the HIC database. Error: {e}")
         raise
 
 
@@ -52,7 +52,7 @@ def delete_duts(cids: list[str]) -> None:
                 temp_d['sku_name'] = v
                 temp_d['mac_addresses'].append(k)
         if not temp_d['sku_name']:
-            print('Ignore {} since there\'s no record on HIC'.format(cid))
+            print(f"Ignore {cid} since there\'s no record on HIC")
             continue
         if temp_d['sku_name']:
             duts.append(temp_d)
@@ -77,8 +77,7 @@ def delete_duts(cids: list[str]) -> None:
                     response.raise_for_status()
             except Exception as e:
                 success = 0
-                print('Error: Unable to remove {} ({})'.format(
-                    d['sku_name'], mac))
+                print(f"Error: Unable to remove {d['sku_name']} ({mac})")
                 print(e)
     if not success:
         raise Exception('Error: Some DUTs cannot be removed from HIC!')
