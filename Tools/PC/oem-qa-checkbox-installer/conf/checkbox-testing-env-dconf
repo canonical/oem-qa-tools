@@ -1,0 +1,20 @@
+[org/gnome/settings-daemon/plugins/power]
+# Disable auto suspend when plugged in
+# Settings > Power > Power > Automatic Suspend > Plugged in > Off
+sleep-inactive-ac-type='nothing'
+# Disable auto suspend when on battery power
+# Settings > Power > Power > Automatic Suspend > On Battery Power > Off
+sleep-inactive-battery-type='nothing'
+
+[org/gnome/desktop/screensaver]
+# Disable automatic screen lock
+# Settings > Privacy > Screen > Automatic Screen Lock > off
+lock-enabled=false
+# Disable lock on suspend
+# Settings > Privacy > Screen > Lock Screen on Suspend > off
+ubuntu-lock-on-suspend=false
+
+[org/gnome/desktop/session]
+# Disable auto blank screen
+# Settings > Privacy > Screen > Blank Screen Delay > Never
+idle-delay=uint32 0
