@@ -24,4 +24,4 @@ echo -e "\033[1;32mChanging setting by dconf load\033[0m"
 dconf load / < ./conf/checkbox-testing-env-dconf
 
 # set current to be autologing
-sudo ./bin/autologin.sh $(whoami)
+sudo ./bin/autologin.sh "$(whoami)"
