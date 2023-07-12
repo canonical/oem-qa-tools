@@ -1,7 +1,10 @@
+'''
+    CQT Jira Board Handler
+'''
+
 import json
 
 from Jira.apis.base import JiraAPI, get_jira_members
-from utils.common import is_valid_cid, is_valid_location
 
 
 def get_content_from_a_jira_card(key: str) -> dict:
@@ -17,15 +20,17 @@ def get_content_from_a_jira_card(key: str) -> dict:
     response, test_result_field_id = api_get_jira_card(key)
     if 'errorMessages' in response:
         print(response['errorMessages'][0])
-        err_msg = 'Error: Failed to get the card \'{}\'. {}'.format(
-            key, response['errorMessages'][0])
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: Failed to get the card '{key}'. "
+            f"{response['errorMessages'][0]}"
+        )
 
     # Check if only one issue we got
     if len(response['issues']) != 1:
-        err_msg = 'Error: expect only 1 jira issue but got {} issues'.format(
-            len(response['issues']))
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: expect only 1 jira issue "
+            f"but got {response['issues']} issues"
+        )
 
     # Index is 0 because we search the Jira card by key,
     # only one issue is expected.
@@ -58,7 +63,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
     except Exception as e:
         print(e)
         raise Exception(
-            f'Error: Failed to get the table content from card \'{key}\'')
+            f"Error: Failed to get the table content from card '{key}'")
 
     # Get QA launchpad ID
     try:
@@ -83,7 +88,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
     except Exception as e:
         print(e)
         raise Exception(
-            f'Error: Failed to get the QA launchpad ID from card \'{key}\'')
+            f"Error: Failed to get the QA launchpad ID from card '{key}'")
 
     # Get the link of gm image
     try:
@@ -109,7 +114,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
         # Non mandatory field
         # TODO: Need a way to notify us instead of stdout
         print(
-            f'Warning: Failed to get the GM Image Path from card \'{key}\'')
+            f"Warning: Failed to get the GM Image Path from card '{key}'")
 
     return re_dict
 
@@ -126,8 +131,7 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
     jira_api = JiraAPI()
     payload = {
         'jql':
-        'project = {} AND issuekey = "{}"'.format(jira_api.jira_project['key'],
-                                                  key),
+        f"project = {jira_api.jira_project['key']} AND issuekey = \"{key}\"",
         'fields': [
             'description',
             jira_api.jira_project['card_fields']['Test result']
@@ -141,30 +145,25 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
     return parsed, jira_api.jira_project['card_fields']['Test result']
 
 
-def sanitize_row_data(data: dict) -> tuple[bool, list]:
-    """ Sanitize the data to see whether it's valid or not by checking
-        the value of cid and location.
+def retrieve_row_data(data: dict) -> list:
+    """ Retrieve the data from table
 
         @param:data, it's a row record in Jira table. Please see the
                     VALID_ROW_DATA to know its structure.
 
         @return
-            @is_valid, the data is valid or not. True / False
-            @row, a list in ['cid', 'sku', 'location'] format
+            @row, a list in ['cid', 'location'] format
     """
-    is_valid = False
     row = []
 
-    # Retrieve (CID, SKU, Location) and append them to row list
+    # Retrieve (CID, Location) and append them to row list
     for i in data['content']:
         if i['content'][0]['content']:
             row.append(i['content'][0]['content'][0]['text'].strip())
         else:
             row.append('')
 
-    is_valid = is_valid_cid(row[0]) and is_valid_location(row[2])
-
-    return is_valid, row
+    return row
 
 
 def get_candidate_duts(key: str) -> dict:
@@ -176,15 +175,12 @@ def get_candidate_duts(key: str) -> dict:
         {
             'gm_image_link': '',
             'qa_launchpad_id': '',
-            'valid': [{
+            'data': [{
                 'cid': '202212-12345',
-                'sku': '',
                 'location:': 'TEL-L3-F24-S5-P1'
-            }],
-            'invalid': [{
+            }, {
                 'cid': '202212-123xcc',
-                'sku': '',
-                'location:': 'TELAc-L309-F24-S5-P1c'
+                'location:': ''
             }]
         }
     """
@@ -192,8 +188,7 @@ def get_candidate_duts(key: str) -> dict:
 
     # Return dictionary
     re_dict = {
-        'valid': [],
-        'invalid': [],
+        'data': [],
         'gm_image_link': content['gm_image_link'],
         'qa_launchpad_id': content['qa_launchpad_id']
     }
@@ -207,17 +202,20 @@ def get_candidate_duts(key: str) -> dict:
     #     - idx 1, aka row 1, is the example placeholder
     #   So the real data should be started from idx 2
     if len(content['table']) < 3:
-        err_msg = 'Error: expect more than 2 rows in table but got {}'.format(
-            len(content['table']))
-        raise Exception(err_msg)
+        raise Exception(
+            f"Error: expect more than 2 rows in table "
+            f"but got {len(content['table'])}"
+        )
 
     for i in range(2, len(content['table'])):
-        valid, data = sanitize_row_data(content['table'][i])
+        data = retrieve_row_data(content['table'][i])
+        # Filter out empty row. data[0] is cid, data[1] is location
+        if not data[0] and not data[1]:
+            continue
         tmp_d = {
             'cid': data[0],
-            'sku': data[1],
-            'location': data[2],
+            'location': data[1],
         }
-        re_dict['valid' if valid else 'invalid'].append(tmp_d)
+        re_dict['data'].append(tmp_d)
 
     return re_dict

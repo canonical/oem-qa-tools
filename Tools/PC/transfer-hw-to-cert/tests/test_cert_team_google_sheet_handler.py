@@ -4,7 +4,7 @@ from unittest.mock import patch
 # Make sure mock_import must need to be imported before our own modules
 from . import mock_import  # noqa: F401
 
-from cert_team_google_sheet_handler import (
+from handlers.cert_team_google_sheet_handler import (
     is_valid_input_data,
     get_sheet_data
 )
@@ -105,9 +105,10 @@ class IsValidInputDataTest(unittest.TestCase):
 
 
 class GetSheetDataTest(unittest.TestCase):
-    @patch('cert_team_google_sheet_handler.create_google_sheet_instance')
     @patch(
-        'cert_team_google_sheet_handler.GOOGLE_SHEET_CONF',
+        'handlers.cert_team_google_sheet_handler.create_google_sheet_instance')
+    @patch(
+        'handlers.cert_team_google_sheet_handler.GOOGLE_SHEET_CONF',
         {'tables': ['test-TEL-L5']}
     )
     def test_generate_customized_data(self, mock_gs_instance):

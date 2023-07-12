@@ -24,7 +24,7 @@ class IsValidCIDTest(unittest.TestCase):
             valid = is_valid_cid(case['cid'])
             self.assertEqual(
                 True, valid,
-                'case: \'{}\' expects True but got False'.format(case['name']))
+                f"case: \'{case['name']}\' expects True but got False")
 
     def test_invalid_cid(self):
         """ Check the invalid CID
@@ -50,7 +50,7 @@ class IsValidCIDTest(unittest.TestCase):
             valid = is_valid_cid(case['cid'])
             self.assertEqual(
                 False, valid,
-                'case: \'{}\' expects False but got True'.format(case['name']))
+                f"case: \'{case['name']}\' expects False but got True")
 
 
 class IsValidLocationTest(unittest.TestCase):
@@ -72,7 +72,7 @@ class IsValidLocationTest(unittest.TestCase):
             valid = is_valid_location(case['location'])
             self.assertEqual(
                 True, valid,
-                'case: \'{}\' expects True but got False'.format(case['name']))
+                f"case: \'{case['name']}\' expects True but got False")
 
     def test_invalid_location(self):
         """ Check the invalid location
@@ -119,7 +119,7 @@ class IsValidLocationTest(unittest.TestCase):
             valid = is_valid_location(case['location'])
             self.assertEqual(
                 False, valid,
-                'case: \'{}\' expects False but got True'.format(case['name']))
+                f"case: \'{case['name']}\' expects False but got True")
 
 
 class ParseLocationTest(unittest.TestCase):

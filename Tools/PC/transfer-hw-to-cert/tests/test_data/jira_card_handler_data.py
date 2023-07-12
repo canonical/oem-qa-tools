@@ -603,458 +603,348 @@ VALID_RESULT_FROM_API = {
 
 # VALID_CONTENT_FROM_API is the valid output from get_content_from_a_jira_card function # noqa: E501
 VALID_CONTENT_FROM_API = {
-    "gm_image_link": "https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso",  # noqa: E501
-    "table": [
+  "gm_image_link": "https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso",    # noqa: E501
+  "qa_launchpad_id": "fake-valid-launchpad_id",
+  "table": [
+    {
+      "type": "tableRow",
+      "content": [
         {
-            "type": "tableRow",
-            "content": [
+          "type": "tableHeader",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
                 {
-                    "type": "tableHeader",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "CID",
-                                    "marks": [
-                                        {
-                                            "type": "strong"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableHeader",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "SKU Name",
-                                    "marks": [
-                                        {
-                                            "type": "strong"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableHeader",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "Location",
-                                    "marks": [
-                                        {
-                                            "type": "strong"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
+                  "type": "text",
+                  "text": "CID",
+                  "marks": [
+                    {
+                      "type": "strong"
+                    }
+                  ]
                 }
-            ]
+              ]
+            }
+          ]
         },
         {
-            "type": "tableRow",
-            "content": [
+          "type": "tableHeader",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
                 {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "panel",
-                            "attrs": {
-                                "panelType": "info"
-                            },
-                            "content": [
-                                {
-                                    "type": "paragraph",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": "Mandatory",
-                                            "marks": [
-                                                {
-                                                    "type": "textColor",
-                                                    "attrs": {
-                                                        "color": "#bf2600"
-                                                    }
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "type": "hardBreak"
-                                        },
-                                        {
-                                            "type": "text",
-                                            "text": "Example: 202311-12345"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "panel",
-                            "attrs": {
-                                "panelType": "info"
-                            },
-                            "content": [
-                                {
-                                    "type": "paragraph",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": "Optional"
-                                        },
-                                        {
-                                            "type": "hardBreak"
-                                        },
-                                        {
-                                            "type": "text",
-                                            "text": "Example: Canonical-Like-DVT2"  # noqa: E501
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "panel",
-                            "attrs": {
-                                "panelType": "info"
-                            },
-                            "content": [
-                                {
-                                    "type": "paragraph",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": "Mandatory",
-                                            "marks": [
-                                                {
-                                                    "type": "textColor",
-                                                    "attrs": {
-                                                        "color": "#bf2600"
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                },
-                                {
-                                    "type": "paragraph",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": "Example: TEL-L3-F23-S5-P1"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
+                  "type": "text",
+                  "text": "Location",
+                  "marks": [
+                    {
+                      "type": "strong"
+                    }
+                  ]
                 }
-            ]
-        },
-        {
-            "type": "tableRow",
-            "content": [
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "202305-24689             "
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "Adc-L3-@34-S2-p0"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "tableRow",
-            "content": [
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "tableRow",
-            "content": [
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "ABCmar-98765"
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "TEL-L3-F24-S5-P2"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "tableRow",
-            "content": [
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "309041-3345534"
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "TEL-L3-F24-S5-P99"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "tableRow",
-            "content": [
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "202303-23456",
-                                    "marks": [
-                                        {
-                                            "type": "strong"
-                                        },
-                                        {
-                                            "type": "textColor",
-                                            "attrs": {
-                                                "color": "#36b37e"
-                                            }
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "TEL-L3-F24-S5-P1"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "tableRow",
-            "content": [
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "202303-28754"
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                },
-                {
-                    "type": "tableCell",
-                    "attrs": {},
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": []
-                        }
-                    ]
-                }
-            ]
+              ]
+            }
+          ]
         }
-    ],
-    "qa_launchpad_id": "fake-valid-launchpad_id"
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "panel",
+              "attrs": {
+                "panelType": "info"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mandatory",
+                      "marks": [
+                        {
+                          "type": "textColor",
+                          "attrs": {
+                            "color": "#bf2600"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "hardBreak"
+                    },
+                    {
+                      "type": "text",
+                      "text": "Example: 202311-12345"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "panel",
+              "attrs": {
+                "panelType": "info"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Mandatory",
+                      "marks": [
+                        {
+                          "type": "textColor",
+                          "attrs": {
+                            "color": "#bf2600"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Example: TEL-L3-F23-S5-P1"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "202305-24689             "
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Adc-L3-@34-S2-p0"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": []
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "ABCmar-98765"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "TEL-L3-F24-S5-P2"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "309041-3345534"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "TEL-L3-F24-S5-P99"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "202303-23456",
+                  "marks": [
+                    {
+                      "type": "strong"
+                    },
+                    {
+                      "type": "textColor",
+                      "attrs": {
+                        "color": "#36b37e"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": []
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "TEL-L3-F24-S5-P2"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tableRow",
+      "content": [
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "202303-28754"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableCell",
+          "attrs": {},
+          "content": [
+            {
+              "type": "paragraph",
+              "content": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
 
 # The result who doesn't contains the table in "Test result" field.
@@ -1084,42 +974,6 @@ EMPTY_TABLE_RESULT_FROM_API = {
     ]
 }
 
-# A single row data whose CID and Location are invalid
-INVALID_ROW_DATA = {
-    'type':
-    'tableRow',
-    'content': [{
-        'type':
-        'tableCell',
-        'attrs': {},
-        'content': [{
-            'type': 'paragraph',
-            'content': [{
-                'type': 'text',
-                'text': 'ABCmar-98765'
-            }]
-        }]
-    }, {
-        'type': 'tableCell',
-        'attrs': {},
-        'content': [{
-            'type': 'paragraph',
-            'content': []
-        }]
-    }, {
-        'type':
-        'tableCell',
-        'attrs': {},
-        'content': [{
-            'type': 'paragraph',
-            'content': [{
-                'type': 'text',
-                'text': 'Adc-L3-@34-S2-p0'
-            }]
-        }]
-    }]
-}
-
 # A single row data whose CID and Location are valid
 VALID_ROW_DATA = {
     'type':
@@ -1146,13 +1000,6 @@ VALID_ROW_DATA = {
                 }]
             }]
         }, {
-            'type': 'paragraph',
-            'content': []
-        }]
-    }, {
-        'type': 'tableCell',
-        'attrs': {},
-        'content': [{
             'type': 'paragraph',
             'content': []
         }]
