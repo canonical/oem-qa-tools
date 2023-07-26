@@ -2,6 +2,7 @@
 
 from configparser import ConfigParser
 import os
+import re
 import glob
 import json
 import argparse
@@ -144,7 +145,10 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                  launcher_template_file_prefix="launcher"):
         super().__init__(template_folder=launcher_temp_folder,
                          template_file_prefix=launcher_template_file_prefix)
-        self.shell_file_list = glob.glob(f"{template_bin_folder}/*")
+        # self.shell_file_list = glob.glob(f"{template_bin_folder}/*")
+        self.shell_file_list = [f"{template_bin_folder}/{f}"
+                                for f in os.listdir(f"{template_bin_folder}/")
+                                if re.search(r'^(\d{2}).*', f)]
         self.shell_file_list.sort()
 
     def build_launcher(self, manifest_json_path, test_plan_name,
@@ -169,11 +173,11 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
             if "Install_checkbox" in os.path.basename(file):
                 if checkbox_type not in os.path.basename(file):
                     continue
-            if os.path.basename(file) == "90start_test.sh" and\
+            if os.path.basename(file) == "90start_test" and\
                     is_runtest is False:
                 continue
 
-            if os.path.basename(file) == "90start_test.sh":
+            if os.path.basename(file) == "90start_test":
                 launcher_file_path = "final_launcher"
                 self.build_launcher(manifest_json_path, test_plan_name,
                                     exclude_job_pattern_str,
