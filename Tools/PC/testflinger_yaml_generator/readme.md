@@ -1,12 +1,12 @@
 # Ideal and the srtucture
 
-Create seperate the template for building the yaml file, and make it more flexable.
+Create seperate the template for building the yaml file, and make it more flexible.
 
-So the template struceture will like this:
+So the template structure will like this:
 
 - Yaml file
 
-- Execute cmds files which will be include in test_cmds fields.
+- Execute cmds files which will be included in test_cmds fields.
 
 - Launcher files which is only used for checkbox testing
 
@@ -33,7 +33,7 @@ So the template struceture will like this:
 
 ## Usage
 
-This script provide some argument for generating the yaml file:
+This script provide some arguments for generating the yaml file:
 <!-- markdownlint-configure-file { "MD013": { "line_length": 150 } } -->
 ```text
 usage: testflinger_ymal_generator.py [-h] -c CID -o OUTPUTFILENAME

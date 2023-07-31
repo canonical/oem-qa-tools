@@ -53,3 +53,4 @@ _run gsettings set org.gnome.desktop.screensaver lock-enabled false
 _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
 _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing'
 _run gsettings set org.gnome.desktop.session idle-delay 'uint32 0'
+
