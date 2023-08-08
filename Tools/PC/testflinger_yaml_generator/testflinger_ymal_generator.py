@@ -330,7 +330,7 @@ if __name__ == "__main__":
         provision = False
     if not args.testplan:
         runtest = False
-    if os.path.splitext(args.outputFileName)[-1] == ".yaml":
+    if os.path.splitext(args.outputFileName)[-1] in [".yaml", ".yml"]:
         TF_yaml_file_path = f"{args.outputFolder}/{args.outputFileName}"
     else:
         TF_yaml_file_path = f"{args.outputFolder}/{args.outputFileName}.yaml"
