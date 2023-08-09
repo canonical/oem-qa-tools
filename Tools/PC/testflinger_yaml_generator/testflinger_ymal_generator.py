@@ -7,6 +7,45 @@ import glob
 import json
 import argparse
 import yaml
+import subprocess as subp
+import warnings
+
+
+def runcmd(cmd=str, timeout=5):
+    ret = subp.run(cmd, shell=True, stdout=subp.PIPE,
+                   stderr=subp.PIPE, encoding="utf-8",
+                   timeout=timeout)
+    return ret
+
+
+def shellcheck_for_cmd_str(cmdstr=str, shellname="bash"):
+    shellcheckexe = "/usr/bin/shellcheck"
+    if not os.path.exists(shellcheckexe):
+        warnings.warn("Can't find the shellcheck execute path under \
+                      /usr/bin, Please install the shellcheck, \
+                      if you want to do this check.", Warning)
+        return False
+
+    shell_list = ["sh", "bash", "dash", "ksh"]
+    if shellname not in shell_list:
+        raise ValueError(f"Invalid shell name. \
+                         Expected one of: {shell_list}")
+    tmp_file = "./tmp.sh"
+    if os.path.exists(tmp_file):
+        os.remove(tmp_file)
+    with open(tmp_file, "w", encoding="utf-8") as tmp_f:
+        tmp_f.write(cmdstr)
+    cmd = f"{shellcheckexe} -s {shellname} {tmp_file}"
+    ret = runcmd(cmd)
+    out = ret.stdout
+    if ret.returncode == 0:
+        print("Shellcheck: Pass")
+        os.remove(tmp_file)
+        return True
+    msg = f"Shellcheck: Fail\nPlease check the file: {tmp_file}\n\
+Detail:\n{out}\n"
+    warnings.warn(msg, Warning)
+    return False
 
 
 class ConfigOperation():
@@ -108,14 +147,12 @@ class YamlGenerator:
 
 
 class CheckboxLauncherBuilder(ConfigOperation):
-    def __init__(self, template_folder="./template/divid_launcher",
-                 template_file_prefix="launcher"):
+    def __init__(self, template_folder="./template/launcher_config"):
         super().__init__(delimiters=("=",), optionform=str)
-        launcher_template_list = glob.glob(f"{template_folder}/"
-                                           f"{template_file_prefix}*")
+        launcher_template_list = glob.glob(f"{template_folder}/*.conf")
         if len(launcher_template_list) == 0:
-            raise ValueError(f"Couldn't find the launcher template file under \
-            {template_folder} with prefix: {template_file_prefix}")
+            raise ValueError(f"Couldn't find the .conf file under launcher \
+                                template folder: {template_folder}")
         for file in launcher_template_list:
             self.merge_with_file(file, "conf")
 
@@ -141,13 +178,12 @@ class CheckboxLauncherBuilder(ConfigOperation):
 
 class TestCommandGenerator(CheckboxLauncherBuilder):
     def __init__(self, template_bin_folder="./template/bin/",
-                 launcher_temp_folder="./template/divid_launcher",
-                 launcher_template_file_prefix="launcher"):
-        super().__init__(template_folder=launcher_temp_folder,
-                         template_file_prefix=launcher_template_file_prefix)
+                 launcher_temp_folder="./template/launcher_config"):
+        super().__init__(template_folder=launcher_temp_folder)
         # self.shell_file_list = glob.glob(f"{template_bin_folder}/*")
+        self.bin_folder = template_bin_folder
         self.shell_file_list = [f"{template_bin_folder}/{f}"
-                                for f in os.listdir(f"{template_bin_folder}/")
+                                for f in os.listdir(f"{self.bin_folder}/")
                                 if re.search(r'^(\d{2}).*', f)]
         self.shell_file_list.sort()
 
@@ -173,11 +209,11 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
             if "Install_checkbox" in os.path.basename(file):
                 if checkbox_type not in os.path.basename(file):
                     continue
-            if os.path.basename(file) == "90start_test" and\
+            if os.path.basename(file) == "90_start_test" and\
                     is_runtest is False:
                 continue
 
-            if os.path.basename(file) == "90start_test":
+            if os.path.basename(file) == "90_start_test":
                 launcher_file_path = "final_launcher"
                 self.build_launcher(manifest_json_path, test_plan_name,
                                     exclude_job_pattern_str,
@@ -198,6 +234,11 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                     cmd_str += f"{content}\n"
         lines = cmd_str.split("\n")
         cmd_str = "\n".join([line for line in lines if line.strip("\n") != ""])
+        ret_sc = shellcheck_for_cmd_str(cmd_str)
+        if not ret_sc:
+            msg = f"Shellcheck fail after combining the file under \
+{self.bin_folder}"
+            warnings.warn(msg, Warning)
         return cmd_str
 
 
@@ -205,14 +246,12 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
     def __init__(self, cid, default_yaml_file_path="./template/template.yaml",
                  globaltimeout=43200, outputtimeout=3600,
                  template_bin_folder="./template/bin/",
-                 launcher_temp_folder="./template/divid_launcher/",
-                 launcher_template_file_prefix="launcher",
+                 launcher_temp_folder="./template/launcher_config/",
                  is_runtest=True):
         YamlGenerator.__init__(self,
                                default_yaml_file_path=default_yaml_file_path)
         TestCommandGenerator.__init__(self, template_bin_folder,
-                                      launcher_temp_folder,
-                                      launcher_template_file_prefix)
+                                      launcher_temp_folder)
         self.yaml_update_field({"global_timeout": globaltimeout})
         self.yaml_update_field({"output_timeout": outputtimeout})
         self.yaml_update_field({"job_queue": cid})
@@ -296,12 +335,8 @@ def parse_input_arg():
                               help="Set the manifest json file to build \
                               the launcher.")
     opt_launcher.add_argument("--LauncherTemplate", type=str,
-                              default="./template/divid_launcher/",
+                              default="./template/launcher_config/",
                               help="Set the launcher template folder")
-    opt_launcher.add_argument("--LauncherPrefix", type=str,
-                              default="launcher",
-                              help="Set the launcher prefix you need to \
-                              find")
     opt_tfyaml = parser.add_argument_group("Testflinger yaml options")
     opt_tfyaml.add_argument("--LpID", type=str, default="",
                             help="If you want to reserve the DUT, please \
@@ -341,8 +376,7 @@ if __name__ == "__main__":
                             outputtimeout=args.outputTimeout,
                             template_bin_folder=args.binFolder,
                             launcher_temp_folder=args.LauncherTemplate,
-                            is_runtest=runtest,
-                            launcher_template_file_prefix=args.LauncherPrefix)
+                            is_runtest=runtest)
 
     builder.provision_setting(is_provision=provision,
                               image=args.provisionImage,
