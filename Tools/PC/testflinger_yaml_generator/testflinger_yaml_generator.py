@@ -177,7 +177,7 @@ class CheckboxLauncherBuilder(ConfigOperation):
 
 
 class TestCommandGenerator(CheckboxLauncherBuilder):
-    def __init__(self, template_bin_folder="./template/bin/",
+    def __init__(self, template_bin_folder="./template/shell_scripts/",
                  launcher_temp_folder="./template/launcher_config"):
         super().__init__(template_folder=launcher_temp_folder)
         # self.shell_file_list = glob.glob(f"{template_bin_folder}/*")
@@ -245,7 +245,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
 class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
     def __init__(self, cid, default_yaml_file_path="./template/template.yaml",
                  globaltimeout=43200, outputtimeout=3600,
-                 template_bin_folder="./template/bin/",
+                 template_bin_folder="./template/shell_scripts/",
                  launcher_temp_folder="./template/launcher_config/",
                  is_runtest=True):
         YamlGenerator.__init__(self,
@@ -349,7 +349,7 @@ def parse_input_arg():
 
     opt_shell = parser.add_argument_group("Test command in testflinger yaml")
     opt_shell.add_argument("--binFolder", type=str,
-                           default="./template/bin/",
+                           default="./template/shell_scripts/",
                            help="Set the testflinger test command folder")
 
     args = parser.parse_args()
