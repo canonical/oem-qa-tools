@@ -12,10 +12,10 @@ So the template structure will like this:
 
 ## Launcher
 
-- header part:
-  - launcher, ui, daemon, transport, exproter, report
+- main part:
+  - launcher, ui, daemon(agent), transport, exporter, report
 
-- environment part:
+- env part:
   - environment (testing environment config)
 
 - manifest part:
@@ -29,7 +29,7 @@ So the template structure will like this:
 ## test cmd in yaml file
 
 - execute bash script will be in alphabetical order
-  (File’s prefix is two digital number, ie 00xxx, …, 99xxx)
+  (File’s prefix is two digital number, ie 00_xxx, …, 99_xxx)
 
 ## Usage
 
@@ -46,12 +46,11 @@ usage: testflinger_ymal_generator.py [-h] -c CID -o OUTPUTFILENAME
                                      [--sessionDesc SESSIONDESC]
                                      [--manifestJson MANIFESTJSON]
                                      [--LauncherTemplate LAUNCHERTEMPLATE]
-                                     [--LauncherPrefix LAUNCHERPREFIX] [--LpID LPID]
                                      [--reserveTime RESERVETIME]
                                      [--TFYamlTemplate TFYAMLTEMPLATE]
                                      [--binFolder BINFOLDER]
 
-Testflinger yaml file genertor
+Testflinger yaml file generator
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -67,7 +66,7 @@ general options:
   --testplan TESTPLAN   Set the checkbox test plan name. If didn't set this will not run
                         checkbox test (default: )
   --excludeJobs EXCLUDEJOBS
-                        Set the exclude jobs pattern. ie".*memory/memory_stress_ng".
+                        Set the exclude jobs pattern. ie".*memory/memory_stress_ng.*".
                         (default: )
   --checkboxType {deb,snap}
                         Set which checkbox type you need to install and test. (default: deb)
@@ -91,9 +90,7 @@ Launcher settion  options:
                         ./template/manifest.json)
   --LauncherTemplate LAUNCHERTEMPLATE
                         Set the launcher template folder (default:
-                        ./template/divid_launcher/)
-  --LauncherPrefix LAUNCHERPREFIX
-                        Set the launcher prefix you need to find (default: launcher)
+                        ./template/launcher_config/)
 
 Testflinger yaml options:
   --LpID LPID           If you want to reserve the DUT, please input your Launchpad ID
@@ -106,15 +103,17 @@ Testflinger yaml options:
 
 Test command in testflinger yaml:
   --binFolder BINFOLDER
+                        Set the testflinger test command folder. (default:
+                        ./template/shell_scripts/)
 ```
 
-### Basic usually usage
+### Basically usage
 
 we using the default timeout, and we don’t need to have insert the template
 path
 
-1. We  need to modify the `./template/bin/*`
-(mostly we only need to modify `20before_test`, `99end_test`)
+1. We  need to modify the `./template/shell_scripts/*`
+(mostly we only need to modify `20_before_test`, `99_end_test`)
 
 > `./testflinger_ymal_generator.py -c $CID -o $OUTPUT_YAML --LpID $LP_ID --testplan $TEST_PLAN --provisionImage $IMAGE_NAME --manifestJson $MANIFEST_JSON_PATH`
 
@@ -126,12 +125,12 @@ path
 
 > `./testflinger_ymal_generator.py -c $CID -o $OUTPUT_YAML --LpID $LP_ID --testplan $TEST_PLAN --manifestJson $MANIFEST_JSON_PATH`
 
-## How do we do for testing (w/ provision) cert lab’s DUT w/ this scrpit
+## How do we do for testing (w/ provision) cert lab’s DUT w/ this script
 
 **Prepare:** CID, provision_image_name, manifest_json_file, test_plan_name.
 
-**Modify file:** `20before_test` (if we want to add the staging ppa repo or
-something else), `99end_test` (maybe copy some file in artificats folder)
+**Modify file:** `20_before_test` (if we want to add the staging ppa repo or
+something else), `99_end_test` (maybe copy some file in artifacts folder)
 
 ```sh
 git clone --depth 1 --branch main git@github.com:canonical/ce-oem-dut-checkbox-configuration.git
