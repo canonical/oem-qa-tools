@@ -604,7 +604,102 @@ VALID_RESULT_FROM_API = {
 # VALID_CONTENT_FROM_API is the valid output from get_content_from_a_jira_card function # noqa: E501
 VALID_CONTENT_FROM_API = {
   "gm_image_link": "https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso",    # noqa: E501
-  "qa_launchpad_id": "fake-valid-launchpad_id",
+  "assignee_original_id": "accountID",
+  "description_original_data": {
+                "content": [
+                    {
+                        "content": [
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "Summary: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "text": "The units are certified, note the \
+                                  details and transfer to cert team.",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "QA Certified Process Guide: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "marks": [
+                                     {
+                                         "attrs": {"href": "docuemnt"},
+                                         "type": "link"
+                                     }
+                                 ],
+                                 "text": "QA Certified Process Guide",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "Certify Planning: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "marks": [
+                                     {
+                                         "attrs": {"href": "https://123.com"},
+                                         "type": "link"
+                                     },
+                                     {
+                                         "type": "strong"
+                                     }
+                                 ],
+                                 "text": "123abc",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "GM Image Path: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "marks": [
+                                     {
+                                         "attrs": {"href": "https://oem-share.\
+                                                   canonical.com/partners/sutton/share/bachman\
+                                                   /sutton-workstation-2022-10-07\
+                                                   /pc-sutton-bachman-focal-amd64-\
+                                                   X00-20221004-139.iso"},
+                                         "type": "link"
+                                     }
+                                 ],
+                                 "text": "https://oem-share.canonical.com\
+                                    /partners/sutton/share/bachman/sutton-workstation-2022-10-07\
+                                    /pc-sutton-bachman-focal-amd64-\
+                                    X00-20221004-139.iso",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "SKU details : ",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             }
+                             ],
+                        "type": 'doc',
+                        "version": 1
+                    }
+                ]
+   },
   "table": [
     {
       "type": "tableRow",

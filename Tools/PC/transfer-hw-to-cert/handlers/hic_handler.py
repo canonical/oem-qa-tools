@@ -13,6 +13,7 @@ def query_database() -> dict:
                 "00:be:43:bd:cf:16": "TRM-DVT1-L10-C1_202304-31528"
             }
     """
+    mapping = {}
     try:
         response = requests.request(
             'GET',
@@ -22,8 +23,10 @@ def query_database() -> dict:
             response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Unable to query the HIC database. Error: {e}")
-        raise
+        print(f"====Unable to query the HIC database.==== "
+              f"Please check your connection. Error: {e}")
+
+    return mapping
 
 
 def delete_duts(cids: list[str]) -> None:
@@ -80,4 +83,4 @@ def delete_duts(cids: list[str]) -> None:
                 print(f"Error: Unable to remove {d['sku_name']} ({mac})")
                 print(e)
     if not success:
-        raise Exception('Error: Some DUTs cannot be removed from HIC!')
+        print('Error: Some DUTs cannot be removed from HIC!')

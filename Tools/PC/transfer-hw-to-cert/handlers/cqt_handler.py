@@ -4,7 +4,7 @@
 
 import json
 
-from Jira.apis.base import JiraAPI, get_jira_members
+from Jira.apis.base import JiraAPI
 
 
 def get_content_from_a_jira_card(key: str) -> dict:
@@ -39,12 +39,15 @@ def get_content_from_a_jira_card(key: str) -> dict:
     # By design, the "Test result" field is the default field
     # in each Jira card on CQT Jira project.
     description_field = response['issues'][0]['fields']['description']
+    assignee_info = response['issues'][0]['fields'].get('assignee', {})
+    assignee_id = assignee_info.get('accountId', '')
     test_result_field = response['issues'][0]['fields'][test_result_field_id]
 
     # Return dictionary
     re_dict = {
+        'description_original_data': description_field,
+        'assignee_original_id': assignee_id,
         'gm_image_link': '',
-        'qa_launchpad_id': '',
         'table': []
     }
 
@@ -64,31 +67,6 @@ def get_content_from_a_jira_card(key: str) -> dict:
         print(e)
         raise Exception(
             f"Error: Failed to get the table content from card '{key}'")
-
-    # Get QA launchpad ID
-    try:
-        for idx in range(len(test_result_field['content'][0]['content'])):
-            c = test_result_field['content'][0]['content'][idx]
-            # Find the name first
-            if 'text' in c and c['text'].strip() == 'QA:':
-                # The launchpad id will be in the next content
-                next = test_result_field['content'][0]['content'][idx+1]
-                if 'text' in next and next['text'].strip() != '<launchpad ID>':
-                    lp_id = next['text'].strip()
-                    members = get_jira_members()
-                    # check launchpad id is one of QAs
-                    if lp_id not in members:
-                        err_msg = 'Error: Invalid Launchpad ID, couldn\'t' + \
-                            ' find this person'
-                        raise Exception(err_msg)
-                    re_dict['qa_launchpad_id'] = lp_id
-                else:
-                    err_msg = 'Error: Please give the Launchpad ID'
-                    raise Exception(err_msg)
-    except Exception as e:
-        print(e)
-        raise Exception(
-            f"Error: Failed to get the QA launchpad ID from card '{key}'")
 
     # Get the link of gm image
     try:
@@ -134,6 +112,7 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
         f"project = {jira_api.jira_project['key']} AND issuekey = \"{key}\"",
         'fields': [
             'description',
+            'assignee',
             jira_api.jira_project['card_fields']['Test result']
         ],
     }
@@ -173,6 +152,7 @@ def get_candidate_duts(key: str) -> dict:
 
         @return
         {
+            'certify_planning_link': '',
             'gm_image_link': '',
             'qa_launchpad_id': '',
             'data': [{
@@ -189,8 +169,9 @@ def get_candidate_duts(key: str) -> dict:
     # Return dictionary
     re_dict = {
         'data': [],
+        'description_original_data': content['description_original_data'],
+        'assignee_original_id': content['assignee_original_id'],
         'gm_image_link': content['gm_image_link'],
-        'qa_launchpad_id': content['qa_launchpad_id']
     }
 
     # Sanitize each dut
