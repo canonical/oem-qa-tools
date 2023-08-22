@@ -568,7 +568,7 @@ def combine_duplicate_tag(data, primary_key):
 def generate_platform_records(projects):
     payload = {}
     for project in projects:
-        if project in ["stella", "sutton"]:
+        if project in ["stella"]:
             primary_key = "lp_tag"
         else:
             # by default, we will group record by platform code name
