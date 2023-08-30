@@ -97,8 +97,7 @@ class QaPcJira():
 
             Parameters:
                 tag {str}: Needed information
-                    tag is lp_tag if project is stella,
-                    otherwise it should be platform_tag
+                    tag refer to platform_tag
             Return {dist}
                 e.g.
                     {
@@ -928,9 +927,48 @@ class StellaJira(QaPcJira):
             milestone
         )
 
+    def _api_get_story_task_by_tag(self, lp_tag='', platform_tag=''):
+        """ Get the story task by tag
+
+            Parameters:
+                lp_tag {str}: Needed information
+                    launchpad tag, e.g. stella-xxxx
+                platform_tag {str}: Needed information
+                    e.g. jellyfish-xxxx
+            Return {dist}
+                e.g.
+                    {
+                        "id": "74064",
+                        "self":
+                        "https://warthogs.atlassian.net/rest/api/3/issue/74064",
+                        "key": "VS-746",
+                        "fields": { "summary": "['Cres'] (fossa-corsola-abc)" }
+                    }
+        """
+        if lp_tag and platform_tag:
+            payload = {
+                'jql': 'project = {} AND summary ~ "{}" OR '
+                'description ~ "{}" AND issuetype = Story '
+                'order by created DESC'.format(
+                    self.jira_api.jira_project['key'], lp_tag, platform_tag
+                ),
+                'fields': ['summary'],
+            }
+            response = self.jira_api.get_issues(payload=payload)
+            candidates = json.loads(response.text)
+            for c in candidates['issues']:
+                if '({})'.format(lp_tag) in c['fields']['summary']:
+                    try:
+                        del c['expand']
+                    except Exception:
+                        pass
+                    return c
+        return {}
+
     def _get_story_task_by_tag(self):
         return self._api_get_story_task_by_tag(
-            self.current_platform['lp_tag'].replace('-prts', '')
+            self.current_platform['lp_tag'].replace('-prts', ''),
+            self.current_platform['platform_tag']
         )
 
     def _generate_prts_card_title(self):
