@@ -66,10 +66,8 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         sys.stdout = sys.__stdout__
 
     @patch('handlers.cqt_handler.api_get_jira_card')
-    # @patch('handlers.cqt_handler.get_jira_members')
     def test_can_get_valid_content(
         self,
-        # mock_get_jira_members,
         mock_api_get_jira_card
     ):
         """ Should get valid data from hw transfer jira card
@@ -79,10 +77,6 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         # 'Test result' in Vic's Sandbox project
         mock_api_get_jira_card.return_value = [
             VALID_RESULT_FROM_API, 'customfield_10186']
-
-        # mock_get_jira_members.return_value = {
-        #    'fake-valid-launchpad_id': {}
-        # }
 
         expected_result = VALID_CONTENT_FROM_API
 

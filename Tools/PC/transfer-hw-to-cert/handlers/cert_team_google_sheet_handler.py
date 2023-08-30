@@ -173,7 +173,6 @@ def are_candidated_sheet_cells_empty(
     """
     all_empty = True
     non_empty_list = []
-    identical_list = []
     for d in data:
         lab = parse_location(d['location']).get('Lab', None)
         if not lab or lab not in sheet_data:
@@ -193,15 +192,8 @@ def are_candidated_sheet_cells_empty(
                 'row_index': indexed_table[d['location']]['row_index'],
                 'location': d['location']
             })
-        elif indexed_cid == d['cid']:
-            message = (f"The \'{d['cid']}\' has filled in the column")
-            identical_list.append({
-                'message': message,
-                'row_index': indexed_table[d['location']]['row_index'],
-                'location': d['location']
-            })
 
-    return all_empty, non_empty_list, identical_list
+    return all_empty, non_empty_list
 
 
 def fill_in_google_sheet(data: list[dict], sheet_data: dict) -> bool:
@@ -288,14 +280,12 @@ def update_cert_lab_google_sheet(data: list[dict]) -> dict:
     sheet_data = get_sheet_data()
 
     # Check those cells are empty
-    empty, non_empty_list, identical_list = are_candidated_sheet_cells_empty(
+    empty, non_empty_list = are_candidated_sheet_cells_empty(
         data,
         sheet_data
     )
 
     if not empty:
-        if identical_list:
-            ("equal_list is not empty")
         raise Exception(
             f"Error: some cells aren't empty. Non empty list: {non_empty_list}"
         )
