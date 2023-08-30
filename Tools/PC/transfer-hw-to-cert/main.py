@@ -65,31 +65,27 @@ def main():
                 if not is_valid_location(d['location']):
                     raise Exception(
                         f'Error: Invalid Location in Jira Card {key}')
-
             # Update Cert Lab Google Sheet
             gm_image_link = data['gm_image_link']
             for d in data['data']:
                 d['gm_image_link'] = gm_image_link
-
             print('-' * 5 + 'Updating Cert Lab Google Sheet' + '-' * 5)
             update_cert_lab_google_sheet(data['data'])
-
             # Update DUT holder and location on C3
             print('-' * 5 + 'Updating C3' + '-' * 5)
             update_duts_info_on_c3(
                 data=data['data'], new_holder=args.c3_holder)
-
             # Remove DUTs from HIC site
             print('-' * 5 + 'Removing from HIC' + '-' * 5)
             delete_duts_from_hic(cids=[d['cid'] for d in data['data']])
-
         # Create Jira card to TELOPS board
         # No matter the process is qa_process or contractor process
         # There's always need cards in TELOPS board
         print('-' * 5 + 'Creating card to TELOPS board' + '-' * 5)
         create_send_dut_to_cert_card_in_telops(
             cqt_card=key,
-            reporter=data['qa_launchpad_id'],
+            description_original_data=data['description_original_data'],
+            assignee_original_id=data['assignee_original_id'],
             data=data['data']
         )
 

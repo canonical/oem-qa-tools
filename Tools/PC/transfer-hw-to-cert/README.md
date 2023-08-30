@@ -7,8 +7,9 @@ Please see this [Jira Card](https://warthogs.atlassian.net/browse/CQT-1912) for 
 ## How To Use
 
 <!-- markdownlint-configure-file { "MD013": { "line_length": 100 } } -->
-This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira) and
-[GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) APIs services.
+This tool is depend on [Jira](https://github.com/canonical/oem-qa-tools/blob/main/API/Jira),
+[GoogleSheet](https://github.com/canonical/oem-qa-tools/blob/main/API/GoogleSheet) and
+[C3](https://certification.canonical.com/me/) APIs services.
 
 Please see [example section](#example) to learn how to use it.
 

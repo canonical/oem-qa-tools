@@ -179,12 +179,13 @@ def are_candidated_sheet_cells_empty(
             raise Exception(f"Error: Lab \'{lab}\' is not in indexed table")
         # get the indexed table of specific lab
         indexed_table = sheet_data[lab]['indexed_table']
+        indexed_cid = indexed_table[d['location']]['CID']
         # check the CID cell is not empty
-        if indexed_table[d['location']]['CID']:
+        if indexed_cid and indexed_cid != d['cid']:
             all_empty = False
             message = (
                 f"try to fill \'{d['cid']}\' in the CID cell but there\'s "
-                f"\'{indexed_table[d['location']]['CID']}\' occupies the cell"
+                f"\'{indexed_cid}\' occupies the cell"
             )
             non_empty_list.append({
                 'message': message,

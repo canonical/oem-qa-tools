@@ -66,10 +66,8 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         sys.stdout = sys.__stdout__
 
     @patch('handlers.cqt_handler.api_get_jira_card')
-    @patch('handlers.cqt_handler.get_jira_members')
     def test_can_get_valid_content(
         self,
-        mock_get_jira_members,
         mock_api_get_jira_card
     ):
         """ Should get valid data from hw transfer jira card
@@ -79,10 +77,6 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
         # 'Test result' in Vic's Sandbox project
         mock_api_get_jira_card.return_value = [
             VALID_RESULT_FROM_API, 'customfield_10186']
-
-        mock_get_jira_members.return_value = {
-            'fake-valid-launchpad_id': {}
-        }
 
         expected_result = VALID_CONTENT_FROM_API
 
@@ -112,7 +106,8 @@ class GetCandidateDutsTest(unittest.TestCase):
         mock_get_content_from_a_jira_card.return_value = {
             'table': [1, 2],
             'gm_image_link': '',
-            'qa_launchpad_id': ''
+            'description_original_data': '',
+            'assignee_original_id': '',
         }
 
         with self.assertRaisesRegex(
@@ -130,8 +125,103 @@ class GetCandidateDutsTest(unittest.TestCase):
             VALID_CONTENT_FROM_API
 
         expected_result = {
-            'gm_image_link': 'https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso',  # noqa: E501
-            'qa_launchpad_id': 'fake-valid-launchpad_id',
+            "gm_image_link": "https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso",  # noqa: E501
+            "assignee_original_id": "accountID",
+            "description_original_data": {
+                "content": [
+                    {
+                        "content": [
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "Summary: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "text": "The units are certified, note the \
+                                  details and transfer to cert team.",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "QA Certified Process Guide: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "marks": [
+                                     {
+                                         "attrs": {"href": "docuemnt"},
+                                         "type": "link"
+                                     }
+                                 ],
+                                 "text": "QA Certified Process Guide",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "Certify Planning: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "marks": [
+                                     {
+                                         "attrs": {"href": "https://123.com"},
+                                         "type": "link"
+                                     },
+                                     {
+                                         "type": "strong"
+                                     }
+                                 ],
+                                 "text": "123abc",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "GM Image Path: ",
+                                 "type": "text"
+                             },
+                             {
+                                 "marks": [
+                                     {
+                                         "attrs": {"href": "https://oem-share.\
+                                                   canonical.com/partners/sutton/share/bachman\
+                                                   /sutton-workstation-2022-10-07\
+                                                   /pc-sutton-bachman-focal-amd64-\
+                                                   X00-20221004-139.iso"},
+                                         "type": "link"
+                                     }
+                                 ],
+                                 "text": "https://oem-share.canonical.com\
+                                    /partners/sutton/share/bachman/sutton-workstation-2022-10-07\
+                                    /pc-sutton-bachman-focal-amd64-\
+                                    X00-20221004-139.iso",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             },
+                             {
+                                 "marks": [{"type": "strong"}],
+                                 "text": "SKU details : ",
+                                 "type": "text"
+                             },
+                             {
+                                 "type": "hardBreak"
+                             }
+                             ],
+                        "type": 'doc',
+                        "version": 1
+                    }
+                ]
+            },
             "data": [
                 {
                     "cid": "202305-24689",
@@ -158,6 +248,7 @@ class GetCandidateDutsTest(unittest.TestCase):
 
         test_result = get_candidate_duts(key='any')
 
+        self.maxDiff = None
         self.assertEqual(expected_result, test_result)
 
 
