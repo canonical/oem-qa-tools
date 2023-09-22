@@ -5,21 +5,26 @@ sudo apt-get install openssh-server -y
 TARGET_DEVICE_USERNAME=ubuntu
 # convenience functions
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-_put() { {
-    scp "$SSH_OPTS" "$1" $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$2"
+# shellcheck disable=SC1054,SC2086
+_put() {{
+    scp $SSH_OPTS "$1" $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$2"
 }}
-_get() { {
-    scp "$SSH_OPTS" $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$1" "$2"
+# shellcheck disable=SC1054,SC2086
+_get() {{
+    scp $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$1" "$2"
 }}
-_run() { {
-    ssh -t "$SSH_OPTS" $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
+# shellcheck disable=SC1054,SC2086
+_run() {{
+    ssh -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
 }}
-_run_in_bg() { {
-    ssh -f -t "$SSH_OPTS" $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
+# shellcheck disable=SC1054,SC2086
+_run_in_bg() {{
+    ssh -f -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
 }}
-wait_for_ssh() { {
+# shellcheck disable=SC1054,SC2086
+wait_for_ssh() {{
     loopcnt=0
-    until timeout 120 ssh "$SSH_OPTS" $TARGET_DEVICE_USERNAME@"$DEVICE_IP" /bin/true
+    until timeout 120 ssh $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" /bin/true
     do
         echo "Testing to see if system is back up"
         loopcnt=$((loopcnt+1))
@@ -30,6 +35,7 @@ wait_for_ssh() { {
         sleep 30
     done
 }}
+
 
 echo
 echo "====== TARGET DEVICE CONNECTION INFO ======"
