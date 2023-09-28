@@ -456,6 +456,19 @@ class JiraAPI:
 
         return response
 
+    def make_transition(self, issue_key, transition_id):
+        transition_url = (
+            f"{self._base_url}/{self._jira_api_path}/issue/{issue_key}")
+        transition_data = {
+            'transition': {
+                'id': transition_id
+            }
+        }
+        response = self._request(
+            'POST', url=transition_url, payload=transition_data)
+
+        return response
+
 
 def get_jira_members():
     """ Get the members who have the permission to access the Jira Project
