@@ -41,13 +41,13 @@ def create_send_dut_to_cert_card_in_telops(
         # Template of "fields" payload in Jira's request
         fields = telops_jira_api.create_jira_fields_template(
             task_type='DUT_Send_To_Cert')
-
+        
         # Assign Summary
         fields['summary'] = f"Send CID#{d['cid']} to Cert Lab"
-
+        
         # Assign Description
         fields['description'] = description_original_data
-
+        
         # Assign Reporter
         fields['reporter']['id'] = assignee_original_id
 
@@ -57,13 +57,22 @@ def create_send_dut_to_cert_card_in_telops(
 
         issue_updates.append({'fields': fields, 'update': update_link})
     response = telops_jira_api.create_issues(
-        payload={'issueUpdates': issue_updates})
-    if not response.ok:
+            payload={'issueUpdates': issue_updates})
+
+    if response.ok:
+        print(json.dumps(response.json(), indent=2))
+        print('Created the following cards to TELOPS board successfully')
+        created_issues = response.json()['issues']
+        transition_id = '2'
+        for created_issue in created_issues:
+            transition_url = f"{created_issue['key']}/transitions"
+            response = telops_jira_api.make_transition(
+                transition_url, transition_id)
+
+    else:
         print('*' * 50)
         print(json.dumps(issue_updates, indent=2))
         raise Exception(
             'Error: Failed to create card to TELOPS board',
             f"Reason: {response.text}"
         )
-    print('Created the following cards to TELOPS board successfully')
-    print(json.dumps(response.json(), indent=2))
