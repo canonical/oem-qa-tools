@@ -62,13 +62,17 @@ def create_send_dut_to_cert_card_in_telops(
     if response.ok:
         print(json.dumps(response.json(), indent=2))
         print('Created the following cards to TELOPS board successfully')
-        created_issues = response.json()['issues']
-        transition_id = '2'
-        for created_issue in created_issues:
-            transition_url = f"{created_issue['key']}/transitions"
-            response = telops_jira_api.make_transition(
-                transition_url, transition_id)
 
+        # Get the transition ID number which is from the TELOPS board
+        transition_id = telops_jira_api.jira_project['transition_data'][
+            'To Do QA LAB']
+
+        created_issues = response.json()['issues']
+
+        for created_issue in created_issues:
+            # Assign status with 'To Do QA LAB'
+            response = telops_jira_api.make_transition(
+                created_issue['key'], transition_id)
     else:
         print('*' * 50)
         print(json.dumps(issue_updates, indent=2))
