@@ -3,5 +3,8 @@
     "key": "VS",
     "issue_type": {
         "DUT_Send_To_Cert": "11730"
+    },
+    "transition_data": {
+        "To Do QA LAB": "2"
     }
 }
