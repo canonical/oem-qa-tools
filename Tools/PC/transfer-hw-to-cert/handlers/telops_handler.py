@@ -64,8 +64,8 @@ def create_send_dut_to_cert_card_in_telops(
         print('Created the following cards to TELOPS board successfully')
 
         # Get the transition ID number which is from the TELOPS board
-        transition_id = telops_jira_api.jira_project['transition_data'][
-            'To Do QA LAB']
+        transition_data = telops_jira_api.jira_project['transition_data']
+        transition_id = transition_data.get('To Do QA LAB')
 
         created_issues = response.json()['issues']
 
