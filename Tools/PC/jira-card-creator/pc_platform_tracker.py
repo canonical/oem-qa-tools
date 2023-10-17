@@ -275,7 +275,7 @@ class SuttonPlatformRecord(ModelPlatformRecord):
             "qa": "QA",
             "lp_tag": "Official Tag",
             "start_date": [
-                "Alpha\n(Planned)", "Beta\n(Planned)", "GM (Planned)"
+                "Alpha testing", "Beta testing", "GM testing"
             ],
             "prts": "Refresh"
         }
