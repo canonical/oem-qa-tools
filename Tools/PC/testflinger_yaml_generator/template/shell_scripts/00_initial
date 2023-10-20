@@ -57,4 +57,7 @@ _run gsettings set org.gnome.desktop.screensaver lock-enabled false
 _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
 _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing'
 _run gsettings set org.gnome.desktop.session idle-delay 'uint32 0'
+# stop and disable pc-sanity-backgroud-photo.service that from SWE for mass deploy
+_run sudo systemctl stop pc-sanity-backgroud-photo.service
+_run sudo systemctl disable pc-sanity-backgroud-photo.service
 
