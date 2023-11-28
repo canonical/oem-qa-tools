@@ -1,8 +1,8 @@
 {
-    "id": "10350",
-    "key": "VS",
+    "id": "10382",
+    "key": "TELOPS",
     "issue_type": {
-        "DUT_Send_To_Cert": "11730"
+        "DUT_Send_To_Cert": "10796"
     },
     "transition_data": {
         "To Do QA LAB": "2"

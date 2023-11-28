@@ -8,7 +8,8 @@ from Jira.apis.base import JiraAPI
 
 
 def get_content_from_a_jira_card(key: str) -> dict:
-    """ Get the content from the 'Test result' field in a specific Jira card.
+    """ Get the content from the 'Acceptance Criteria' field
+        in a specific Jira card.
 
         @param:key, the key of jira card. e.g. CQT-1234
 
@@ -36,7 +37,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
     # only one issue is expected.
     # By design, the "Description" field is the default field
     # in each Jira card.
-    # By design, the "Test result" field is the default field
+    # By design, the "Acceptance Criteria" field is the default field
     # in each Jira card on CQT Jira project.
     description_field = response['issues'][0]['fields']['description']
     assignee_info = response['issues'][0]['fields'].get('assignee', {})
@@ -113,15 +114,15 @@ def api_get_jira_card(key: str) -> tuple[dict, str]:
         'fields': [
             'description',
             'assignee',
-            jira_api.jira_project['card_fields']['Test result']
+            jira_api.jira_project['card_fields']['Acceptance Criteria']
         ],
     }
     response = jira_api.get_issues(payload=payload)
     parsed = json.loads(response.text)
 
-    # By design, the "Test result" field is the default field
+    # By design, the "Acceptance Criteria" field is the default field
     # in each Jira card on QA's Jira project
-    return parsed, jira_api.jira_project['card_fields']['Test result']
+    return parsed, jira_api.jira_project['card_fields']['Acceptance Criteria']
 
 
 def retrieve_row_data(data: dict) -> list:

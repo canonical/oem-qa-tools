@@ -1,19 +1,23 @@
 {
-    "id": "10350",
-    "key": "VS",
-    "name": "Vic's Sandbox",
+    "id": "11030",
+    "key": "OEMQA",
+    "name": "OEM QA Team-ENG",
     "issue_type": {
-        "Task": "10635",
-        "Story": "10634",
-        "DUT_Send_To_Cert": "11730"
+        "Task": "10013",
+        "Bug": "10015",
+        "Story": "10002",
+        "Objective": "10390",
+        "Spike": "10037",
+        "Epic": "10000",
+        "DUT_Send_To_Cert": "10796"
     },
     "epic": {
-        "Somerville": "69110",
-        "Stella": "69111",
-        "Sutton": "69112",
-        "Tooling & Process": "63215"
+        "Dell": "55134",
+        "Hp": "55135",
+        "Lenovo": "55136",
+        "Tooling & Process": "55347"
     },
     "card_fields": {
-        "Test result": "customfield_10186"
+        "Acceptance Criteria": "customfield_10614"
     }
 }
