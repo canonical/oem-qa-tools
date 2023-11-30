@@ -625,7 +625,7 @@ class QaPcJira():
             self._generate_transfer_cert_description())
 
         # Add the content into the Test Result field
-        fields[self.jira_api.jira_project['card_fields']['Test result']] = {
+        fields[self.jira_api.jira_project['card_fields']['Test Results']] = {
             "version": 1,
             "type": "doc",
             "content": TEMPLATE_TEST_RESULT_FIELD

@@ -14,6 +14,7 @@
         "Tooling & Process": "63215"
     },
     "card_fields": {
-        "Test result": "customfield_10186"
+        "Acceptance Criteria": "customfield_10675",
+        "Test Results": "customfield_10186"
     }
 }
