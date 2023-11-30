@@ -76,7 +76,12 @@ class JiraAPI:
             return response
 
     def update_epic(self, epic, issues_id=[], **kwargs):
-        """ [Workaround] Update the epic of issues
+        """ WARNNING: Deprecate method
+                - For api version 3, we can assign the "parent" in the field
+                  while creating issue.
+                - This method cannot work in Companey-owned project
+
+            [Workaround] Update the epic of issues
 
             Parameters:
                 epic {string}: Should field in the name of epic.

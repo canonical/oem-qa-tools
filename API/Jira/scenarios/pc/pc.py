@@ -416,6 +416,11 @@ class QaPcJira():
         # Assign lable to story task
         fields['labels'] = self.fixed_labels
 
+        # Assign Epic
+        fields['parent'] = {
+            'id': self.jira_api.jira_project['epic'][self.epic]
+        }
+
         # Create issue
         response = self.jira_api.create_an_issue(
             payload={'fields': fields, 'updates': {}})
@@ -423,10 +428,6 @@ class QaPcJira():
             logger.warn('  - Story task ... Fail')
             return {}
         story_task = json.loads(response.text)
-
-        # Update Epic
-        self.jira_api.update_epic(
-            epic=self.epic, issues_id=[int(story_task['id'])])
 
         return story_task
 
@@ -470,6 +471,11 @@ class QaPcJira():
                     self.project_profile['labels']['rts_labels'][idx]
                 )
 
+            # Assign Epic
+            fields['parent'] = {
+                'id': self.jira_api.jira_project['epic'][self.epic]
+            }
+
             # FIXME: Use regex to verify the valid time format
             # date_regex = datetime.datetime.strptime
             if 'start_date' in self.current_platform and \
@@ -496,8 +502,6 @@ class QaPcJira():
 
         milestone_tasks = json.loads(response.text)['issues']
         ids = [int(task['id']) for task in milestone_tasks]
-        # Update Epic
-        self.jira_api.update_epic(epic=self.epic, issues_id=ids)
 
         return milestone_tasks
 
@@ -531,6 +535,11 @@ class QaPcJira():
                 self.project_profile['labels']['prts_labels']
             )
 
+        # Assign Epic
+        fields['parent'] = {
+            'id': self.jira_api.jira_project['epic'][self.epic]
+        }
+
         # link task to story task
         update_link = {}
         if story_task:
@@ -547,8 +556,6 @@ class QaPcJira():
 
         id = json.loads(response.text)['id']
 
-        # Update Epic
-        self.jira_api.update_epic(epic=self.epic, issues_id=[id])
         return json.loads(response.text)
 
     def _create_online_update_task(self, story_task={}):
@@ -581,6 +588,11 @@ class QaPcJira():
                 self.project_profile['labels']['online_update_labels']
             )
 
+        # Assign Epic
+        fields['parent'] = {
+            'id': self.jira_api.jira_project['epic'][self.epic]
+        }
+
         # link task to story task
         update_link = {}
         if story_task:
@@ -597,8 +609,6 @@ class QaPcJira():
 
         id = json.loads(response.text)['id']
 
-        # Update Epic
-        self.jira_api.update_epic(epic=self.epic, issues_id=[id])
         return json.loads(response.text)
 
     def _create_transfer_to_cert_task(self, story_task={}):
@@ -631,6 +641,11 @@ class QaPcJira():
             "content": TEMPLATE_TEST_RESULT_FIELD
         }
 
+        # Assign Epic
+        fields['parent'] = {
+            'id': self.jira_api.jira_project['epic'][self.epic]
+        }
+
         # link task to story task
         update_link = {}
         if story_task:
@@ -647,8 +662,6 @@ class QaPcJira():
 
         id = json.loads(response.text)['id']
 
-        # Update Epic
-        self.jira_api.update_epic(epic=self.epic, issues_id=[id])
         return json.loads(response.text)
 
     def _get_story_task_by_tag(self):
