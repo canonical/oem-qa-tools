@@ -487,12 +487,7 @@ class QaPcJira():
             #         self.current_platform['end_date'][idx]:
             #     fields['duedate'] = self.current_platform['end_date'][idx]
 
-            # link task to story task
-            update_link = self.jira_api.create_link_issue_content(
-                target_issues=[{'key': story_task['key']}]) \
-                if story_task['key'] else {}
-
-            issue_updates.append({'fields': fields, 'update': update_link})
+            issue_updates.append({'fields': fields, 'update': {}})
 
         response = self.jira_api.create_issues(
             payload={'issueUpdates': issue_updates})
@@ -501,7 +496,12 @@ class QaPcJira():
             return {}
 
         milestone_tasks = json.loads(response.text)['issues']
-        ids = [int(task['id']) for task in milestone_tasks]
+        issue_ids = [int(task['id']) for task in milestone_tasks]
+        for issue_id in issue_ids:
+            self.jira_api.link_issue(
+                id_of_inward_issue=issue_id,
+                id_of_outward_issue=story_task['id']
+            )
 
         return milestone_tasks
 
@@ -540,21 +540,18 @@ class QaPcJira():
             'id': self.jira_api.jira_project['epic'][self.epic]
         }
 
-        # link task to story task
-        update_link = {}
-        if story_task:
-            update_link = self.jira_api.create_link_issue_content(
-                target_issues=[{'key': story_task['key']}]) \
-                if story_task['key'] else {}
-
         response = self.jira_api.create_an_issue(
-            payload={'fields': fields, 'update': update_link})
+            payload={'fields': fields, 'update': {}})
 
         if not response.ok:
             logger.warn('Failed to create task...')
             return
 
-        id = json.loads(response.text)['id']
+        issue_id = json.loads(response.text)['id']
+        self.jira_api.link_issue(
+            id_of_inward_issue=issue_id,
+            id_of_outward_issue=story_task['id']
+        )
 
         return json.loads(response.text)
 
@@ -593,21 +590,18 @@ class QaPcJira():
             'id': self.jira_api.jira_project['epic'][self.epic]
         }
 
-        # link task to story task
-        update_link = {}
-        if story_task:
-            update_link = self.jira_api.create_link_issue_content(
-                target_issues=[{'key': story_task['key']}]) \
-                if story_task['key'] else {}
-
         response = self.jira_api.create_an_issue(
-            payload={'fields': fields, 'update': update_link})
+            payload={'fields': fields, 'update': {}})
 
         if not response.ok:
             logger.warn('Failed to create task...')
             return
 
-        id = json.loads(response.text)['id']
+        issue_id = json.loads(response.text)['id']
+        self.jira_api.link_issue(
+            id_of_inward_issue=issue_id,
+            id_of_outward_issue=story_task['id']
+        )
 
         return json.loads(response.text)
 
@@ -646,21 +640,18 @@ class QaPcJira():
             'id': self.jira_api.jira_project['epic'][self.epic]
         }
 
-        # link task to story task
-        update_link = {}
-        if story_task:
-            update_link = self.jira_api.create_link_issue_content(
-                target_issues=[{'key': story_task['key']}]) \
-                if story_task['key'] else {}
-
         response = self.jira_api.create_an_issue(
-            payload={'fields': fields, 'update': update_link})
+            payload={'fields': fields, 'update': {}})
 
         if not response.ok:
             logger.warn('Failed to create task...')
             return
 
-        id = json.loads(response.text)['id']
+        issue_id = json.loads(response.text)['id']
+        self.jira_api.link_issue(
+            id_of_inward_issue=issue_id,
+            id_of_outward_issue=story_task['id']
+        )
 
         return json.loads(response.text)
 
