@@ -478,14 +478,14 @@ class QaPcJira():
 
             # FIXME: Use regex to verify the valid time format
             # date_regex = datetime.datetime.strptime
-            if 'start_date' in self.current_platform and \
-                    self.current_platform['start_date'][idx]:
-                fields['customfield_10015'] = \
-                    self.current_platform['start_date'][idx]
+            # if 'start_date' in self.current_platform and \
+            #         self.current_platform['start_date'][idx]:
+            #     fields['customfield_10015'] = \
+            #         self.current_platform['start_date'][idx]
 
-            if 'end_date' in self.current_platform and \
-                    self.current_platform['end_date'][idx]:
-                fields['duedate'] = self.current_platform['end_date'][idx]
+            # if 'end_date' in self.current_platform and \
+            #         self.current_platform['end_date'][idx]:
+            #     fields['duedate'] = self.current_platform['end_date'][idx]
 
             # link task to story task
             update_link = self.jira_api.create_link_issue_content(
