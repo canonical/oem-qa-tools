@@ -484,6 +484,36 @@ class JiraAPI:
 
         return response
 
+    def link_issue(
+        self,
+        issuelinks_type='10003',
+        id_of_inward_issue='',
+        id_of_outward_issue=''
+    ):
+        """ Link two issues
+
+            Parameters:
+                issuelinks_type {str}: the type of link between issues
+                    10003: means "relates to"
+                id_of_inward_issue {int}: the task we want to link
+                id_of_outward_issue {int}: the task who triggers link
+        """
+        api_endpoint = "{}/{}/issueLink".format(
+            self._base_url, self._jira_api_path)
+        payload = {
+            "inwardIssue": {
+                "id": id_of_inward_issue
+            },
+            "outwardIssue": {
+                "id": id_of_outward_issue
+            },
+            "type": {
+                "id": issuelinks_type
+            }
+        }
+        response = self._request("POST", url=api_endpoint, payload=payload)
+        return response
+
 
 def get_jira_members():
     """ Get the members who have the permission to access the Jira Project
