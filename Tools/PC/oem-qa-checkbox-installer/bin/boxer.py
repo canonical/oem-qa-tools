@@ -14,9 +14,9 @@ PROVIDERS = ("somerville",
              "otaru",
              "wenshan",
              )
-CHECKBOX_REPOS = {"stable": "ppa:hardware-certification/public",
-                  "testing": "ppa:checkbox-dev/testing",
-                  "daily": "ppa:checkbox-dev/ppa"}
+CHECKBOX_REPOS = {"stable": "ppa:checkbox-dev/stable",
+                  "testing": "ppa:checkbox-dev/beta",
+                  "daily": "ppa:checkbox-dev/edge"}
 FWTS_REPO = "ppa:firmware-testing-team/ppa-fwts-stable"
 PC_ENABLE_REPO = "ppa:oem-solutions-engineers/pc-enablement-tools"
 OEM_REPO = "https://{username}:{password}@private-ppa.launchpad.net/" \
