@@ -476,17 +476,6 @@ class QaPcJira():
                 'id': self.jira_api.jira_project['epic'][self.epic]
             }
 
-            # FIXME: Use regex to verify the valid time format
-            # date_regex = datetime.datetime.strptime
-            # if 'start_date' in self.current_platform and \
-            #         self.current_platform['start_date'][idx]:
-            #     fields['customfield_10015'] = \
-            #         self.current_platform['start_date'][idx]
-
-            # if 'end_date' in self.current_platform and \
-            #         self.current_platform['end_date'][idx]:
-            #     fields['duedate'] = self.current_platform['end_date'][idx]
-
             issue_updates.append({'fields': fields, 'update': {}})
 
         response = self.jira_api.create_issues(
