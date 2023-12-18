@@ -207,7 +207,7 @@ class QaPcJira():
                 product_name {list}: A bounch of product_name
 
             Return {string}: Show product_name
-                e.g. Vostro 3520/Vostro 3420/Inspiron 15 3520
+                e.g. EliteBook 840 G11
         """
         return '' if not product_name else product_name
 
@@ -879,7 +879,8 @@ class SomervilleJira(QaPcJira):
             Parameters:
                 product_name {list}: A bounch of product_name
 
-            Return {string}: Show product_name
+            Return {string}: Show product_name,
+                There might be mutiple platform share one task card in Somerville
                 e.g. Vostro 3520/Vostro 3420/Inspiron 15 3520
         """
         return '' if not product_name else '/'.join(set(product_name))
