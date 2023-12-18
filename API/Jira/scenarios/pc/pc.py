@@ -880,7 +880,7 @@ class SomervilleJira(QaPcJira):
                 product_name {list}: A bounch of product_name
 
             Return {string}: Show product_name,
-                There might be mutiple platform share one task card in Somerville
+                There might be mutiple platforms share a one card in Somerville
                 e.g. Vostro 3520/Vostro 3420/Inspiron 15 3520
         """
         return '' if not product_name else '/'.join(set(product_name))
