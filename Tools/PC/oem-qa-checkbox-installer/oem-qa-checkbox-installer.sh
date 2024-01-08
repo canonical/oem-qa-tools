@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# make sure to use this scrpit by rootless
+if [ "$(whoami)" = "root" ]; then
+    echo "Please don't use root to run this scrpit"
+    exit 1
+fi
+
 # make all files in bin/ executable
 chmod +x ./bin/*
 
