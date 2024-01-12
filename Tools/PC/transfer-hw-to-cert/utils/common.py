@@ -16,7 +16,8 @@ def is_valid_location(location: str) -> bool:
     """ Check if it's valid of the format of Location
     """
     pattern = re.compile(
-        r'^TEL-L\d-F\d{2}-S\d-P[12]$|^TEL-L\d-R\d{2}-S\d{1,2}-P0$')
+        r'^TEL-(L\d-R\d{2}-S\d{1,2}-P[01]|L[356]-F\d{2}-S[1-8]-P[123])$'
+        )
     return True if re.match(pattern, location) else False
 
 
@@ -32,7 +33,7 @@ def parse_location(location: str) -> dict:
     """ Parse the location data
     """
     part_re = re.compile(
-        '(?P<Lab>TEL-L\d)-(?P<Frame>F\d+)-S(?P<Shelf>\d+)-P(?P<Partition>\d+)'  # noqa: W605, E501
+        '(?P<Lab>TEL-L\d)-(?P<Frame>[FR]\d+)-S(?P<Shelf>\d+)-P(?P<Partition>\d+)'  # noqa: W605, E501
     )
     match = re.search(part_re, location)
     return {} if not match else {
