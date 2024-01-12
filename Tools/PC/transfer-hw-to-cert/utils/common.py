@@ -16,9 +16,7 @@ def is_valid_location(location: str) -> bool:
     """ Check if it's valid of the format of Location
     """
     pattern = re.compile(
-        r'^TEL-(L\d-R\d{2}-S\d{1,2}-P[01]|'
-        r'L[35]-F\d{2}-S[1-5]-P[12]|'
-        r'L[6]-F\d{2}-S[1-8]-P[123])$'
+        r'^TEL-(L\d-R\d{2}-S\d{1,2}-P[01]|L[356]-F\d{2}-S[1-8]-P[123])$'
         )
     return True if re.match(pattern, location) else False
 
