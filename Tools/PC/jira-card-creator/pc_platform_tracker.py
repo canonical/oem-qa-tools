@@ -568,19 +568,15 @@ def combine_duplicate_tag(data, primary_key):
 def generate_platform_records(projects):
     payload = {}
     for project in projects:
-        if project in ["stella", "sutton"]:
-            primary_key = "lp_tag"
-        else:
-            # by default, we will group record by platform code name
-            primary_key = "platform_tag"
-
         obj_pj_book = generate_platform_tracker(project)
         project_payload = obj_pj_book.dump_to_dict("status.eq=in-flight")
 
-        new_payload = combine_duplicate_tag(project_payload, primary_key)
+        if project == "somerville":
+            project_payload = combine_duplicate_tag(
+                project_payload, "platform_tag"
+            )
 
-        if new_payload:
-            payload.update({project: new_payload})
+        payload.update({project: project_payload})
 
     return payload
 
