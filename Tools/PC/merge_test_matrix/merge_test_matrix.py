@@ -26,6 +26,7 @@ TEST_MATRIX_MAPPING = OrderedDict(
         "Bluetooth": "BT",
         "WWAN": "WWAN",
         "Screen": "Touchscreen",
+        "Panel Resolution": "Panel-Resolution",
         "Touchpad": "Touchpad",
         "Webcam": "Webcam",
         "Fingerprint": "Fingerprint",
@@ -129,6 +130,10 @@ class InitialResultParser:
                               for tmp in touchscreens]).strip("\n")
         else:
             return "N/A"
+
+    @property
+    def panel(self):
+        return self._data.get("Panel-Resolution")
 
     @property
     def webcam(self):
@@ -367,6 +372,7 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             "Bluetooth",
             "WWAN",
             "Screen",
+            "Panel Resolution",
             "Touchpad",
             "Webcam",
             "Fingerprint",
@@ -400,10 +406,11 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             "bluetooth": 11,
             "wwan": 12,
             "touchscreen": 13,
-            "touchpad": 14,
-            "webcam": 15,
-            "fingerprint": 16,
-            "disk": 17,
+            "panel": 14,
+            "touchpad": 15,
+            "webcam": 16,
+            "fingerprint": 17,
+            "disk": 18,
         }
         tmp_data = {}
 
@@ -434,11 +441,11 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             )
             # Write empty data for other
             worksheet.write(
-                18, row, "",
+                19, row, "",
                 WorkbookFormater.default_format(workbook))
             # Write empty data for test scope
             worksheet.write(
-                19, row, "",
+                20, row, "",
                 WorkbookFormater.default_format(workbook))
 
             if no_highlight:
@@ -479,19 +486,23 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
                     WorkbookFormater.default_format(workbook),
                 )
                 worksheet.write(
-                    14, row, parser.touchpad,
+                    14, row, parser.panel,
                     WorkbookFormater.default_format(workbook)
                 )
                 worksheet.write(
-                    15, row, parser.webcam,
+                    15, row, parser.touchpad,
                     WorkbookFormater.default_format(workbook)
                 )
                 worksheet.write(
-                    16, row, parser.fingerprint,
+                    16, row, parser.webcam,
+                    WorkbookFormater.default_format(workbook)
+                )
+                worksheet.write(
+                    17, row, parser.fingerprint,
                     WorkbookFormater.default_format(workbook),
                 )
                 worksheet.write(
-                    17, row, parser.disk,
+                    18, row, parser.disk,
                     WorkbookFormater.default_format(workbook)
                 )
             else:
