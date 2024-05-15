@@ -699,7 +699,10 @@ VALID_CONTENT_FROM_API = {
                         "version": 1
                     }
                 ]
-   },
+   }
+}
+# VALID_TABLE_FROM_API is the valid output from get_result_table_from_a_jira_card function # noqa: E501
+VALID_TABLE_FROM_API = {
   "table": [
     {
       "type": "tableRow",

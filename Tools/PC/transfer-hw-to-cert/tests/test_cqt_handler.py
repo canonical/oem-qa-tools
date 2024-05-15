@@ -7,12 +7,15 @@ from unittest.mock import patch
 from . import mock_import  # noqa: F401
 from handlers.cqt_handler import (
     get_content_from_a_jira_card,
+    get_result_table_from_a_jira_card,
     retrieve_row_data,
     get_candidate_duts,
+    get_returned_cid_info_from_a_jira
 )
 from .test_data.jira_card_handler_data import (
                                                VALID_ROW_DATA,
                                                VALID_CONTENT_FROM_API,
+                                               VALID_TABLE_FROM_API,
                                                VALID_RESULT_FROM_API,
                                                EMPTY_TABLE_RESULT_FROM_API)
 
@@ -79,10 +82,40 @@ class GetContentFromAJiraCardTest(unittest.TestCase):
             VALID_RESULT_FROM_API, 'customfield_10186']
 
         expected_result = VALID_CONTENT_FROM_API
-
+        
         test_table = get_content_from_a_jira_card(key='fake_key')
         self.assertCountEqual(expected_result, test_table)
 
+
+class GetResultTableFromJiraTest(unittest.TestCase):
+
+    @patch('handlers.cqt_handler.api_get_jira_card')
+    def test_get_valid_result_table(
+        self,
+        mock_api_get_jira_card
+        ):
+        """ Should get valid result table from a Jira card
+        """
+        # Mock API response with valid data
+        mock_api_get_jira_card.return_value = [{
+            'issues': [{
+                'fields': {
+                    'test_result_field_id': {
+                        'content': [{
+                            'type': 'table',
+                            'content': [{'key': 'value'}]  # Your valid table content
+                        }]
+                    }
+                }
+            }]
+        }, 'test_result_field_id']
+
+        # Expected result based on the mocked data
+        expected_result = {'table': [{'key': 'value'}]}
+
+        # Call the function and check the result
+        result = get_result_table_from_a_jira_card(key='fake_key')
+        self.assertEqual(expected_result, result)
 
 class RetrieveRowDataTest(unittest.TestCase):
 
@@ -98,16 +131,23 @@ class RetrieveRowDataTest(unittest.TestCase):
 class GetCandidateDutsTest(unittest.TestCase):
 
     @patch('handlers.cqt_handler.get_content_from_a_jira_card')
+    @patch('handlers.cqt_handler.get_result_table_from_a_jira_card')
     def test_raise_exception_as_table_row_number_is_less_than_3(
-            self, mock_get_content_from_a_jira_card):
+        self,
+        mock_get_content_from_a_jira_card,
+        mock_get_result_table_from_a_jira_card
+    ):
         """ Should raise the exception and message if table's length < 3
         """
-        # Mock as there're only two rows in table
         mock_get_content_from_a_jira_card.return_value = {
-            'table': [1, 2],
-            'gm_image_link': '',
             'description_original_data': '',
             'assignee_original_id': '',
+            'gm_image_link': ''
+        }
+        
+        # Mock as there're only two rows in table
+        mock_get_result_table_from_a_jira_card.return_value = {
+            'table': [1, 2],
         }
 
         with self.assertRaisesRegex(
@@ -116,13 +156,19 @@ class GetCandidateDutsTest(unittest.TestCase):
             get_candidate_duts(key='any')
 
     @patch('handlers.cqt_handler.get_content_from_a_jira_card')
+    @patch('handlers.cqt_handler.get_result_table_from_a_jira_card')
     def test_get_expected_result(
-            self, mock_get_content_from_a_jira_card):
+        self,
+        mock_get_content_from_a_jira_card,
+        mock_get_result_table_from_a_jira_card
+    ):
         """ Should get the expected results based on table data
-        """
-        # Mock as there're only two rows in table
+        """        
         mock_get_content_from_a_jira_card.return_value = \
             VALID_CONTENT_FROM_API
+        
+        mock_get_result_table_from_a_jira_card.return_value = \
+            VALID_TABLE_FROM_API
 
         expected_result = {
             "gm_image_link": "https://oem-share.canonical.com/partners/sutton/share/bachman/sutton-workstation-2022-10-07/pc-sutton-bachman-focal-amd64-X00-20221004-139.iso",  # noqa: E501
@@ -247,10 +293,24 @@ class GetCandidateDutsTest(unittest.TestCase):
         }
 
         test_result = get_candidate_duts(key='any')
+        print('TTTTest_Result', test_result)
 
         self.maxDiff = None
         self.assertEqual(expected_result, test_result)
 
+class GetReturnedCidInfoFromJiraTest(unittest.TestCase):
+
+    @patch('handlers.cqt_handler.api_get_jira_card')
+    def test_get_returned_cid_info_from_a_jira(self, mock_api_get_jira_card):
+        """ Should get CID information from a specific Jira Card
+        """
+        mock_api_get_jira_card.return_value = [
+            VALID_RESULT_FROM_API, 'customfield_10186']
+
+        expected_cid_list = ['202305-24689', 'ABCmar-98765', '309041-3345534', '202303-23456', '202303-28754']
+
+        cid_list = get_returned_cid_info_from_a_jira(key='fake_key')
+        self.assertCountEqual(expected_cid_list, cid_list)
 
 if __name__ == '__main__':
     unittest.main()
