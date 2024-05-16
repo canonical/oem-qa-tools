@@ -96,6 +96,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
         print(
             f"Warning: Failed to get the GM Image Path from card '{key}'")
 
+    #print("RRRRre_CONTENTdict:", re_dict)
     return re_dict
 
 
@@ -260,6 +261,7 @@ def get_candidate_duts(key: str) -> dict:
         }
         re_dict['data'].append(tmp_d)
 
+    #print("RRRRre_dict:", re_dict)
     return re_dict
 
 
