@@ -73,6 +73,10 @@ class IsValidLocationTest(unittest.TestCase):
             {
                 'name': 'correct location 4',
                 'location': 'TEL-L6-R02-S10-P1',
+            },
+            {
+                'name': 'correct location 5',
+                'location': 'TEL-L4-F25-S8-1',
             }
         ]
 
@@ -157,6 +161,16 @@ class ParseLocationTest(unittest.TestCase):
                     'Lab': 'TEL-L6',
                     'Frame': 'R02',
                     'Shelf': '10',
+                    'Partition': '1'
+                },
+            },
+            {
+                'name': 'correct location 3',
+                'location': 'TEL-L4-F25-S8-1',
+                'expected_result': {
+                    'Lab': 'TEL-L4',
+                    'Frame': 'F25',
+                    'Shelf': '8',
                     'Partition': '1'
                 },
             },

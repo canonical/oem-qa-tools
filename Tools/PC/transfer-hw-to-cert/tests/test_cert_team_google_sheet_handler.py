@@ -25,6 +25,13 @@ class IsValidInputDataTest(unittest.TestCase):
                 'location': 'TEL-L3-F23-S5-P1',
                 'gm_image_link': ''
             },
+            {
+                'cid': '202304-28635',
+                'location': 'TEL-L3-F23-S5-P1',
+                'gm_image_link': '',
+                'mac': '',
+                'ip': ''
+            },
         ]
         is_valid, invalid_list = is_valid_input_data(data)
         self.assertEqual(True, is_valid)
