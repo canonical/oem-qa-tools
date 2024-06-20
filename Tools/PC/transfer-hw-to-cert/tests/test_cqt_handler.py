@@ -1,6 +1,4 @@
 import unittest
-import io
-import sys
 from unittest.mock import patch
 
 # Make sure mock_import must need to be imported before our own modules
