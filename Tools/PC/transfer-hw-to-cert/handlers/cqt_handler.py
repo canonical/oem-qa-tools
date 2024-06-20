@@ -18,7 +18,7 @@ def get_content_from_a_jira_card(key: str) -> dict:
                  'VALID_CONTENT_FROM_API' in tests/testdata
     """
     # Get the content of specific Jira card via API
-    ##response, test_result_field_id = api_get_jira_card(key)
+
     response, _ = api_get_jira_card(key)
     if 'errorMessages' in response:
         print(response['errorMessages'][0])
@@ -43,32 +43,13 @@ def get_content_from_a_jira_card(key: str) -> dict:
     description_field = response['issues'][0]['fields']['description']
     assignee_info = response['issues'][0]['fields'].get('assignee', {})
     assignee_id = assignee_info.get('accountId', '')
-    ##test_result_field = response['issues'][0]['fields'][test_result_field_id]
 
     # Return dictionary
     re_dict = {
         'description_original_data': description_field,
         'assignee_original_id': assignee_id,
         'gm_image_link': '',
-    ##    'table': []
     }
-
-    # Retrieve candidate DUT info from table
-    ##try:
-    ##    table_idx = None
-    ##    for idx in range(len(test_result_field['content'])):
-    ##        # Find the index fo 'table' dict in the content list
-    ##        if 'type' in test_result_field['content'][idx] and \
-    ##                test_result_field['content'][idx]['type'] == 'table':
-    ##            table_idx = idx
-    ##            break
-    ##    # Get the content list from table dict
-    ##    table_content = test_result_field['content'][table_idx]['content']
-    ##    re_dict['table'] = table_content
-    ##except Exception as e:
-    ##    print(e)
-    ##    raise Exception(
-    ##        f"Error: Failed to get the table content from card '{key}'")
 
     # Get the link of gm image
     try:
@@ -96,7 +77,6 @@ def get_content_from_a_jira_card(key: str) -> dict:
         print(
             f"Warning: Failed to get the GM Image Path from card '{key}'")
 
-    #print("RRRRre_CONTENTdict:", re_dict)
     return re_dict
 
 
@@ -155,7 +135,7 @@ def get_result_table_from_a_jira_card(key: str) -> dict:
         raise Exception(
             f"Error: Failed to get the table content from card '{key}'")
 
-    return re_dict  
+    return re_dict
 
 
 def api_get_jira_card(key: str) -> tuple[dict, str]:
@@ -231,8 +211,12 @@ def get_candidate_duts(key: str) -> dict:
     # Return dictionary
     re_dict = {
         'data': [],
-        'description_original_data': content_description['description_original_data'],
-        'assignee_original_id': content_description['assignee_original_id'],
+        'description_original_data': content_description[
+            'description_original_data'
+            ],
+        'assignee_original_id': content_description[
+            'assignee_original_id'
+            ],
         'gm_image_link': content_description['gm_image_link'],
     }
 
@@ -261,7 +245,6 @@ def get_candidate_duts(key: str) -> dict:
         }
         re_dict['data'].append(tmp_d)
 
-    #print("RRRRre_dict:", re_dict)
     return re_dict
 
 
@@ -271,12 +254,13 @@ def get_returned_cid_info_from_a_jira(key: str) -> list:
         @return: List of CID strings
         ['202212-12345', '202212-12366']
     """
-    #content = get_content_from_a_jira_card(key)
     content = get_result_table_from_a_jira_card(key)
     cid_list = []
-    for row in content['table'][2:]:  # Start from the third row to skip header and example row
+    for row in content['table'][2:]:
+        # Start from the third row to skip header and example row
         data = retrieve_row_data(row)
-        if data[0]:  # If CID is not empty in the row, add it to the list
-            cid_list.append(data[0])#
-    print('Get Returned CID List:', cid_list )
+        if data[0]:
+            # If CID is not empty in the row, add it to the list
+            cid_list.append(data[0])
+    print('Get Returned CID List:', cid_list)
     return cid_list

@@ -1045,33 +1045,6 @@ VALID_TABLE_FROM_API = {
   ]
 }
 
-# The result who doesn't contains the table in "Test result" field.
-# This one can be used to mimic that users triggers wrong Jira card,
-# non "HW transfer to cert lab" card, so we should expect there's no any
-# "table" related data in this dictionary.
-EMPTY_TABLE_RESULT_FROM_API = {
-    "expand": "names,schema",
-    "startAt": 0,
-    "maxResults": 50,
-    "total": 1,
-    "issues": [
-        {
-            "expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",  # noqa: E501
-            "id": "192827",
-            "self": "https://warthogs.atlassian.net/rest/api/3/issue/192827",
-            "key": "VS-2645",
-            "fields": {
-                "description": {
-                    "type": "doc",
-                    "version": 1,
-                    "content": []
-                },
-                "customfield_10186": None
-            }
-        }
-    ]
-}
-
 # A single row data whose CID and Location are valid
 VALID_ROW_DATA = {
     'type':
