@@ -14,7 +14,7 @@ C3_DIR_PATH = os.path.split(pathlib.Path(__file__).parent.resolve())[0]
 CONF_DIR_PATH = os.path.join(C3_DIR_PATH, 'configs')
 
 
-class TaipeiLocation(Enum):
+class C3Location(Enum):
     """ The location string from C3
     """
     TEL_L1 = 'Taipei Eongher - Lab-1'
@@ -26,6 +26,7 @@ class TaipeiLocation(Enum):
     TEL_L7 = 'Taipei Eongher - Lab-7'
     TEL_OFFICE = 'Taipei Eongher - Lab - Office'
     TAIPEI_OFFCIE = 'Taipei Office'
+    Return = 'Returned to Partner/OEM'
 
 
 @dataclass
@@ -35,7 +36,7 @@ class DUTPayloadAttrs:
         e.g. DUTPayloadAttrs({'holder': '<launchpad_id>'})
     """
     holder: str = None
-    location: TaipeiLocation = None
+    location: C3Location = None
     canonical_contact: str = None
     date_received: str = None
     hardware_build: str = None
