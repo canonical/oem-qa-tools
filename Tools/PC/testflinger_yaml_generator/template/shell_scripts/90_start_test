@@ -1,5 +1,5 @@
 echo "Starting Test"
-PYTHONUNBUFFERED=1 checkbox-cli remote "$DEVICE_IP" checkbox-launcher
+PYTHONUNBUFFERED=1 checkbox-cli control "$DEVICE_IP" checkbox-launcher
 EXITCODE=$?
 echo EXITCODE: "$EXITCODE"
 echo "Copy submission tar file to artifacts folder"
