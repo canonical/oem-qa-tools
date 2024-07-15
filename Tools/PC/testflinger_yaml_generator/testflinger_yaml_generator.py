@@ -198,7 +198,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
         self.generate_config_file(file_path=file_path,
                                   execute_path=execute_path)
 
-    def generate_test_cmd(self, manifest_json_path,test_plan_name,
+    def generate_test_cmd(self, manifest_json_path, test_plan_name,
                           exclude_job_pattern_str, is_distupgrade=False,
                           checkbox_type="deb", is_runtest=True,
                           session_desc="CE-QA-PC_Test"):
