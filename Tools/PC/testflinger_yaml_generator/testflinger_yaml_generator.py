@@ -199,8 +199,9 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                                   execute_path=execute_path)
 
     def generate_test_cmd(self, manifest_json_path, test_plan_name,
-                          exclude_job_pattern_str, checkbox_type="deb",
-                          is_runtest=True, session_desc="CE-QA-PC_Test"):
+                          exclude_job_pattern_str, is_distupgrade=False,
+                          checkbox_type="deb", is_runtest=True,
+                          session_desc="CE-QA-PC_Test"):
         if checkbox_type not in ["deb", "snap"]:
             raise ValueError(f"Checkbox type is not valid. \
                               Expected one of: {checkbox_type}")
@@ -211,6 +212,9 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                     continue
             if os.path.basename(file) == "90_start_test" and\
                     is_runtest is False:
+                continue
+            if os.path.basename(file) == "01_dist_upgrade" and\
+                    is_distupgrade is False:
                 continue
 
             if os.path.basename(file) == "90_start_test":
@@ -247,7 +251,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
                  globaltimeout=43200, outputtimeout=3600,
                  template_bin_folder="./template/shell_scripts/",
                  launcher_temp_folder="./template/launcher_config/",
-                 is_runtest=True):
+                 is_runtest=True, is_distupgrade=False):
         YamlGenerator.__init__(self,
                                default_yaml_file_path=default_yaml_file_path)
         TestCommandGenerator.__init__(self, template_bin_folder,
@@ -256,6 +260,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         self.yaml_update_field({"output_timeout": outputtimeout})
         self.yaml_update_field({"job_queue": cid})
         self.is_runtest = is_runtest
+        self.is_distupgrade = is_distupgrade
 
     def provision_setting(self, is_provision, image="desktop-22-04-2-uefi",
                           provision_type="distro"):
@@ -280,6 +285,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         test_cmds_str = self.generate_test_cmd(manifest_json_path,
                                                test_plan_name,
                                                exclude_job_pattern_str,
+                                               self.is_distupgrade,
                                                checkbox_type,
                                                self.is_runtest,
                                                session_desc)
@@ -301,6 +307,9 @@ def parse_input_arg():
     opt_args = parser.add_argument_group("general options")
     opt_args.add_argument('--outputFolder', type=str, default="./",
                           help='Set the output folder path')
+    opt_args.add_argument('--dist-upgrade', action='store_true',
+                          help="Set to allow the dist-upgrade before \
+                          run checkbox test")
     opt_args.add_argument('--testplan', type=str, default="",
                           help="Set the checkbox test plan name. \
                           If didn\'t set this will not run checkbox test")
@@ -358,13 +367,16 @@ def parse_input_arg():
 
 if __name__ == "__main__":
     args = parse_input_arg()
-    reserve, provision, runtest = True, True, True
+    reserve, provision, runtest, distupgrade = True, True, True, False
     if not args.LpID:
         reserve = False
     if not args.provisionImage:
         provision = False
     if not args.testplan:
         runtest = False
+    if args.dist_upgrade:
+        distupgrade = True
+
     if os.path.splitext(args.outputFileName)[-1] in [".yaml", ".yml"]:
         TF_yaml_file_path = f"{args.outputFolder}/{args.outputFileName}"
     else:
@@ -376,7 +388,7 @@ if __name__ == "__main__":
                             outputtimeout=args.outputTimeout,
                             template_bin_folder=args.binFolder,
                             launcher_temp_folder=args.LauncherTemplate,
-                            is_runtest=runtest)
+                            is_runtest=runtest, is_distupgrade=distupgrade)
 
     builder.provision_setting(is_provision=provision,
                               image=args.provisionImage,
