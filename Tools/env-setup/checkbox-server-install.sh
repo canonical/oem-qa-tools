@@ -10,7 +10,7 @@
 setup_environment()
 {
 	echo " "
-	echo " \033[1;35m Setup Environment \033[0m"
+	printf " \033[1;35m Setup Environment \033[0m\n"
 	echo "%s ALL =(root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/allowall
 
 	# Disable auto upgrade
@@ -31,7 +31,7 @@ EOF
 setup_obex()
 {
 	echo " "
-	echo " \033[1;35m Install Obex server  \033[0m"
+	printf " \033[1;35m Install Obex server  \033[0m\n"
 	sudo apt install obexftp -y
 	sudo add-apt-repository ppa:lihow731/ppa -y
 	sudo apt-get update
@@ -46,7 +46,7 @@ setup_obex()
 	echo "s" |sudo -S -k gnome-terminal -- obexftpd -c /home/s/.obexftp -b
 
 	#Create obex.sh
-	echo " \033[1;35m Setup Obex  \033[0m"
+	printf " \033[1;35m Setup Obex  \033[0m\n"
 	echo 's' | sudo -S bash -c 'echo "#!/bin/bash
 sudo chmod 777 /var/run/sdp
 sudo rm -rf /var/lib/bluetooth/*
@@ -72,14 +72,14 @@ setup_eddystone()
 {
 	#Download advertise-url file to /usr/bin
 	echo " "
-	echo " \033[1;35m Download Advertise-url file  \033[0m"
+	printf " \033[1;35m Download Advertise-url file  \033[0m\n"
 	sudo apt-get install git -y
 	git clone https://github.com/google/eddystone.git
 	sudo cp eddystone/eddystone-url/implementations/linux/advertise-url /usr/bin/
 	rm -rf eddystone/
 
 	#Create beacon.sh
-	echo " \033[1;35m Setup Beacon  \033[0m"
+	printf " \033[1;35m Setup Beacon  \033[0m\n"
 	echo 's' | sudo -S bash -c 'echo "#!/bin/bash
 python3 /usr/bin/./advertise-url -u http://www.ubuntu.com
 echo \"Beacon Service is enabled\"" > /usr/bin/beacon.sh'
@@ -99,14 +99,14 @@ Name[en_US]=Starup script_beacon
 Name=Starup script_beacon
 Comment[en_US]=#
 Comment=#" > /etc/xdg/autostart/beacon.desktop'
-	echo '\n'
+	printf '\n'
 }
 
 setup_iperf()
 {
 	#Install Iperf
 	echo " "
-	echo " \033[1;35m Setup Iperf  \033[0m"
+	printf " \033[1;35m Setup Iperf  \033[0m\n"
 	sudo apt update
 	sudo apt install iperf3 -y
 
@@ -131,9 +131,9 @@ setup_server()
 	setup_eddystone
 	setup_iperf
 
-	echo "\033[1;42;37m Done\033[0m"
+	printf "\033[1;42;37m Done\033[0m\n"
 	echo " "
-	echo "\033[1;31m Please reboot the system to active all services  \033[0m"
+	printf "\033[1;31m Please reboot the system to active all services  \033[0m\n"
 }
 
 setup_server
