@@ -7,7 +7,7 @@ _run sudo apt-get -qq purge -y checkbox-provider-*
 _run sudo add-apt-repository --remove -y ppa:checkbox-dev/edge
 _run sudo add-apt-repository ppa:checkbox-dev/beta -y
 _run sudo apt-get update
-_run sudo DEBIAN_FRONTEND=noninteractive apt-get install checkbox-provider-base checkbox-ng checkbox-provider-resource checkbox-provider-certification-client plainbox-provider-pc-sanity -y
+_run sudo DEBIAN_FRONTEND=noninteractive apt-get install checkbox-provider-base checkbox-ng checkbox-provider-resource checkbox-provider-certification-client checkbox-provider-sru plainbox-provider-pc-sanity -y
 _run checkbox-cli --version
 
 # we are testing using debs on the dut
