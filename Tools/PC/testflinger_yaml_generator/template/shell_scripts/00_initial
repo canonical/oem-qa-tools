@@ -45,12 +45,12 @@ echo
 echo "==========================================="
 echo
 
-_run sudo amixer set Master unmute
-_run sudo amixer set Master 100
-_run sudo amixer set Speaker 100
-_run sudo amixer -c 1 set Master unmute
-_run sudo amixer -c 1 set Master 100
-_run sudo amixer -c 1 set Speaker 100
+_run amixer set Master unmute
+_run amixer set Master 100
+_run amixer set Speaker 100
+_run amixer -c 1 set Master unmute
+_run amixer -c 1 set Master 100
+_run amixer -c 1 set Speaker 100
 
 _run gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
 _run gsettings set org.gnome.desktop.screensaver lock-enabled false
