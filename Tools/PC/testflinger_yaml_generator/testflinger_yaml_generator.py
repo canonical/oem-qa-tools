@@ -263,8 +263,8 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         self.is_distupgrade = is_distupgrade
 
     def provision_setting(self, is_provision, image="desktop-22-04-2-uefi",
-                          provision_type="distro", provision_token=None,
-                          provision_auth_keys=None, provision_user_data=None):
+                          provision_type="distro", provision_token="",
+                          provision_auth_keys="", provision_user_data=""):
         if not is_provision:
             self.yaml_remove_field("provision_data")
             return
@@ -279,7 +279,8 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
             setting_dict['provision_data']['token_file'] = provision_token
             attachments.append({'local': provision_token})
         if provision_auth_keys:
-            setting_dict['provision_data']['authorized_keys'] = provision_auth_keys
+            setting_dict['provision_data'][
+                'authorized_keys'] = provision_auth_keys
             attachments.append({'local': provision_auth_keys})
         if attachments:
             setting_dict['provision_data']['attachments'] = attachments
@@ -343,11 +344,14 @@ def parse_input_arg():
                           ie, desktop-22-04-2-uefi. \
                           If didn\'t set this mean no provision')
     opt_args.add_argument('--provisionToken', default="", type=str,
-                           help='File with username and token for image URL auth')
+                          help='File with username and token for image \
+                          URL auth')
     opt_args.add_argument('--provisionUserData', default="", type=str,
-                           help='user-data file for autoinstall and cloud-init provisioning')
+                          help='user-data file for autoinstall and cloud-init \
+                          provisioning')
     opt_args.add_argument('--provisionAuthKeys', default="", type=str,
-                           help='authorized_keys file to add in provisioned system')
+                          help='authorized_keys file to add in provisioned \
+                          system')
     opt_args.add_argument('--globalTimeout', type=int, default=43200,
                           help="Set the testflinger's global timeout. \
                           Max:43200")
