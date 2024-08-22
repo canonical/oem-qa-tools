@@ -345,7 +345,9 @@ def parse_input_arg():
                               help="Set the manifest json file to build \
                               the launcher.")
     opt_launcher.add_argument("--LauncherTemplate", type=str,
-                              default=f"{script_dir}/template/launcher_config/",
+                              default=(
+                                f"{script_dir}/template/launcher_config/"
+                              ),
                               help="Set the launcher template folder")
     opt_tfyaml = parser.add_argument_group("Testflinger yaml options")
     opt_tfyaml.add_argument("--LpID", type=str, default="",
