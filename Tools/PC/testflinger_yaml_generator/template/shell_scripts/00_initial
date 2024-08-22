@@ -36,14 +36,21 @@ wait_for_ssh() {{
     done
 }}
 
+DCD=$(_run ubuntu-report show | grep \"DCD\": | awk '{print $2}')
 
 echo
 echo "====== TARGET DEVICE CONNECTION INFO ======"
 echo
 echo DEVICE_IP: $TARGET_DEVICE_USERNAME@"$DEVICE_IP"
+echo DCD: "$DCD"
 echo
 echo "==========================================="
 echo
+
+mkdir -p artifacts
+echo "$DCD" > artifacts/dcd.info
+echo "Files in artifacts:"
+ls artifacts
 
 _run amixer set Master unmute
 _run amixer set Master 100
