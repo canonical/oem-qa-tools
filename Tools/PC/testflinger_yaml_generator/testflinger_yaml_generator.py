@@ -294,6 +294,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
 
 
 def parse_input_arg():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(
         description='Testflinger yaml file genertor',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -340,11 +341,11 @@ def parse_input_arg():
                               default="CE-QA-PC_Test",
                               help="Set the session description")
     opt_launcher.add_argument("--manifestJson", type=str,
-                              default="./template/manifest.json",
+                              default=f"{script_dir}/template/manifest.json",
                               help="Set the manifest json file to build \
                               the launcher.")
     opt_launcher.add_argument("--LauncherTemplate", type=str,
-                              default="./template/launcher_config/",
+                              default=f"{script_dir}/template/launcher_config/",
                               help="Set the launcher template folder")
     opt_tfyaml = parser.add_argument_group("Testflinger yaml options")
     opt_tfyaml.add_argument("--LpID", type=str, default="",
@@ -353,13 +354,15 @@ def parse_input_arg():
     opt_tfyaml.add_argument("--reserveTime", type=int, default=1200,
                             help="Set the timeout (sec) for reserve.")
     opt_tfyaml.add_argument("--TFYamlTemplate", type=str,
-                            default="./template/template.yaml",
+                            default=f"{script_dir}/template/template.yaml",
                             help="Set the testflinger template yaml file")
 
     opt_shell = parser.add_argument_group("Test command in testflinger yaml")
-    opt_shell.add_argument("--binFolder", type=str,
-                           default="./template/shell_scripts/",
-                           help="Set the testflinger test command folder")
+    opt_shell.add_argument(
+        "--binFolder", type=str,
+        default=f"{script_dir}/template/shell_scripts/",
+        help="Set the testflinger test command folder",
+    )
 
     args = parser.parse_args()
     return args
