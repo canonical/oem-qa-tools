@@ -344,14 +344,20 @@ def parse_input_arg():
                           ie, desktop-22-04-2-uefi. \
                           If didn\'t set this mean no provision')
     opt_args.add_argument('--provisionToken', default="", type=str,
-                          help='File with username and token for image \
-                          URL auth')
+                          help='Optional file with username and token \
+                          when image URL requires authentication \
+                          (i.e Jenkins artifact). This file must be \
+                          in YAML format, i.e: \
+                          \"username: $JENKINS_USERNAME \\n \
+                          token: $JENKINS_API_TOKEN\"')
     opt_args.add_argument('--provisionUserData', default="", type=str,
                           help='user-data file for autoinstall and cloud-init \
-                          provisioning')
+                          provisioning. This argument is a MUST required \
+                          if deploy the image using the autoinstall image \
+                          (i.e. 24.04 image)')
     opt_args.add_argument('--provisionAuthKeys', default="", type=str,
-                          help='authorized_keys file to add in provisioned \
-                          system')
+                          help='ssh authorized_keys file to add in \
+                          provisioned system')
     opt_args.add_argument('--globalTimeout', type=int, default=43200,
                           help="Set the testflinger's global timeout. \
                           Max:43200")
