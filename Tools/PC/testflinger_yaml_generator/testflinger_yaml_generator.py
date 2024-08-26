@@ -172,11 +172,10 @@ class CheckboxLauncherBuilder(ConfigOperation):
         self.update_section_value("test selection", "exclude",
                                   exclude_job_pattern_str)
 
-    def set_session_desc(self, session_desc="CE-QA-PC_Test"):
-        self.update_section_value("launcher", "session_desc", session_desc)
-
 
 class TestCommandGenerator(CheckboxLauncherBuilder):
+    default_session_desc = "CE-QA-PC_Test"
+
     def __init__(self, template_bin_folder="./template/shell_scripts/",
                  launcher_temp_folder="./template/launcher_config"):
         super().__init__(template_folder=launcher_temp_folder)
@@ -189,19 +188,17 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
 
     def build_launcher(self, manifest_json_path, test_plan_name,
                        exclude_job_pattern_str, file_path="./final_launcher",
-                       execute_path="/usr/bin/env checkbox-cli",
-                       session_desc="CE-QA-PC_Test"):
+                       execute_path="/usr/bin/env checkbox-cli"):
         self.set_test_plan(test_plan_name)
         self.set_exclude_job(exclude_job_pattern_str)
         self.merge_manifest_json(json_file_path=manifest_json_path)
-        self.set_session_desc(session_desc=session_desc)
         self.generate_config_file(file_path=file_path,
                                   execute_path=execute_path)
 
     def generate_test_cmd(self, manifest_json_path, test_plan_name,
                           exclude_job_pattern_str, is_distupgrade=False,
                           checkbox_type="deb", is_runtest=True,
-                          session_desc="CE-QA-PC_Test"):
+                          session_desc=default_session_desc):
         if checkbox_type not in ["deb", "snap"]:
             raise ValueError(f"Checkbox type is not valid. \
                               Expected one of: {checkbox_type}")
@@ -222,8 +219,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                 self.build_launcher(manifest_json_path, test_plan_name,
                                     exclude_job_pattern_str,
                                     launcher_file_path,
-                                    "/usr/bin/env checkbox-cli",
-                                    session_desc)
+                                    "/usr/bin/env checkbox-cli")
 
                 with open(launcher_file_path, "r", encoding="utf-8") as l_file:
                     lines = l_file.readlines()
@@ -235,6 +231,15 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
             with open(file, "r", encoding="utf-8") as f_file:
                 content = f_file.read().strip()
                 if content:
+                    if (
+                        self.default_session_desc != session_desc
+                        and f'SESSION_DESC="{self.default_session_desc}"'
+                        in content
+                    ):
+                        content = content.replace(
+                            f'SESSION_DESC="{self.default_session_desc}"',
+                            f'SESSION_DESC="{session_desc}"'
+                        )
                     cmd_str += f"{content}\n"
         lines = cmd_str.split("\n")
         cmd_str = "\n".join([line for line in lines if line.strip("\n") != ""])
@@ -334,6 +339,9 @@ def parse_input_arg():
     opt_args.add_argument('--excludeJobs', type=str, default="",
                           help='Set the exclude jobs pattern. \
                           ie".*memory/memory_stress_ng".')
+    opt_args.add_argument("--sessionDesc", type=str,
+                          default="CE-QA-PC_Test",
+                          help="Set the session description")
     opt_args.add_argument('--checkboxType', choices=["deb", "snap"],
                           default="deb",
                           help="Set which checkbox type you need to \
@@ -369,9 +377,6 @@ def parse_input_arg():
                           timeout.')
 
     opt_launcher = parser.add_argument_group("Launcher settion  options")
-    opt_launcher.add_argument("--sessionDesc", type=str,
-                              default="CE-QA-PC_Test",
-                              help="Set the session description")
     opt_launcher.add_argument("--manifestJson", type=str,
                               default=f"{script_dir}/template/manifest.json",
                               help="Set the manifest json file to build \

@@ -2,8 +2,38 @@ echo "Starting Test"
 PYTHONUNBUFFERED=1 checkbox-cli control "$DEVICE_IP" checkbox-launcher
 EXITCODE=$?
 echo CHECKBOX EXITCODE: "$EXITCODE"
-echo "Copy submission tar file to artifacts folder"
-mv /home/ubuntu/c3-local-submission.tar.xz artifacts/
+
+SESSION_DESC="CE-QA-PC_Test"
+SUBMISSION_TAR_PATH="/home/ubuntu/c3-local-submission.tar.xz"
+MAXLOOP=20
+COUNT=0
+
+# Check if the file exists
+if [ ! -f "$SUBMISSION_TAR_PATH" ]; then
+    echo "Submission tar file not found: $SUBMISSION_TAR_PATH"
+    exit 1
+fi
+
+echo "Move submission tar file to artifacts folder"
+mv "$SUBMISSION_TAR_PATH" artifacts/
+
+while [ $COUNT -lt $MAXLOOP ]; do
+    RET=$(checkbox-cli submit -m "$SESSION_DESC" "$HEXR_DEVICE_SECURE_ID" artifacts/c3-local-submission.tar.xz)
+    if [[ $RET == *"Successfully"* ]]; then
+        echo "Found 'Successfully' in output."
+        echo "$RET" > "artifacts/submission_url.log"
+        break
+    else
+        echo "Attempt $((COUNT+1)): 'Successfully' not found."
+    fi
+    COUNT=$((COUNT+1))
+done
+
+if [ $COUNT -ge $MAXLOOP ]; then
+    echo "Maximum attempts reached without success."
+    exit 1
+fi
+
 echo "Files in artifacts:"
 ls artifacts
 
