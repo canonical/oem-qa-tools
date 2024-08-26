@@ -230,15 +230,16 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                     cmd_str += "EOF\n"
             with open(file, "r", encoding="utf-8") as f_file:
                 content = f_file.read().strip()
-                if (
-                    self.default_session_desc != session_desc and
-                    f'SESSION_DESC="{self.default_session_desc}"' in content
-                ):
-                    content = content.replace(
-                        f'SESSION_DESC="{self.default_session_desc}"',
-                        f'SESSION_DESC="{session_desc}"'
-                    )
                 if content:
+                    if (
+                        self.default_session_desc != session_desc
+                        and f'SESSION_DESC="{self.default_session_desc}"'
+                        in content
+                    ):
+                        content = content.replace(
+                            f'SESSION_DESC="{self.default_session_desc}"',
+                            f'SESSION_DESC="{session_desc}"'
+                        )
                     cmd_str += f"{content}\n"
         lines = cmd_str.split("\n")
         cmd_str = "\n".join([line for line in lines if line.strip("\n") != ""])
