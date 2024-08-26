@@ -174,6 +174,8 @@ class CheckboxLauncherBuilder(ConfigOperation):
 
 
 class TestCommandGenerator(CheckboxLauncherBuilder):
+    default_session_desc = "CE-QA-PC_Test"
+
     def __init__(self, template_bin_folder="./template/shell_scripts/",
                  launcher_temp_folder="./template/launcher_config"):
         super().__init__(template_folder=launcher_temp_folder)
@@ -196,8 +198,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
     def generate_test_cmd(self, manifest_json_path, test_plan_name,
                           exclude_job_pattern_str, is_distupgrade=False,
                           checkbox_type="deb", is_runtest=True,
-                          session_desc="CE-QA-PC_Test"):
-        default_session_desc = "CE-QA-PC_Test"
+                          session_desc=default_session_desc):
         if checkbox_type not in ["deb", "snap"]:
             raise ValueError(f"Checkbox type is not valid. \
                               Expected one of: {checkbox_type}")
@@ -229,9 +230,12 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                     cmd_str += "EOF\n"
             with open(file, "r", encoding="utf-8") as f_file:
                 content = f_file.read().strip()
-                if f'SESSION_DESC="{default_session_desc}"' in content:
+                if (
+                    self.default_session_desc != session_desc and
+                    f'SESSION_DESC="{self.default_session_desc}"' in content
+                ):
                     content = content.replace(
-                        f'SESSION_DESC="{default_session_desc}"',
+                        f'SESSION_DESC="{self.default_session_desc}"',
                         f'SESSION_DESC="{session_desc}"'
                     )
                 if content:
