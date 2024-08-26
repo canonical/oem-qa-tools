@@ -359,6 +359,9 @@ def parse_input_arg():
     opt_args.add_argument('--provisionAuthKeys', default="", type=str,
                           help='ssh authorized_keys file to add in \
                           provisioned system')
+    opt_args.add_argument('--provisionOnly', action='store_true',
+                          help='Run only provisioning without tests. \
+                          Removes test_data before generating the yaml.')
     opt_args.add_argument('--globalTimeout', type=int, default=43200,
                           help="Set the testflinger's global timeout. \
                           Max:43200")
@@ -433,15 +436,19 @@ if __name__ == "__main__":
                               provision_token=args.provisionToken,
                               provision_user_data=args.provisionUserData,
                               provision_auth_keys=args.provisionAuthKeys)
+    if args.provisionOnly:
+        # remove test and reserve stages that were added by default
+        builder.yaml_remove_field("test_data")
+        builder.yaml_remove_field("reserve_data")
+    else:
+        builder.reserve_setting(is_reserve=reserve,
+                                lp_username=args.LpID,
+                                timeout=args.reserveTime)
 
-    builder.reserve_setting(is_reserve=reserve,
-                            lp_username=args.LpID,
-                            timeout=args.reserveTime)
-
-    builder.test_cmd_setting(manifest_json_path=args.manifestJson,
-                             test_plan_name=args.testplan,
-                             exclude_job_pattern_str=args.excludeJobs,
-                             checkbox_type=args.checkboxType,
-                             session_desc=args.sessionDesc)
+        builder.test_cmd_setting(manifest_json_path=args.manifestJson,
+                                 test_plan_name=args.testplan,
+                                 exclude_job_pattern_str=args.excludeJobs,
+                                 checkbox_type=args.checkboxType,
+                                 session_desc=args.sessionDesc)
 
     builder.generate_yaml_file(file_path=TF_yaml_file_path)
