@@ -4,18 +4,21 @@ EXITCODE=$?
 echo CHECKBOX EXITCODE: "$EXITCODE"
 
 SESSION_DESC="CE-QA-PC_Test"
-FILE_PATH="/home/ubuntu/c3-local-submission.tar.xz"
+SUBMISSION_TAR_PATH="/home/ubuntu/c3-local-submission.tar.xz"
 MAXLOOP=20
 COUNT=0
 
 # Check if the file exists
-if [ ! -f "$FILE_PATH" ]; then
-    echo "Submission tar file not found: $FILE_PATH"
+if [ ! -f "$SUBMISSION_TAR_PATH" ]; then
+    echo "Submission tar file not found: $SUBMISSION_TAR_PATH"
     exit 1
 fi
 
+echo "Move submission tar file to artifacts folder"
+mv "$SUBMISSION_TAR_PATH" artifacts/
+
 while [ $COUNT -lt $MAXLOOP ]; do
-    RET=$(checkbox-cli submit -m "$SESSION_DESC" "$HEXR_DEVICE_SECURE_ID" "$FILE_PATH")
+    RET=$(checkbox-cli submit -m "$SESSION_DESC" "$HEXR_DEVICE_SECURE_ID" artifacts/c3-local-submission.tar.xz)
     if [[ $RET == *"Successfully"* ]]; then
         echo "Found 'Successfully' in output."
         echo "$RET" > "artifacts/submission_url.log"
@@ -31,8 +34,6 @@ if [ $COUNT -ge $MAXLOOP ]; then
     exit 1
 fi
 
-echo "Move submission tar file to artifacts folder"
-mv "$FILE_PATH" artifacts/
 echo "Files in artifacts:"
 ls artifacts
 
