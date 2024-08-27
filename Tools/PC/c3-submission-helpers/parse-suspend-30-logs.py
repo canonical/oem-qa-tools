@@ -88,10 +88,10 @@ default_name = (
 
 
 def main():
-    SECTION_BEGIN = "= Test Results ="
+    SECTION_BEGIN = "= Test Results ="  # noqa: N806
 
     args = parse_args()
-    EXPECTED_NUM_RESULTS = args.num_runs or 90
+    EXPECTED_NUM_RESULTS = args.num_runs or 90  # noqa: N806
     print(f"{C.ok}Expecting 90 results{C.end}")
 
     if args.write_individual_files:
