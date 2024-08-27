@@ -41,7 +41,10 @@ def parse_args() -> Input:
         "-w",
         "--write-individual-files",
         action="store_true",
-        help="If specified, the logs will be split up into individual files in a directory specified with -d",
+        help=(
+            "If specified, the logs will be split up into individual files "
+            "in a directory specified with -d"
+        ),
     )
     p.add_argument(
         "-d",
@@ -49,19 +52,24 @@ def parse_args() -> Input:
         dest="write_directory",
         default="",
         required=False,
-        help="Where to write the individual logs. If not specified and the -w flag is true, it will create a new local directory called {your original file name}-split",
+        help=(
+            "Where to write the individual logs. "
+            "If not specified and the -w flag is true, "
+            "it will create a new local directory called "
+            "{your original file name}-split"
+        ),
     )
     p.add_argument(
         "-v",
         "--verbose",
-        help="Show individual line numbers of where the errors are in th input file",
+        help="Show line numbers of where the errors are in th input file",
         dest="verbose",
         action="store_true",
     )
     p.add_argument(
         "-n",
         "--num-runs",
-        help="Set the expected number of runs in the input file. Default is 90.",
+        help="Set the expected number of runs in the input file. Default=90.",
         dest="num_runs",
         required=False,
     )
@@ -73,7 +81,10 @@ def parse_args() -> Input:
 
 FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
 
-default_name = "attachment_files/com.canonical.certification__stress-tests_suspend-30-cycles-with-reboot-3-log-attach"
+default_name = (
+    "attachment_files/com.canonical.certification__"
+    "stress-tests_suspend-30-cycles-with-reboot-3-log-attach"
+)
 
 
 def main():
@@ -84,13 +95,15 @@ def main():
     print(f"{C.ok}Expecting 90 results{C.end}")
 
     if args.write_individual_files:
-        print(f'Individual test results will be written to "{args.write_directory}"')
+        print(f'Individual results will be in "{args.write_directory}"')
 
     file_in = None
     if args.filename.endswith(".tar.xz"):
         extracted = tarfile.open(args.filename).extractfile(default_name)
         if extracted is None:
-            raise ValueError(f"Failed to extract {default_name} from {args.filename}")
+            raise ValueError(
+                f"Failed to extract {default_name} from {args.filename}"
+            )
         file_in = io.TextIOWrapper(extracted)
     else:
         file_in = open(args.filename)
@@ -109,7 +122,7 @@ def main():
 
         i = 0
         while i < len(lines) and SECTION_BEGIN not in lines[i]:
-            i += 1 # scroll to the first section
+            i += 1  # scroll to the first section
 
         while i < len(lines):
             line = lines[i]
@@ -128,7 +141,9 @@ def main():
                     curr_result_lines.append(curr_line)
 
                 if curr_line.startswith("This test run on"):
-                    # This test run on 13/08/24 at 01:10:22 on host Linux ubuntu 6.5.0-1027-oem
+                    # Example:
+                    # This test run on 13/08/24 at
+                    # 01:10:22 on host Linux ubuntu 6.5.0-1027-oem
                     regex = r"This test run on (.*) at (.*) on host (.*)"
                     match_output = re.match(regex, curr_line)
                     if match_output:
@@ -142,13 +157,16 @@ def main():
                         if fail_count == "NONE":
                             continue
                         if args.verbose:
+                            t = fail_type.lower()
                             print(
                                 f"Line {i}, run {len(test_results) + 1} has "
-                                f"{getattr(C, fail_type.lower())}{fail_type.lower()}{C.end} "
+                                f"{getattr(C, t)}{t}{C.end} "
                                 f"failures: {fail_count}"
                             )
 
-                        failed_runs_by_type[fail_type].append(len(test_results) + 1)
+                        failed_runs_by_type[fail_type].append(
+                            len(test_results) + 1
+                        )
                 i += 1
 
             if args.write_individual_files:
@@ -158,9 +176,11 @@ def main():
                     f"{args.write_directory}/{len(test_results) + 1}.txt", "w"
                 ) as f:
                     f.write(f"{' BEGIN METADATA  ':*^80}\n\n")
-                    f.write("\n".join(f"{k}: {v}" for k, v in curr_meta.items()))
                     f.write(
-                        f"\n\n{f'  END OF METADATA, BEGIN ORIGINAL OUTPUT  ':*^80}\n\n"
+                        "\n".join(f"{k}: {v}" for k, v in curr_meta.items())
+                    )
+                    f.write(
+                        f"{'  END OF METADATA, BEGIN ORIGINAL OUTPUT  ':*^80}"
                     )
                     f.write("\n".join(curr_result_lines))
 
@@ -174,14 +194,18 @@ def main():
             (
                 f"{C.ok}COUNT OK!{C.end}"
                 if n_results == EXPECTED_NUM_RESULTS
-                else f"Expected {EXPECTED_NUM_RESULTS} != {C.critical}{n_results}{C.end}"
+                else (
+                    f"Expected {EXPECTED_NUM_RESULTS} "
+                    f"!= {C.critical}{n_results}{C.end}"
+                )
             ),
         )
 
         for fail_type, runs in failed_runs_by_type.items():
             if len(runs) != 0:
                 print(
-                    f"Runs with {getattr(C, fail_type.lower())}{fail_type}{C.end} failures: {runs}"
+                    f"Runs with {getattr(C, fail_type.lower())}"
+                    f"{fail_type}{C.end} failures: {runs}"
                 )
 
 
