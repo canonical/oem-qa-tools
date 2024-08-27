@@ -180,7 +180,9 @@ def main():
                         "\n".join(f"{k}: {v}" for k, v in curr_meta.items())
                     )
                     f.write(
-                        f"{'  END OF METADATA, BEGIN ORIGINAL OUTPUT  ':*^80}"
+                        "\n\n"
+                        f"{' END OF METADATA, BEGIN ORIGINAL OUTPUT  ':*^80}"
+                        "\n\n"
                     )
                     f.write("\n".join(curr_result_lines))
 
