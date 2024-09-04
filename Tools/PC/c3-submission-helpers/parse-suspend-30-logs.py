@@ -14,6 +14,7 @@ class Input:
     write_directory: str
     verbose: bool
     num_runs: int | None
+    inverse_find: bool
 
 
 class C:  # color
@@ -77,6 +78,17 @@ def parse_args() -> Input:
         dest="num_runs",
         required=False,
         type=int,
+    )
+    p.add_argument(
+        "-i",
+        "--inverse",
+        dest="inverse_find",
+        action="store_true",
+        default=False,
+        help=(
+            "Find runs that do NOT have a failure instead of the opposite."
+            "Useful if you encounter machines that fails almost every run."
+        ),
     )
 
     out = p.parse_args()
@@ -209,11 +221,24 @@ def main():
 
         for fail_type, runs in failed_runs_by_type.items():
             if len(runs) != 0:
-                print(
-                    f"Runs with {getattr(C, fail_type.lower())}"
-                    f"{fail_type}{C.end} failures: {runs}"
-                )
-                print(f"  - Failrate: {len(runs)}/{n_results}")
+                if args.inverse_find:
+                    runs_without_failures = list(
+                        set(range(n_results)).difference(runs)
+                    )
+                    print(
+                        f"Runs without {getattr(C, fail_type.lower())}"
+                        f"{fail_type}{C.end} failures: {runs_without_failures}"
+                    )
+                    print(
+                        "  - Success rate:",
+                        f"{len(runs_without_failures)}/{n_results}",
+                    )
+                else:
+                    print(
+                        f"Runs with {getattr(C, fail_type.lower())}"
+                        f"{fail_type}{C.end} failures: {runs}"
+                    )
+                    print(f"  - Fail rate: {len(runs)}/{n_results}")
 
 
 if __name__ == "__main__":
