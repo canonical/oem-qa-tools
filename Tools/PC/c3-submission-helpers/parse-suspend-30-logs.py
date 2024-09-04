@@ -27,6 +27,10 @@ class C:  # color
 
 
 class Meta(TypedDict):
+    """
+    Metadata of a single run. We only collect time and kernel info for now
+    """
+
     date: str
     time: str
     kernel: str
@@ -72,6 +76,7 @@ def parse_args() -> Input:
         help="Set the expected number of runs in the input file. Default=90.",
         dest="num_runs",
         required=False,
+        type=int,
     )
 
     out = p.parse_args()
@@ -92,7 +97,7 @@ def main():
 
     args = parse_args()
     EXPECTED_NUM_RESULTS = args.num_runs or 90  # noqa: N806
-    print(f"{C.ok}Expecting 90 results{C.end}")
+    print(f"{C.ok}Expecting {EXPECTED_NUM_RESULTS} results{C.end}")
 
     if args.write_individual_files:
         print(f'Individual results will be in "{args.write_directory}"')
@@ -190,17 +195,16 @@ def main():
             meta.append(curr_meta)
 
         n_results = len(test_results)
-
         print(
-            f"Total results: {n_results}",
-            (
+            f"\nTotal results = {n_results}"
+            + (
                 f"{C.ok}COUNT OK!{C.end}"
                 if n_results == EXPECTED_NUM_RESULTS
                 else (
-                    f"Expected {EXPECTED_NUM_RESULTS} "
-                    f"!= {C.critical}{n_results}{C.end}"
+                    f", {C.critical}but {EXPECTED_NUM_RESULTS} "
+                    f"was expected{C.end}"
                 )
-            ),
+            )
         )
 
         for fail_type, runs in failed_runs_by_type.items():
@@ -209,6 +213,7 @@ def main():
                     f"Runs with {getattr(C, fail_type.lower())}"
                     f"{fail_type}{C.end} failures: {runs}"
                 )
+                print(f"  - Failrate: {len(runs)}/{n_results}")
 
 
 if __name__ == "__main__":
