@@ -210,7 +210,7 @@ def main():
         print(
             f"\nTotal results = {n_results}"
             + (
-                f"{C.ok}COUNT OK!{C.end}"
+                f" {C.ok}COUNT OK!{C.end}"
                 if n_results == EXPECTED_NUM_RESULTS
                 else (
                     f", {C.critical}but {EXPECTED_NUM_RESULTS} "
