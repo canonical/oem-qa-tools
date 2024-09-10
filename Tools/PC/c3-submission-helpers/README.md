@@ -14,23 +14,28 @@ Examples:
 - ```bash
   python3 parse-suspend-30-logs.py -f path/to/submission-202408-12345.tar.xz
   ```
+
    will print out the **indexes** (starts at 1) of the runs with failures.
+
 - ```bash
   python3 parse-suspend-30-logs.py \
       -f path/to/submission-202408-12345.tar.xz \
       -w
   ```
+
    will print the output from above AND write the individual runs into its own
    file.
   - A new directory will be created in "." with the name
    "submission-202408-12345.tar.xz-split" and there will be
    90 files inside named `1.txt, 2.txt, ..., 90.txt`
--  ```bash
+
+- ```bash
    python3 parse-suspend-30-logs.py \
        -f path/to/submission-202408-12345.tar.xz \
        -w -d path/to/output/dir
    ```
-   Specify an output directory of where the 1.txt, 2.txt... will be saved to. 
+
+   Specify an output directory of where the 1.txt, 2.txt... will be saved to.
    If this directory doesn't exist, the script will try to create it.
   
 ## `cbwb-diffs.py`
