@@ -124,12 +124,38 @@ Comment[en_US]=#
 Comment=#" > /etc/xdg/autostart/iperf.desktop'	
 }
 
+setup_ptp4l()
+{
+    # Install linuxptp
+    echo " "
+    printf " \033[1;35m Setup ptp4l  \033[0m\n"
+    sudo apt update
+    sudo apt install linuxptp -y
+
+    # Get the first ethernet name
+    ethernet_name=$(ip -o link show | awk -F': ' '/^[0-9]+: e/{print $2; exit}')
+
+    # Add ptp4l.desktop with the correct ethernet interface name
+    echo 's' | sudo -S bash -c "echo '[Desktop Entry]
+Type=Application
+Exec=gnome-terminal -- sudo ptp4l -i $ethernet_name -m --step_threshold=1 --logAnnounceInterval=0 --logSyncInterval=-3 --network_transport=L2
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Terminal=true
+Name[en_US]=Startup script_ptp4l
+Name=Startup script_ptp4l
+Comment[en_US]=#
+Comment=#' > /etc/xdg/autostart/ptp4l.desktop"
+}
+
 setup_server()
 {
 	setup_environment
 	setup_obex
 	setup_eddystone
 	setup_iperf
+	setup_ptp4l
 
 	printf "\033[1;42;37m Done\033[0m\n"
 	echo " "
