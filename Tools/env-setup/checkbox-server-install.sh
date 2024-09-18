@@ -133,12 +133,30 @@ setup_ptp4l()
     sudo apt install linuxptp -y
 
     # Get the first ethernet name
-    ethernet_name=$(ip -o link show | awk -F': ' '/^[0-9]+: e/{print $2; exit}')
-
+    KEYWORDS="hardware-transmit
+              hardware-receive
+              hardware-raw-clock"
+    for iface in /sys/class/net/*; do
+        iface=${iface##*/}
+        supported=true
+        if [[ $iface == e* ]]; then
+            output=$(ethtool -T "$iface")
+            for keyword in $KEYWORDS; do
+                if ! grep -q "$keyword" <<< "$output"; then
+                    supported=false
+                    break
+                fi
+            done
+            if [[ $supported == true ]]; then
+                echo "ptp4l supported eth-interface: $iface"
+				break
+            fi
+        fi
+    done
     # Add ptp4l.desktop with the correct ethernet interface name
     echo 's' | sudo -S bash -c "echo '[Desktop Entry]
 Type=Application
-Exec=gnome-terminal -- sudo ptp4l -i $ethernet_name -m --step_threshold=1 --logAnnounceInterval=0 --logSyncInterval=-3 --network_transport=L2
+Exec=gnome-terminal -- sudo ptp4l -i $iface -m --step_threshold=1 --logAnnounceInterval=0 --logSyncInterval=-3 --network_transport=L2
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
