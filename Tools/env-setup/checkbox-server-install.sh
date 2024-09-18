@@ -153,6 +153,18 @@ setup_ptp4l()
             fi
         fi
     done
+	if [ -z "$iface" ]; then
+        echo "No suitable Ethernet interface which support ptp4l found."
+        exit 1
+    fi
+
+    # Check the link status
+    LINK_STATUS=$(ip link show "$iface" | grep "state" | awk '{print $9}')
+
+    if [ "$LINK_STATUS" != "UP" ]; then
+        echo "The link status of $iface is DOWN. ptp4l will not be started."
+        exit 1
+    fi
     # Add ptp4l.desktop with the correct ethernet interface name
     echo 's' | sudo -S bash -c "echo '[Desktop Entry]
 Type=Application
