@@ -6,6 +6,7 @@ import re
 import argparse
 import tarfile
 import io
+import sys
 
 
 class Input:
@@ -98,10 +99,59 @@ def parse_args() -> Input:
 
 FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
 
-default_name = (
-    "attachment_files/com.canonical.certification__"
-    "stress-tests_suspend-30-cycles-with-reboot-3-log-attach"
+log_file_pattern = (
+    r"attachment_files/com.canonical.certification__"
+    r"stress-tests_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-attach"
 )
+
+
+def open_log_file(filename: str) -> io.TextIOWrapper:
+    if not filename.endswith(".tar.xz"):
+        return open(filename)
+
+    log_file_name = None
+    try:
+        possible_log_files = [
+            m.name
+            for m in tarfile.open(filename).getmembers()
+            if re.match(log_file_pattern, m.name) is not None
+        ]
+        print(possible_log_files)
+
+        if len(possible_log_files) == 0:
+            print(
+                f"No log files matching {C.critical}`{log_file_pattern}`{C.end} was found in {filename}, exiting"
+            )
+            exit(1)
+
+        if len(possible_log_files) > 1:
+            print(
+                f"Multiple log files found in {filename}, assuming {possible_log_files[0]}"
+            )
+
+        log_file_name = possible_log_files[0]
+
+        extracted = tarfile.open(filename).extractfile(log_file_name)
+
+        if extracted is None:
+            print(
+                f"Found {log_file_name} in {filename}, but it's not a file.",
+                file=sys.stderr,
+            )
+            exit(1)
+
+        file = io.TextIOWrapper(extracted)
+    except KeyError:
+        print(
+            f'{C.critical}"{log_file_name}" doesn\'t exist in the tarball "{filename}"{C.end}',
+            file=sys.stderr,
+        )
+        print(
+            f"If the log file is under a different name, try manually extracting {filename} and pass in path/to/the/log/file with the -f flag."
+        )
+        exit(1)
+
+    return file
 
 
 def main():
@@ -114,22 +164,11 @@ def main():
     if args.write_individual_files:
         print(f'Individual results will be in "{args.write_directory}"')
 
-    file_in = None
-    if args.filename.endswith(".tar.xz"):
-        extracted = tarfile.open(args.filename).extractfile(default_name)
-        if extracted is None:
-            raise ValueError(
-                f"Failed to extract {default_name} from {args.filename}"
-            )
-        file_in = io.TextIOWrapper(extracted)
-    else:
-        file_in = open(args.filename)
-
-    with file_in as file:
+    with open_log_file(args.filename) as file:
         lines = file.readlines()
         test_results: list[list[str]] = []
         meta: list[Meta] = []
-        failed_runs_by_type: dict[FailType, list] = {
+        failed_runs_by_type: dict[FailType, list[int]] = {
             "Critical": [],
             "High": [],
             "Medium": [],
