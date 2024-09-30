@@ -17,7 +17,7 @@ last = "└── "
 class Input:
     filename: str
     group_by_err: bool
-    num_runs: int | None  # override
+    expected_n_runs: int | None  # if specified show a warning
     verbose: bool
 
 
@@ -59,6 +59,18 @@ def parse_args() -> Input:
         dest="verbose",
         help="Whether to print detailed messages",
         action="store_true",
+    )
+    p.add_argument(
+        "-n",
+        "--num-runs",
+        dest="expected_n_runs",
+        help=(
+            "Specify a value to show a warning when the number of boot files "
+            "!= the number of runs you expect. Default=30. "
+            "Note that this number applies to both CB and WB since checkbox doesn't use a different number for CB/WB either."
+        ),
+        type=int,
+        default=30,
     )
     return p.parse_args()  # type: ignore
 
@@ -160,7 +172,7 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
 
 
 def group_by_error(raw: RunIndexToMessageMap):
-    timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"
+    timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
     message_to_run_index_map = defaultdict[str, list[int]](list)
     for run_index, messages in raw.items():
         for message in messages:
@@ -229,6 +241,8 @@ def main():
     for boot_type in "warm", "cold":
         prefix = f"test_output/com.canonical.certification__{boot_type}-boot-loop-test"
         # it's always the prefix followed by a multi-digit number
+        # NOTE: This assumes everything useful is on stdout.
+        # NOTE: stderr outputs are in files that end with ".err"
         boot_stdout_pattern = f"{prefix}[0-9]+$"
         fwts_results: dict[str, dict[int, list[str]]] = defaultdict(
             lambda: defaultdict(list)
@@ -269,47 +283,45 @@ def main():
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_cmp"] = device_cmp_results
 
-    for boot_type, test in itertools.product(("warm", "cold"), ("fwts", "device_cmp")):
+    for boot_type in "warm", "cold":
         boot_count = warm_boot_count if boot_type == "warm" else cold_boot_count
-        print(
-            f"{'='*5}{C.other} Start of {boot_type} boot {test} failures{C.end} {'='*5}\n"
-        )
 
-        if len(out[boot_type][test]) == 0:
-            print(f"No {boot_type} boot {test} failures!")
-        else:
-            if args.verbose:
-                pretty_print(
-                    out[boot_type][test],
-                    boot_count,
-                    test,
-                )
+        for test in "fwts", "device_cmp":
+            print(
+                f"\n{'='*5} Start of {boot_type} boot {test} failures {'='*5}\n"
+            )
+
+            if len(out[boot_type][test]) == 0:
+                print(f"No {boot_type} boot {test} failures!")
             else:
-                short_print(out[boot_type][test], boot_count)
-
-            if test == "fwts" and args.group_by_err:
-                for fail_type in out[boot_type][test]:
-                    group_res = group_by_error(
-                        out[boot_type][test][fail_type],
+                if args.verbose:
+                    pretty_print(
+                        out[boot_type][test],
+                        boot_count,
+                        test,
                     )
-                    for k in group_res:
-                        print(k)
-                        print(
-                            space,
-                            last,
-                            "Failed Runs:",
-                            group_res[k],
-                        )
-                        print(
-                            space,
-                            space,
-                            "Fail Rate:",
-                            f"{len(group_res[k])}/{boot_count}",
-                        )
+                else:
+                    short_print(out[boot_type][test], boot_count)
 
-        print(
-            f"\n{'='*5}{C.other} End of {boot_type} boot {test} failures{C.end} {'='*5}"
-        )
+                if test == "fwts" and args.group_by_err:
+                    for fail_type in out[boot_type][test]:
+                        group_res = group_by_error(
+                            out[boot_type][test][fail_type],
+                        )
+                        for k in group_res:
+                            print(k)
+                            print(space, last, "Failed Runs:", group_res[k])
+                            print(
+                                space,
+                                space,
+                                "Fail Rate:",
+                                f"{len(group_res[k])}/{boot_count}",
+                            )
+
+        if boot_count != args.expected_n_runs:
+            print(
+                f"{C.high}Expected {args.expected_n_runs} {boot_type} boots, but got {boot_count}{C.end}"
+            )
 
 
 if __name__ == "__main__":
