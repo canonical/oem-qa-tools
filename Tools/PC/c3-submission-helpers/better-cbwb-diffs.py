@@ -16,7 +16,7 @@ last = "└── "
 
 class Input:
     filename: str
-    use_inference: bool
+    group_by_err: bool
     num_runs: int | None  # override
     verbose: bool
 
@@ -38,29 +38,6 @@ GroupedResultByIndex = dict[
 # key is index to actual message map
 
 
-def dice_coefficient(a: str, b: str) -> float:
-    """dice coefficient 2nt/(na + nb)."""
-    if not len(a) or not len(b):
-        return 0.0
-    if len(a) == 1:
-        a = a + "."
-    if len(b) == 1:
-        b = b + "."
-
-    a_bigram_list = []
-    for i in range(len(a) - 1):
-        a_bigram_list.append(a[i : i + 2])
-    b_bigram_list = []
-    for i in range(len(b) - 1):
-        b_bigram_list.append(b[i : i + 2])
-
-    a_bigrams = set(a_bigram_list)
-    b_bigrams = set(b_bigram_list)
-    overlap = len(a_bigrams & b_bigrams)
-    dice_coeff = overlap * 2.0 / (len(a_bigrams) + len(b_bigrams))
-    return dice_coeff
-
-
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
     p.add_argument(
@@ -70,18 +47,11 @@ def parse_args() -> Input:
         help="path to the stress test tarball",
     )
     p.add_argument(
-        "-i",
-        "--use-inference",
-        dest="use_inference",
-        help="Use string similarity inference on fwts error messages",
+        "-g",
+        "--group-by-err",
+        dest="group_by_err",
+        help="Group run indicies by error messages. Some messages might be shown twice",
         action="store_true",
-    )
-    p.add_argument(
-        "--num-runs",
-        dest="num_runs",
-        help="Override the default number of boot loops (default=30 for both warm and cold)",
-        type=int,
-        required=False,
     )
     p.add_argument(
         "-v",
@@ -123,7 +93,8 @@ def get_device_cmp_lines(file: io.TextIOWrapper) -> list[str]:
 
 def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
     """
-    Picks out the fwts output lines from a single file and groups them by severity/fail_type
+    Picks out the fwts output lines from a
+    single file and groups them by severity/fail_type
     """
 
     fwts_lines = get_fwts_lines(file)
@@ -139,13 +110,16 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
         if not is_fail_type:
             continue
         assert len(lines) > 0, "Broken fwts output"
-        # if not broken, this list should look like ['High failures:'], eactly 1 element
+        # if not broken, this list should look like ['High failures:'],
+        # eactly 1 element
         # take the first word and use it as the key
         fail_type = lines[0].split()[0]
-        # the [0] of each element of grouped_output should alternate between True, False
-        # If False, then we have the actual lines of the immediate predecessor fail_type
+        # the [0] of each element should alternate between True, False
+        # If False, then we have the actual lines of the
+        #  immediate predecessor fail_type
         actual_messages = grouped_output[i + 1][1]
-        divider = "========================================"  # get rid of everything before the divider
+        # get rid of everything before the divider
+        divider = "========================================"
 
         fail_type_to_lines[fail_type] = [
             s
@@ -166,7 +140,8 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
         for a, b in itertools.groupby(
             reversed(get_device_cmp_lines(file)),
             key=lambda line: line.endswith(
-                "is different from the original list gathered at the beginning of the session!"
+                "is different from the original list"
+                "gathered at the beginning of the session!"
             ),
         )
     ]
@@ -184,48 +159,29 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
     return device_type_to_lines
 
 
-def infer_similar_errors(raw: RunIndexToMessageMap, similarity_threshold=0.9):
+def group_by_error(raw: RunIndexToMessageMap):
+    timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"
     message_to_run_index_map = defaultdict[str, list[int]](list)
     for run_index, messages in raw.items():
         for message in messages:
+            message = re.sub(timestamp_pattern, "", message)
             message_to_run_index_map[message].append(run_index)
 
-    # now we likely have 1 message mapped to exactly 1 index, run a reducer
-    # print(message_to_run_index_map)
+    for v in message_to_run_index_map.values():
+        v.sort()
 
-    items = list(message_to_run_index_map.items())
-    out = []
-    seen = set()
-    i = 0
-    # for i in range(len(items) - 1):
-    while i < len(items) - 1:
-        if i in seen:
-            i += 1
-            continue
-        l = items[i]
-        j = i + 1
-        while j < len(items):
-            if j in seen:
-                j += 1
-                continue
-            r = items[j]
-            if dice_coefficient(l[0], r[0]) > similarity_threshold:
-                for e in r[1]:
-                    l[1].append(e)
-                seen.add(j)
-            j += 1
-        i += 1
-        l[1].sort()
-        out.append(l)
-    return dict(out)
+    return message_to_run_index_map
 
 
 def pretty_print(
-    boot_results: dict[str, dict[int, list[str]]], expected_n_runs=30, prefix=""
+    boot_results: dict[str, dict[int, list[str]]],
+    expected_n_runs=30,
+    prefix="",
 ):
     for fail_type, results in boot_results.items():
         print(f"{prefix} {fail_type} failures".title())
         result_items = list(results.items())
+        result_items.sort(key=lambda i: i[0])
 
         for list_idx, (run_index, messages) in enumerate(result_items):
             is_last = list_idx == len(result_items) - 1
@@ -248,7 +204,7 @@ def short_print(
     expected_n_runs=30,
 ):
     for fail_type, results in boot_results.items():
-        failed_runs = list(results.keys())
+        failed_runs = sorted(list(results.keys()))
         print(
             f"{getattr(C, fail_type.lower())}{fail_type} failures:{C.end} {failed_runs}"
         )
@@ -312,15 +268,9 @@ def main():
         # sort by boot number
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_cmp"] = device_cmp_results
-        for fail_type in out[boot_type]:
-            out[boot_type][fail_type] = dict(
-                sorted(out[boot_type][fail_type].items())
-            )
 
-    # print(f"{getattr(C, fail_type.lower())}{fail_type} failures:{C.end}")
-    for boot_type, test in itertools.product(
-        ("warm", "cold"), ("fwts", "device_cmp")
-    ):
+    for boot_type, test in itertools.product(("warm", "cold"), ("fwts", "device_cmp")):
+        boot_count = warm_boot_count if boot_type == "warm" else cold_boot_count
         print(
             f"{'='*5}{C.other} Start of {boot_type} boot {test} failures{C.end} {'='*5}\n"
         )
@@ -331,26 +281,31 @@ def main():
             if args.verbose:
                 pretty_print(
                     out[boot_type][test],
-                    warm_boot_count if boot_type == "warm" else cold_boot_count,
+                    boot_count,
                     test,
                 )
             else:
-                short_print(
-                    out[boot_type][test],
-                    warm_boot_count if boot_type == "warm" else cold_boot_count,
-                )
+                short_print(out[boot_type][test], boot_count)
 
-            if test == "fwts" and args.use_inference:
-                print(
-                    f"{C.ok}Begin inference results. These are just guesses and may not be accurate{C.end}\n"
-                )
+            if test == "fwts" and args.group_by_err:
                 for fail_type in out[boot_type][test]:
-                    infer_res = infer_similar_errors(
-                        out[boot_type][test][fail_type]
+                    group_res = group_by_error(
+                        out[boot_type][test][fail_type],
                     )
-                    for k in infer_res:
+                    for k in group_res:
                         print(k)
-                        print(space, last, "Failed Runs:", infer_res[k])
+                        print(
+                            space,
+                            last,
+                            "Failed Runs:",
+                            group_res[k],
+                        )
+                        print(
+                            space,
+                            space,
+                            "Fail Rate:",
+                            f"{len(group_res[k])}/{boot_count}",
+                        )
 
         print(
             f"\n{'='*5}{C.other} End of {boot_type} boot {test} failures{C.end} {'='*5}"
