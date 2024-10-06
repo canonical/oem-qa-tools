@@ -99,7 +99,10 @@ def get_device_cmp_lines(file: io.TextIOWrapper) -> list[str]:
         if line.startswith("## Checking system services..."):
             break
         if should_include:
-            cmp_lines.append(line.strip())
+            clean_line = line.strip()
+            ignore = ("", "Device match during reboot cycle")
+            if clean_line not in ignore:
+                cmp_lines.append(clean_line)
     return cmp_lines
 
 
@@ -152,8 +155,7 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
         for a, b in itertools.groupby(
             reversed(get_device_cmp_lines(file)),
             key=lambda line: line.endswith(
-                "is different from the original list"
-                "gathered at the beginning of the session!"
+                "is different from the original list gathered at the beginning of the session!"
             ),
         )
     ]
@@ -218,7 +220,7 @@ def short_print(
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{getattr(C, fail_type.lower())}{fail_type} failures:{C.end} {failed_runs}"
+            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end} {failed_runs}"
         )
         if expected_n_runs != 0:
             print(
@@ -273,6 +275,8 @@ def main():
                 for fail_type, messages in grouped_fwts_output.items():
                     for message in messages:
                         fwts_results[fail_type][run_index].append(message)
+
+                f.seek(0)  # rewind file pointer
 
                 grouped_device_cmp_output = group_device_cmp_output(f)
                 for fail_type, messages in grouped_device_cmp_output.items():
