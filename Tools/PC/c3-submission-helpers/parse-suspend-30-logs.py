@@ -46,7 +46,10 @@ class Meta(TypedDict):
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
-    p.add_argument("filename", help="The path to the suspend logs")
+    p.add_argument(
+        "filename",
+        help="The path to the suspend logs or the stress test submission .tar",
+    )
     p.add_argument(
         "-w",
         "--write-individual-files",
