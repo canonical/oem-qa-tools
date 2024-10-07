@@ -7,6 +7,7 @@ import io
 import itertools
 import tarfile
 import re
+import textwrap
 
 space = "    "
 branch = "│   "
@@ -42,7 +43,7 @@ GroupedResultByIndex = dict[
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
     p.add_argument(
-        'filename',
+        "filename",
         help="path to the stress test tarball",
     )
     p.add_argument(
@@ -219,13 +220,11 @@ def short_print(
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end} {failed_runs}"
+            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"
         )
+        print(space + f"\n{space}".join(textwrap.wrap(str(failed_runs))))
         if expected_n_runs != 0:
-            print(
-                space,
-                f"Fail rate: {len(failed_runs)} / {expected_n_runs}",
-            )
+            print(f"{space}- Fail rate: {len(failed_runs)}/{expected_n_runs}")
 
 
 def main():
@@ -290,9 +289,7 @@ def main():
         boot_count = warm_boot_count if boot_type == "warm" else cold_boot_count
 
         for test in "fwts", "device_cmp":
-            print(
-                f"\n{'='*5} Start of {boot_type} boot {test} failures {'='*5}\n"
-            )
+            print(f"\n{f' Start of {boot_type} boot {test} failures ':-^80}\n")
 
             if len(out[boot_type][test]) == 0:
                 print(f"No {boot_type} boot {test} failures!")

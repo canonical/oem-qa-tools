@@ -213,7 +213,7 @@ def main():
     log_file, summary_file = open_log_file(args.filename)
 
     if args.filename.endswith(".tar.xz"):
-        print(f"{' Begin Summary (the log check attachment) ':-^80}\n")
+        print(f"\n{' Begin Summary (the log check attachment) ':-^80}\n")
 
         if summary_file:
             print(summary_file.read())
@@ -328,10 +328,16 @@ def main():
                     )
                     print(
                         f"Runs without {getattr(C, fail_type.lower())}"
-                        f"{fail_type}{C.end} failures: {runs_without_failures}"
+                        f"{fail_type}{C.end} failures:"
                     )
                     print(
-                        "  - Success rate:",
+                        space
+                        + (f"\n{space}").join(
+                            textwrap.wrap(str(runs_without_failures))
+                        )
+                    )
+                    print(
+                        f"{space}- Success rate:",
                         f"{len(runs_without_failures)}/{n_results}",
                     )
                 else:
