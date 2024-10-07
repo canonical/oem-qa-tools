@@ -7,6 +7,12 @@ import argparse
 import tarfile
 import io
 import sys
+import textwrap
+
+space = "    "
+branch = "│   "
+tee = "├── "
+last = "└── "
 
 
 class Input:
@@ -109,6 +115,7 @@ def open_log_file(filename: str) -> io.TextIOWrapper:
     if not filename.endswith(".tar.xz"):
         return open(filename)
 
+    summary_file_name = 'test_output/com.canonical.certification__stress-tests_suspend-30-cycles-with-reboot-3-log-check'
     log_file_name = None
     try:
         possible_log_files = [
@@ -116,7 +123,6 @@ def open_log_file(filename: str) -> io.TextIOWrapper:
             for m in tarfile.open(filename).getmembers()
             if re.match(log_file_pattern, m.name) is not None
         ]
-        print(possible_log_files)
 
         if len(possible_log_files) == 0:
             print(
@@ -130,6 +136,7 @@ def open_log_file(filename: str) -> io.TextIOWrapper:
             )
 
         log_file_name = possible_log_files[0]
+        print("Parsing this file:", log_file_name)
 
         extracted = tarfile.open(filename).extractfile(log_file_name)
 
@@ -262,7 +269,7 @@ def main():
             if len(runs) != 0:
                 if args.inverse_find:
                     runs_without_failures = list(
-                        set(range(n_results)).difference(runs)
+                        set(range(1, n_results + 1)).difference(runs)
                     )
                     print(
                         f"Runs without {getattr(C, fail_type.lower())}"
@@ -275,10 +282,10 @@ def main():
                 else:
                     print(
                         f"Runs with {getattr(C, fail_type.lower())}"
-                        f"{fail_type}{C.end} failures: {runs}"
+                        f"{fail_type}{C.end} failures:"
                     )
-                    print(f"  - Fail rate: {len(runs)}/{n_results}")
-
+                    print(space + (f"\n{space}").join(textwrap.wrap(str(runs))))
+                    print(f"{space}- Fail rate: {len(runs)}/{n_results}")
 
 if __name__ == "__main__":
     main()
