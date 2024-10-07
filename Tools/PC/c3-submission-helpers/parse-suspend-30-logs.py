@@ -107,6 +107,10 @@ log_file_pattern = (
     r"attachment_files/com.canonical.certification__"
     r"stress-tests_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-attach"
 )
+summary_file_pattern = (
+    r"test_output/com.canonical.certification__stress-tests"
+    r"_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-check"
+)
 
 
 def open_log_file(
@@ -115,16 +119,18 @@ def open_log_file(
     if not filename.endswith(".tar.xz"):
         return (open(filename), None)
 
-    summary_file_name = (
-        "test_output/com.canonical.certification__stress-tests"
-        "_suspend-30-cycles-with-reboot-3-log-check"
-    )
+    summary_file_name = None
     log_file_name = None
     try:
         possible_log_files = [
             m.name
             for m in tarfile.open(filename).getmembers()
             if re.match(log_file_pattern, m.name) is not None
+        ]
+        possible_summary_files = [
+            m.name
+            for m in tarfile.open(filename).getmembers()
+            if re.match(summary_file_pattern, m.name) is not None
         ]
 
         if len(possible_log_files) == 0:
@@ -133,6 +139,11 @@ def open_log_file(
                 f"was found in {filename}, exiting"
             )
             exit(1)
+        if len(possible_summary_files) == 0:
+            print(
+                f"No attachment files matching {C.medium}`{summary_file_pattern}`{C.end}"
+                f"was found in {filename}. Ignoring"
+            )
 
         if len(possible_log_files) > 1:
             print(
@@ -140,30 +151,41 @@ def open_log_file(
             )
 
         log_file_name = possible_log_files[0]
+        summary_file_name = (
+            possible_summary_files[0]
+            if len(possible_summary_files) > 0
+            else None
+        )
         print("Parsing this file:", log_file_name)
 
         tar = tarfile.open(filename)
         extracted_log = tar.extractfile(log_file_name)
-        extracted_summary = tar.extractfile(summary_file_name)
 
         if extracted_log is None:
             print(
-                f"Found {log_file_name} in {filename}, but it's not a file.",
+                f"Found {log_file_name} in {filename},",
+                "but it can't be extracted.",
                 file=sys.stderr,
             )
             exit(1)
 
-        if extracted_summary is None:
-            print(
-                f"Found {summary_file_name} in {filename}, but it's not a file.",
-                file=sys.stderr,
-            )
-            exit(1)
+        summary_file = None
+        if summary_file_name:
+            print("Found this summary attachment:", summary_file_name)
+            summary_file = tar.extractfile(summary_file_name)
+            if summary_file is None:
+                print(
+                    f"Found {summary_file_name} in {filename},"
+                    "but it can't be extracted, Ignoring",
+                    file=sys.stderr,
+                )
 
         log_file = io.TextIOWrapper(extracted_log)
-        summary_file = io.TextIOWrapper(extracted_summary)
 
-        return (log_file, summary_file)
+        return (
+            log_file,
+            io.TextIOWrapper(summary_file) if summary_file else None,
+        )
     except KeyError:
         print(
             f'{C.critical}"{log_file_name}" doesn\'t exist in the tarball "{filename}"{C.end}',
@@ -186,11 +208,21 @@ def main():
         print(f'Individual results will be in "{args.write_directory}"')
 
     log_file, summary_file = open_log_file(args.filename)
-    if summary_file:
+
+    if args.filename.endswith(".tar.xz"):
         print(f"{' Begin Summary (the log check attachment) ':-^80}\n")
-        print(summary_file.read())
-        summary_file.close()
+
+        if summary_file:
+            print(summary_file.read())
+            summary_file.close()
+        else:
+            print(
+                "No suspend-30-cycles-with-reboot-3-log-check attachment",
+                "was found in the tarball",
+            )
+
         print(f"\n{' End of Summary ':-^80}")
+
     with log_file as file:
         lines = file.readlines()
         test_results: list[list[str]] = []
