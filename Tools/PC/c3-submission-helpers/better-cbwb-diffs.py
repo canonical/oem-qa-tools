@@ -34,23 +34,22 @@ class C:  # color
 RunIndexToMessageMap = dict[int, list[str]]
 GroupedResultByIndex = dict[
     str, RunIndexToMessageMap
-]  # key is fail type (for fwts it's critical, high, medium, low)
+]  # key is fail type (for fwts it's critical, high, medium, low
+# for device cmp it's lsusb, lspci, iw)
 # key is index to actual message map
 
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
     p.add_argument(
-        "-f",
-        "--filename",
-        required=True,
+        'filename',
         help="path to the stress test tarball",
     )
     p.add_argument(
         "-g",
         "--group-by-err",
         dest="group_by_err",
-        help="Group run indicies by error messages. Some messages might be shown twice",
+        help="Group run-indicies by error messages. Similar messages might be shown twice",
         action="store_true",
     )
     p.add_argument(

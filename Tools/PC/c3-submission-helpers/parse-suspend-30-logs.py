@@ -46,9 +46,7 @@ class Meta(TypedDict):
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
-    p.add_argument(
-        "-f", "--filename", required=True, help="The path to the suspend logs"
-    )
+    p.add_argument("filename", help="The path to the suspend logs")
     p.add_argument(
         "-w",
         "--write-individual-files",
@@ -111,11 +109,16 @@ log_file_pattern = (
 )
 
 
-def open_log_file(filename: str) -> io.TextIOWrapper:
+def open_log_file(
+    filename: str,
+) -> tuple[io.TextIOWrapper, io.TextIOWrapper | None]:
     if not filename.endswith(".tar.xz"):
-        return open(filename)
+        return (open(filename), None)
 
-    summary_file_name = 'test_output/com.canonical.certification__stress-tests_suspend-30-cycles-with-reboot-3-log-check'
+    summary_file_name = (
+        "test_output/com.canonical.certification__stress-tests"
+        "_suspend-30-cycles-with-reboot-3-log-check"
+    )
     log_file_name = None
     try:
         possible_log_files = [
@@ -126,7 +129,8 @@ def open_log_file(filename: str) -> io.TextIOWrapper:
 
         if len(possible_log_files) == 0:
             print(
-                f"No log files matching {C.critical}`{log_file_pattern}`{C.end} was found in {filename}, exiting"
+                f"No log files matching {C.critical}`{log_file_pattern}`{C.end}"
+                f"was found in {filename}, exiting"
             )
             exit(1)
 
@@ -138,16 +142,28 @@ def open_log_file(filename: str) -> io.TextIOWrapper:
         log_file_name = possible_log_files[0]
         print("Parsing this file:", log_file_name)
 
-        extracted = tarfile.open(filename).extractfile(log_file_name)
+        tar = tarfile.open(filename)
+        extracted_log = tar.extractfile(log_file_name)
+        extracted_summary = tar.extractfile(summary_file_name)
 
-        if extracted is None:
+        if extracted_log is None:
             print(
                 f"Found {log_file_name} in {filename}, but it's not a file.",
                 file=sys.stderr,
             )
             exit(1)
 
-        file = io.TextIOWrapper(extracted)
+        if extracted_summary is None:
+            print(
+                f"Found {summary_file_name} in {filename}, but it's not a file.",
+                file=sys.stderr,
+            )
+            exit(1)
+
+        log_file = io.TextIOWrapper(extracted_log)
+        summary_file = io.TextIOWrapper(extracted_summary)
+
+        return (log_file, summary_file)
     except KeyError:
         print(
             f'{C.critical}"{log_file_name}" doesn\'t exist in the tarball "{filename}"{C.end}',
@@ -157,8 +173,6 @@ def open_log_file(filename: str) -> io.TextIOWrapper:
             f"If the log file is under a different name, try manually extracting {filename} and pass in path/to/the/log/file with the -f flag."
         )
         exit(1)
-
-    return file
 
 
 def main():
@@ -171,7 +185,13 @@ def main():
     if args.write_individual_files:
         print(f'Individual results will be in "{args.write_directory}"')
 
-    with open_log_file(args.filename) as file:
+    log_file, summary_file = open_log_file(args.filename)
+    if summary_file:
+        print(f"{' Begin Summary (the log check attachment) ':-^80}\n")
+        print(summary_file.read())
+        summary_file.close()
+        print(f"\n{' End of Summary ':-^80}")
+    with log_file as file:
         lines = file.readlines()
         test_results: list[list[str]] = []
         meta: list[Meta] = []
@@ -286,6 +306,7 @@ def main():
                     )
                     print(space + (f"\n{space}").join(textwrap.wrap(str(runs))))
                     print(f"{space}- Fail rate: {len(runs)}/{n_results}")
+
 
 if __name__ == "__main__":
     main()
