@@ -1,6 +1,8 @@
 import logging
 from modules.c3_relay_service.relay_service import (
+    convert_to_c3_location_status,
     get_labresource_list,
+    update_device_info,
     get_labresource_id,
     detach_labresource,
     link_labresource,
@@ -39,8 +41,19 @@ def update_duts_info_on_c3(data: list[dict], new_holder: str):
         resp = link_labresource(cid, labresource_id)
         if resp["canonical_id"] != cid:
             logging.error(f"link labresource to CID:{cid} failed")
-        # TODO There is no V2 API to change holder by lunchpad name.
-        #      Have to wait or find the solution.
+        else:
+            try:
+                (new_loc, new_status) = convert_to_c3_location_status(pos)
+                info = {
+                    "holder": new_holder,
+                    "location": new_loc,
+                    "status": new_status,
+                }
+                resp = update_device_info(cid, info)
+                if resp["canonical_id"] != cid:
+                    logging.error(f"update status:[{new_status}] failed")
+            except AttributeError as e:
+                logging.error(f"position:[{pos}] error:{repr(e)}")
 
 
 def update_returned_duts_info_on_c3(data: list[dict], status: str):
@@ -50,7 +63,7 @@ def update_returned_duts_info_on_c3(data: list[dict], status: str):
 
     :data: DUTs information.
 
-    :status: status
+    :status: status (useless, it should be removed after C3 V1 API deprecated)
 
     :returns: None
     """
@@ -64,6 +77,13 @@ def update_returned_duts_info_on_c3(data: list[dict], status: str):
         resp = detach_labresource(cid, labresources)
         if resp["canonical_id"]:
             logging.error(f"detach labresource from CID:{cid} failed")
-        # TODO update status (New V2 API might be needed)
-        # TODO There is no V2 API to change location.
-        #      Have to wait or find the solution.
+        else:
+            try:
+                pos = LabPosition("Return", None, 0, 0)
+                (new_loc, new_status) = convert_to_c3_location_status(pos)
+                info = {"location": new_loc, "status": new_status}
+                resp = update_device_info(cid, info)
+                if resp["canonical_id"] != cid:
+                    logging.error(f"update status:[{status}] failed")
+            except AttributeError as e:
+                logging.error(f"position:[{pos}] error:{repr(e)}")
