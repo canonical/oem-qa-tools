@@ -256,8 +256,6 @@ def main():
                     for message in messages:
                         fwts_results[fail_type][run_index].append(message)
 
-                f.seek(0)  # rewind file pointer
-
         for stderr_filename in [
             m.name
             for m in submission.getmembers()
