@@ -50,7 +50,10 @@ def parse_args() -> Input:
         "-g",
         "--group-by-err",
         dest="group_by_err",
-        help="Group run-indicies by error messages. Similar messages might be shown twice",
+        help=(
+            "Group run-indicies by error messages. "
+            "Similar messages might be shown twice"
+        ),
         action="store_true",
     )
     p.add_argument(
@@ -67,7 +70,8 @@ def parse_args() -> Input:
         help=(
             "Specify a value to show a warning when the number of boot files "
             "!= the number of runs you expect. Default=30. "
-            "Note that this number applies to both CB and WB since checkbox doesn't use a different number for CB/WB either."
+            "Note that this number applies to both CB and WB "
+            "since checkbox doesn't use a different number for CB/WB either."
         ),
         type=int,
         default=30,
@@ -148,7 +152,7 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
         if not m:
             continue
         device_name = m.group(1)
-        out[device_name] = ["line"]
+        out[device_name] = [line]
 
     return out
 
@@ -200,7 +204,7 @@ def short_print(
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"
+            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"  # noqa: E501
         )
         print(space + f"\n{space}".join(textwrap.wrap(str(failed_runs))))
         if expected_n_runs != 0:
@@ -219,7 +223,10 @@ def main():
     warm_boot_count = 0
     cold_boot_count = 0
     for boot_type in "warm", "cold":
-        prefix = f"test_output/com.canonical.certification__{boot_type}-boot-loop-test"
+        prefix = (
+            "test_output/com.canonical.certification__"
+            f"{boot_type}-boot-loop-test"
+        )
         # it's always the prefix followed by a multi-digit number
         # NOTE: This assumes everything useful is on stdout.
         # NOTE: stderr outputs are in files that end with ".err"
@@ -268,7 +275,7 @@ def main():
 
             with io.TextIOWrapper(file) as f:
                 grouped_device_out = group_device_cmp_output(f)
-                for device, messages in grouped_device_out:
+                for device, messages in grouped_device_out.items():
                     for msg in messages:
                         device_cmp_results[device][run_index].append(msg)
 
@@ -277,7 +284,9 @@ def main():
         out[boot_type]["device_cmp"] = device_cmp_results
 
     for boot_type in "warm", "cold":
-        boot_count = warm_boot_count if boot_type == "warm" else cold_boot_count
+        boot_count = (
+            warm_boot_count if boot_type == "warm" else cold_boot_count
+        )  # noqa: E501
 
         for test in "fwts", "device_cmp":
             print(f"\n{f' Start of {boot_type} boot {test} failures ':-^80}\n")
@@ -311,7 +320,8 @@ def main():
 
         if boot_count != args.expected_n_runs:
             print(
-                f"{C.high}Expected {args.expected_n_runs} {boot_type} boots, but got {boot_count}{C.end}"
+                f"{C.high}Expected {args.expected_n_runs} {boot_type} boots, "
+                f"but got {boot_count}{C.end}"
             )
 
 
