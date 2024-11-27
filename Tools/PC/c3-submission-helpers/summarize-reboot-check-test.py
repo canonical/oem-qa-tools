@@ -353,13 +353,13 @@ def main():
     out = group_by_index(reader)
 
     for test in "fwts", "device_cmp":
-        if len(out["cold"][test]) + len(out["warm"][test]) == 0:
+        cold_result = out["cold"][test]
+        warm_result = out["warm"][test]
+        if (len(cold_result) + len(warm_result)) == 0:
             Log.ok(f"No {test} failures")
             continue
         if test == "fwts":
             print(f"\n{f' FWTS failures ':=^80}\n")
-            cold_result = out["cold"]["fwts"]
-            warm_result = out["warm"]["fwts"]
 
             if args.verbose:
                 print(f"\n{f' Verbose cold boot FWTS results ':-^80}\n")
@@ -417,19 +417,17 @@ def main():
                 print(
                     f"\n{f' Verbose cold boot device comparison results ':-^80}\n"
                 )
-                pretty_print(out["cold"]["device_cmp"])
+                pretty_print(cold_result)
                 print(
                     f"\n{f' Verbose warm boot device comparison results ':-^80}\n"
                 )
-                pretty_print(out["warm"]["device_cmp"])
+                pretty_print(warm_result)
                 continue
             print(f"\n{f' Device comparison failures ':=^80}\n")
-            c = out["cold"]["device_cmp"]
-            if len(c) > 0:
+            if len(cold_result) > 0:
                 print("Cold boot:")
-                short_print(c, prefix=space)
-            w = out["cold"]["device_cmp"]
-            if len(w) > 0:
+                short_print(cold_result, prefix=space)
+            if len(warm_result) > 0:
                 print("Warm boot:")
                 short_print(out["warm"]["device_cmp"], prefix=space)
 
