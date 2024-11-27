@@ -9,6 +9,7 @@ import tarfile
 import re
 import textwrap
 
+
 space = "    "
 branch = "│   "
 tee = "├── "
@@ -32,12 +33,88 @@ class C:  # color
     end = "\033[0m"
 
 
+class Log:
+    @staticmethod
+    def ok(*args: str):
+        print(f"{C.ok}[ OK ]{C.end}", *args)
+
+    @staticmethod
+    def warn(*args: str):
+        print(f"{C.medium}[ WARN ]{C.end}", *args)
+
+    @staticmethod
+    def err(*args: str):
+        print(f"{C.critical}[ WARN ]{C.end}", *args)
+
+
 RunIndexToMessageMap = dict[int, list[str]]
 GroupedResultByIndex = dict[
     str, RunIndexToMessageMap
 ]  # key is fail type (for fwts it's critical, high, medium, low
 # for device cmp it's lsusb, lspci, iw)
 # key is index to actual message map
+BootType = Literal["warm", "cold"]
+TestType = Literal["fwts", "device_cmp"]
+
+
+class SubmissionTarReader:
+    def __init__(self, filepath: str) -> None:
+        self.raw_tar = tarfile.open(filepath)
+
+        slash_dot = r"\."
+        warm_prefix = (
+            "test_output/com.canonical.certification__warm-boot-loop-test"
+        )
+        cold_prefix = (
+            "test_output/com.canonical.certification__cold-boot-loop-test"
+        )
+        # it's always the prefix followed by a multi-digit number
+        # NOTE: stderr outputs are in files that end with ".err"
+        warm_boot_stdout_pattern = f"{warm_prefix}[0-9]+$"
+        warm_boot_stderr_pattern = f"{warm_prefix}[0-9]+{slash_dot}stderr$"
+
+        cold_boot_stdout_pattern = f"{cold_prefix}[0-9]+$"
+        cold_boot_stderr_pattern = f"{cold_prefix}[0-9]+{slash_dot}stderr$"
+
+        members = self.raw_tar.getmembers()
+
+        self.warm_stdout_files = [
+            m.name
+            for m in members
+            if re.match(warm_boot_stdout_pattern, m.name) is not None
+        ]
+        self.warm_stderr_files = [
+            m.name
+            for m in members
+            if re.match(warm_boot_stderr_pattern, m.name) is not None
+        ]
+
+        self.cold_stdout_files = [
+            m.name
+            for m in members
+            if re.match(cold_boot_stdout_pattern, m.name) is not None
+        ]
+        self.cold_stderr_files = [
+            m.name
+            for m in members
+            if re.match(cold_boot_stderr_pattern, m.name) is not None
+        ]
+
+    def get_files(
+        self,
+        boot_type: BootType,
+        ch: Literal["stdout", "stderr"],
+    ) -> list[str]:
+        return getattr(self, f"{boot_type}_{ch}_files")
+
+    @property
+    def boot_count(self) -> int:
+        if len(self.warm_stdout_files) != len(self.cold_stdout_files):
+            Log.warn(
+                "[ WARN ] num warm boots != num cold boots.",
+                "Is the submission broken?",
+            )
+        return len(self.warm_stdout_files)
 
 
 def parse_args() -> Input:
@@ -51,7 +128,7 @@ def parse_args() -> Input:
         "--group-by-err",
         dest="group_by_err",
         help=(
-            "Group run-indicies by error messages. "
+            "Group run-indices by error messages. "
             "Similar messages might be shown twice"
         ),
         action="store_true",
@@ -70,27 +147,13 @@ def parse_args() -> Input:
         help=(
             "Specify a value to show a warning when the number of boot files "
             "!= the number of runs you expect. Default=30. "
-            "Note that this number applies to both CB and WB "
+            "Note that this number applies to both cold and warm boot "
             "since checkbox doesn't use a different number for CB/WB either."
         ),
         type=int,
         default=30,
     )
     return p.parse_args()  # type: ignore
-
-
-def get_fwts_lines(file: io.TextIOWrapper) -> list[str]:
-    fwts_output_lines: list[str] = []
-    should_include = False
-    for line in file:
-        if line.startswith("## Checking FWTS log failures..."):
-            should_include = True
-            continue
-        if line.startswith("## Comparing the devices..."):
-            break
-        if should_include:
-            fwts_output_lines.append(line.strip())
-    return fwts_output_lines
 
 
 def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
@@ -113,7 +176,7 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
             continue
         assert len(lines) > 0, "Broken fwts output"
         # if not broken, this list should look like ['High failures:'],
-        # eactly 1 element
+        # exactly 1 element
         # take the first word and use it as the key
         fail_type = lines[0].split()[0]
         # the [0] of each element should alternate between True, False
@@ -130,8 +193,9 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
             "Checking $",
             "klog",
             "oops",
+            "Listing all DRM",
         ]
-        exclude_suffixes = ["is connected to display!"]
+        exclude_suffixes = ["is connected to display!", "connected", "seconds"]
         fail_type_to_lines[fail_type] = [
             s
             for s in actual_messages
@@ -144,9 +208,9 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
     return fail_type_to_lines
 
 
-def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
+def group_device_cmp_output(file: io.TextIOWrapper):
     regex = re.compile(r"\[ ERR \] The output of (.*) differs!")
-    out = {}
+    out: dict[str, list[str]] = {}
     for line in file:
         m = regex.match(line)
         if not m:
@@ -157,12 +221,15 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
     return out
 
 
-def group_by_error(raw: RunIndexToMessageMap):
+def group_by_fwts_error(raw: RunIndexToMessageMap):
     timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
+    prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
     message_to_run_index_map = defaultdict[str, list[int]](list)
     for run_index, messages in raw.items():
         for message in messages:
-            message = re.sub(timestamp_pattern, "", message)
+            message = re.sub(
+                prefix_pattern, "", re.sub(timestamp_pattern, "", message)
+            ).strip()
             message_to_run_index_map[message].append(run_index)
 
     for v in message_to_run_index_map.values():
@@ -173,9 +240,11 @@ def group_by_error(raw: RunIndexToMessageMap):
 
 def pretty_print(
     boot_results: dict[str, dict[int, list[str]]],
-    expected_n_runs=30,
-    prefix="",
+    expected_n_runs: int = 30,
+    prefix: str = "",
 ):
+    if len(boot_results) == 0:
+        Log.ok("No failures!")
     for fail_type, results in boot_results.items():
         print(f"{prefix} {fail_type} failures".title())
         result_items = list(results.items())
@@ -199,29 +268,33 @@ def pretty_print(
 
 def short_print(
     boot_results: dict[str, dict[int, list[str]]],
-    expected_n_runs=30,
+    expected_n_runs: int = 30,
+    prefix="",
 ):
+    if len(boot_results) == 0:
+        Log.ok("No failures!")
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"  # noqa: E501
+            f"{prefix}{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"  # noqa: E501
         )
-        print(space + f"\n{space}".join(textwrap.wrap(str(failed_runs))))
+        wrapped = textwrap.wrap(str(failed_runs))
+        print(f"{prefix}{space}- Failed runs: {wrapped[0]}")
+        prefix_len = len(f"{prefix}{space}- Failed runs: ")
+        for line in wrapped[1:]:
+            print(" " * prefix_len, line)
         if expected_n_runs != 0:
-            print(f"{space}- Fail rate: {len(failed_runs)}/{expected_n_runs}")
+            print(
+                f"{prefix}{space}- Fail rate: {len(failed_runs)}/{expected_n_runs}"
+            )
 
 
-def main():
-    args = parse_args()
-    submission = tarfile.open(args.filename)
-
+def group_by_index(reader: SubmissionTarReader):
     out: dict[
-        Literal["warm", "cold"],
-        dict[Literal["fwts", "device_cmp"], GroupedResultByIndex],
+        BootType,
+        dict[TestType, GroupedResultByIndex],
     ] = {"warm": {}, "cold": {}}
 
-    warm_boot_count = 0
-    cold_boot_count = 0
     for boot_type in "warm", "cold":
         prefix = (
             "test_output/com.canonical.certification__"
@@ -230,9 +303,6 @@ def main():
         # it's always the prefix followed by a multi-digit number
         # NOTE: This assumes everything useful is on stdout.
         # NOTE: stderr outputs are in files that end with ".err"
-        boot_stdout_pattern = f"{prefix}[0-9]+$"
-        slash_dot = r"\."
-        boot_stderr_pattern = f"{prefix}[0-9]+{slash_dot}stderr$"
         fwts_results: dict[str, dict[int, list[str]]] = defaultdict(
             lambda: defaultdict(list)
         )  # {fail_type: {run_index: list[actual_message]}}
@@ -240,36 +310,24 @@ def main():
             lambda: defaultdict(list)
         )
 
-        for stdout_filename in [
-            m.name
-            for m in submission.getmembers()
-            if re.match(boot_stdout_pattern, m.name) is not None
-        ]:
-            if boot_type == "warm":
-                warm_boot_count += 1
-            else:
-                cold_boot_count += 1
-
+        for stdout_filename in reader.get_files(boot_type, "stdout"):
             run_index = int(stdout_filename[len(prefix) :])
-            file = submission.extractfile(stdout_filename)
-            if not file:
-                continue
+            file = reader.raw_tar.extractfile(stdout_filename)
+            assert file
 
             # looks weird but allows f to close itself
             with io.TextIOWrapper(file) as f:
                 # key is fail type, value is list of actual err messages
                 grouped_fwts_output = group_fwts_output(f)
                 for fail_type, messages in grouped_fwts_output.items():
-                    for message in messages:
-                        fwts_results[fail_type][run_index].append(message)
+                    for msg in messages:
+                        fwts_results[fail_type][run_index].append(msg.strip())
 
-        for stderr_filename in [
-            m.name
-            for m in submission.getmembers()
-            if re.match(boot_stderr_pattern, m.name) is not None
-        ]:
-            run_index = int(stderr_filename[len(prefix) : -7])
-            file = submission.extractfile(stderr_filename)
+        for stderr_filename in reader.get_files(boot_type, "stderr"):
+            run_index = int(
+                stderr_filename[len(prefix) : -7]
+            )  # cut off .stderr
+            file = reader.raw_tar.extractfile(stderr_filename)
             if not file:
                 continue
 
@@ -277,52 +335,103 @@ def main():
                 grouped_device_out = group_device_cmp_output(f)
                 for device, messages in grouped_device_out.items():
                     for msg in messages:
-                        device_cmp_results[device][run_index].append(msg)
+                        device_cmp_results[device][run_index].append(
+                            msg.strip()
+                        )
 
         # sort by boot number
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_cmp"] = device_cmp_results
 
-    for boot_type in "warm", "cold":
-        boot_count = (
-            warm_boot_count if boot_type == "warm" else cold_boot_count
-        )  # noqa: E501
+    return out
 
-        for test in "fwts", "device_cmp":
-            print(f"\n{f' Start of {boot_type} boot {test} failures ':-^80}\n")
 
-            if len(out[boot_type][test]) == 0:
-                print(f"No {boot_type} boot {test} failures!")
-            else:
-                if args.verbose:
-                    pretty_print(
-                        out[boot_type][test],
-                        boot_count,
-                        test,
-                    )
-                else:
-                    short_print(out[boot_type][test], boot_count)
+def main():
+    args = parse_args()
+    reader = SubmissionTarReader(args.filename)
 
-                if test == "fwts" and args.group_by_err:
-                    for fail_type in out[boot_type][test]:
-                        group_res = group_by_error(
-                            out[boot_type][test][fail_type],
+    out = group_by_index(reader)
+
+    for test in "fwts", "device_cmp":
+        if len(out["cold"][test]) + len(out["warm"][test]) == 0:
+            Log.ok(f"No {test} failures")
+            continue
+        if test == "fwts":
+            print(f"\n{f' FWTS failures ':=^80}\n")
+            cold_result = out["cold"]["fwts"]
+            warm_result = out["warm"]["fwts"]
+
+            if args.verbose:
+                print(f"\n{f' Verbose cold boot FWTS results ':-^80}\n")
+                pretty_print(cold_result)
+                print(f"\n{f' Verbose warm boot FWTS results ':-^80}\n")
+                pretty_print(warm_result)
+                continue
+
+            if not args.group_by_err:
+                print(f"\n{f' Cold boot fwts failures ':-^80}\n")
+                short_print(cold_result)
+                print(f"\n{f' Warm boot fwts failures ':-^80}\n")
+                short_print(warm_result)
+                continue
+
+            # key is message, value is {cold: [index], warm: index}
+            for fail_type in cold_result:
+                print(
+                    f"{getattr(C, fail_type.lower())}FWTS {fail_type} errors:{C.end}"
+                )
+                regrouped_cold = group_by_fwts_error(cold_result[fail_type])
+                regrouped_warm = group_by_fwts_error(warm_result[fail_type])
+
+                for err_msg in regrouped_cold:
+                    print(space, err_msg)
+                    buffer = {
+                        err_msg: {
+                            "cold": regrouped_cold[err_msg],
+                            "warm": regrouped_warm[err_msg],
+                        }
+                    }
+                    for b in "cold", "warm":
+                        wrapped = textwrap.wrap(
+                            str(buffer[err_msg][b]), width=50
                         )
-                        for k in group_res:
-                            print(k)
-                            print(space, last, "Failed Runs:", group_res[k])
+                        shared_prefix = " ".join((space, space))
+                        line1 = f"{b.capitalize()} Failures: "
+                        print(shared_prefix, tee, line1, wrapped[0])
+
+                        for line in wrapped[1:]:
                             print(
-                                space,
-                                space,
-                                "Fail Rate:",
-                                f"{len(group_res[k])}/{boot_count}",
+                                shared_prefix, branch, len(line1) * " ", line
                             )
 
-        if boot_count != args.expected_n_runs:
-            print(
-                f"{C.high}Expected {args.expected_n_runs} {boot_type} boots, "
-                f"but got {boot_count}{C.end}"
-            )
+                        print(
+                            space,
+                            space,
+                            last if b == "warm" else tee,
+                            f"{b.capitalize()} failure rate:",
+                            f"{len(buffer[err_msg][b])} / {reader.boot_count}",
+                        )
+                    print("")  # new line
+        else:
+            if args.verbose:
+                print(
+                    f"\n{f' Verbose cold boot device comparison results ':-^80}\n"
+                )
+                pretty_print(out["cold"]["device_cmp"])
+                print(
+                    f"\n{f' Verbose warm boot device comparison results ':-^80}\n"
+                )
+                pretty_print(out["warm"]["device_cmp"])
+                continue
+            print(f"\n{f' Device comparison failures ':=^80}\n")
+            c = out["cold"]["device_cmp"]
+            if len(c) > 0:
+                print("Cold boot:")
+                short_print(c, prefix=space)
+            w = out["cold"]["device_cmp"]
+            if len(w) > 0:
+                print("Warm boot:")
+                short_print(out["warm"]["device_cmp"], prefix=space)
 
 
 if __name__ == "__main__":
