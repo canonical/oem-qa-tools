@@ -118,7 +118,10 @@ class SubmissionTarReader:
 
 
 def parse_args() -> Input:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description="Parses the outputs of reboot_check_test.py "
+        "from a C3 submission tar file"
+    )
     p.add_argument(
         "filename",
         help="path to the stress test tarball",
@@ -276,7 +279,8 @@ def short_print(
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{prefix}{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"  # noqa: E501
+            f"{prefix}{getattr(C, fail_type.lower(), C.medium)}"
+            f"{fail_type} failures:{C.end}"  # noqa: E501
         )
         wrapped = textwrap.wrap(str(failed_runs))
         print(f"{prefix}{space}- Failed runs: {wrapped[0]}")
@@ -285,7 +289,8 @@ def short_print(
             print(" " * prefix_len, line)
         if expected_n_runs != 0:
             print(
-                f"{prefix}{space}- Fail rate: {len(failed_runs)}/{expected_n_runs}"
+                f"{prefix}{space}- Fail rate: "
+                f"{len(failed_runs)}/{expected_n_runs}"
             )
 
 
@@ -311,7 +316,7 @@ def group_by_index(reader: SubmissionTarReader):
         )
 
         for stdout_filename in reader.get_files(boot_type, "stdout"):
-            run_index = int(stdout_filename[len(prefix) :])
+            run_index = int(stdout_filename[len(prefix) :])  # noqa: E203
             file = reader.raw_tar.extractfile(stdout_filename)
             assert file
 
@@ -325,7 +330,7 @@ def group_by_index(reader: SubmissionTarReader):
 
         for stderr_filename in reader.get_files(boot_type, "stderr"):
             run_index = int(
-                stderr_filename[len(prefix) : -7]
+                stderr_filename[len(prefix) : -7]  # noqa: E203,
             )  # cut off .stderr
             file = reader.raw_tar.extractfile(stderr_filename)
             if not file:
@@ -378,7 +383,8 @@ def main():
             # key is message, value is {cold: [index], warm: index}
             for fail_type in cold_result:
                 print(
-                    f"{getattr(C, fail_type.lower())}FWTS {fail_type} errors:{C.end}"
+                    f"{getattr(C, fail_type.lower())}"
+                    f"FWTS {fail_type} errors:{C.end}"
                 )
                 regrouped_cold = group_by_fwts_error(cold_result[fail_type])
                 regrouped_warm = group_by_fwts_error(warm_result[fail_type])
@@ -415,11 +421,11 @@ def main():
         else:
             if args.verbose:
                 print(
-                    f"\n{f' Verbose cold boot device comparison results ':-^80}\n"
+                    f"\n{f' Verbose cold boot device comparison ':-^80}\n"
                 )
                 pretty_print(cold_result)
                 print(
-                    f"\n{f' Verbose warm boot device comparison results ':-^80}\n"
+                    f"\n{f' Verbose warm boot device comparison ':-^80}\n"
                 )
                 pretty_print(warm_result)
                 continue

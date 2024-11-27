@@ -138,19 +138,21 @@ def open_log_file(
 
         if len(possible_log_files) == 0:
             print(
-                f"No log files matching {C.critical}`{log_file_pattern}`{C.end}"
-                f"was found in {filename}, exiting"
+                f"No log files match {C.critical}`{log_file_pattern}`{C.end}"
+                f"was found in {filename}, exiting."
             )
             exit(1)
         if len(possible_summary_files) == 0:
             print(
-                f"No attachment files matching {C.medium}`{summary_file_pattern}`{C.end}"
-                f"was found in {filename}. Ignoring"
+                "No attachment files matching",
+                f"{C.medium}`{summary_file_pattern}`{C.end}",
+                f"was found in {filename}. Ignoring",
             )
 
         if len(possible_log_files) > 1:
             print(
-                f"Multiple log files found in {filename}, assuming {possible_log_files[0]}"
+                f"Multiple log files found in {filename},",
+                f"assuming {possible_log_files[0]}",
             )
 
         log_file_name = possible_log_files[0]
@@ -191,11 +193,14 @@ def open_log_file(
         )
     except KeyError:
         print(
-            f'{C.critical}"{log_file_name}" doesn\'t exist in the tarball "{filename}"{C.end}',
+            f'{C.critical}"{log_file_name}" doesn\'t exist in the tarball',
+            f'"{filename}"{C.end}',
             file=sys.stderr,
         )
         print(
-            f"If the log file is under a different name, try manually extracting {filename} and pass in path/to/the/log/file with the -f flag."
+            "If the log file is under a different name,",
+            f"try manually extracting {filename} and pass in",
+            "path/to/the/log/file with the -f flag.",
         )
         exit(1)
 
@@ -345,7 +350,9 @@ def main():
                         f"Runs with {getattr(C, fail_type.lower())}"
                         f"{fail_type}{C.end} failures:"
                     )
-                    print(space + (f"\n{space}").join(textwrap.wrap(str(runs))))
+                    print(
+                        space + (f"\n{space}").join(textwrap.wrap(str(runs)))
+                    )
                     print(f"{space}- Fail rate: {len(runs)}/{n_results}")
 
 

@@ -41,7 +41,10 @@ GroupedResultByIndex = dict[
 
 
 def parse_args() -> Input:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description="Parses the outputs of reboot_check_test.sh from "
+        "a C3 submission tar file"
+    )
     p.add_argument(
         "filename",
         help="path to the stress test tarball",
@@ -50,7 +53,8 @@ def parse_args() -> Input:
         "-g",
         "--group-by-err",
         dest="group_by_err",
-        help="Group run-indicies by error messages. Similar messages might be shown twice",
+        help="Group run-indices by error messages. "
+        "Similar messages might be shown twice",
         action="store_true",
     )
     p.add_argument(
@@ -67,7 +71,8 @@ def parse_args() -> Input:
         help=(
             "Specify a value to show a warning when the number of boot files "
             "!= the number of runs you expect. Default=30. "
-            "Note that this number applies to both CB and WB since checkbox doesn't use a different number for CB/WB either."
+            "Note that this number applies to both CB and WB since checkbox "
+            "doesn't use a different number for CB/WB either."
         ),
         type=int,
         default=30,
@@ -126,7 +131,7 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
             continue
         assert len(lines) > 0, "Broken fwts output"
         # if not broken, this list should look like ['High failures:'],
-        # eactly 1 element
+        # exactly 1 element
         # take the first word and use it as the key
         fail_type = lines[0].split()[0]
         # the [0] of each element should alternate between True, False
@@ -155,7 +160,8 @@ def group_device_cmp_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
         for a, b in itertools.groupby(
             reversed(get_device_cmp_lines(file)),
             key=lambda line: line.endswith(
-                "is different from the original list gathered at the beginning of the session!"
+                "is different from the original list gathered at the "
+                "beginning of the session!"
             ),
         )
     ]
@@ -220,7 +226,8 @@ def short_print(
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:{C.end}"
+            f"{getattr(C, fail_type.lower(), C.medium)}{fail_type} failures:"
+            f"{C.end}"
         )
         print(space + f"\n{space}".join(textwrap.wrap(str(failed_runs))))
         if expected_n_runs != 0:
@@ -239,7 +246,10 @@ def main():
     warm_boot_count = 0
     cold_boot_count = 0
     for boot_type in "warm", "cold":
-        prefix = f"test_output/com.canonical.certification__{boot_type}-boot-loop-test"
+        prefix = (
+            "test_output/com.canonical.certification__"
+            f"{boot_type}-boot-loop-test"
+        )
         # it's always the prefix followed by a multi-digit number
         # NOTE: This assumes everything useful is on stdout.
         # NOTE: stderr outputs are in files that end with ".err"
@@ -261,7 +271,9 @@ def main():
             else:
                 cold_boot_count += 1
 
-            run_index = int(boot_filename[len(prefix) :])
+            run_index = int(
+                boot_filename[len(prefix) :]  # noqa: E203
+            )  # noqa: E203, # noqa: 503 conflict
             file = submission.extractfile(boot_filename)
             if not file:
                 continue
@@ -279,14 +291,18 @@ def main():
                 grouped_device_cmp_output = group_device_cmp_output(f)
                 for fail_type, messages in grouped_device_cmp_output.items():
                     for message in messages:
-                        device_cmp_results[fail_type][run_index].append(message)
+                        device_cmp_results[fail_type][run_index].append(
+                            message
+                        )
 
         # sort by boot number
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_cmp"] = device_cmp_results
 
     for boot_type in "warm", "cold":
-        boot_count = warm_boot_count if boot_type == "warm" else cold_boot_count
+        boot_count = (
+            warm_boot_count if boot_type == "warm" else cold_boot_count
+        )
 
         for test in "fwts", "device_cmp":
             print(f"\n{f' Start of {boot_type} boot {test} failures ':-^80}\n")
@@ -320,7 +336,8 @@ def main():
 
         if boot_count != args.expected_n_runs:
             print(
-                f"{C.high}Expected {args.expected_n_runs} {boot_type} boots, but got {boot_count}{C.end}"
+                f"{C.high}Expected {args.expected_n_runs} {boot_type} boots, "
+                f"but got {boot_count}{C.end}"
             )
 
 
