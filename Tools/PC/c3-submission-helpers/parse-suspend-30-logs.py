@@ -218,17 +218,18 @@ def main():
     log_file, summary_file = open_log_file(args.filename)
 
     if args.filename.endswith(".tar.xz"):
-        print(f"\n{' Begin Summary (the log check attachment) ':-^80}\n")
-
         if summary_file:
-            print(summary_file.read())
+            print(f"\n{' Begin Summary Attachment ':-^80}\n")
+            for line in summary_file.readlines():
+                clean_line = line.strip()
+                if clean_line != "":
+                    print(clean_line)
             summary_file.close()
         else:
             print(
                 "No suspend-30-cycles-with-reboot-3-log-check attachment",
                 "was found in the tarball",
             )
-
         print(f"\n{' End of Summary ':-^80}")
 
     with log_file as file:
