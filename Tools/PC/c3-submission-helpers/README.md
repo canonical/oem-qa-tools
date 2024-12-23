@@ -25,30 +25,67 @@ Examples:
 
    will print the output from above AND write the individual runs into its own
    file.
-  - A new directory will be created in "." with the name
+  - A new directory will be created in the current working directory named
    "submission-202408-12345.tar.xz-split" and there will be
    90 files inside named `1.txt, 2.txt, ..., 90.txt`
 
 - ```bash
    python3 parse-suspend-30-logs.py \
        -f path/to/submission-202408-12345.tar.xz \
-       -w -d path/to/output/dir
+       -w \
+       -d path/to/output/dir
    ```
 
    Specify an output directory of where the 1.txt, 2.txt... will be saved to.
    If this directory doesn't exist, the script will try to create it.
-  
-## `cbwb-diffs.py`
 
-This script should be run on the DUT (for now).
-It compares the device lists generated during cold boot/warm boot
-tests and provides options to re-group them to help with readability
+## `summarize_reboot_check_test.py`
 
-Examples:
+This script combines all the results from cold & warm boot tests that uses the new `reboot_check_test.py`.
 
-- `python3 cbwb-diffs.py -p
-/var/tmp/checkbox-ng/sessions/session_title-2024-08-12T09.16.15.
-session` shows the diffs in this session grouped by index.
+Note that it only has FWTS and device comparison results for now.
 
-- `python3 cbwb-diffs.py -p path/to/session/share
-   -g log-name` shows the diffs grouped by log names.
+```
+usage: summarize-reboot-check-test.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] filename
+
+Parses the outputs of reboot_check_test.py from a C3 submission tar file
+
+positional arguments:
+  filename              path to the stress test tarball
+
+options:
+  -h, --help            show this help message and exit
+  -g, --group-by-err    Group run-indices by error messages. Similar messages might be shown twice
+  -v, --verbose         Whether to print detailed messages
+  -n EXPECTED_N_RUNS, --num-runs EXPECTED_N_RUNS
+                        Specify a value to show a warning when the number of boot files != the number of runs you expect. Default=30. Note that this number applies to both cold and
+                        warm boot since checkbox doesn't use a different number for CB/WB either.
+```
+
+Example usage:
+
+```bash
+python3 summarize_reboot_check_test.py -g /path/to/stress/test/submission.tar.xz
+```
+
+## `better-cbwb-diffs.py`
+
+This is for grouping cold & warm boot results that uses the `reboot_check_test.sh` (the bash version).
+
+
+```
+usage: better-cbwb-diffs.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] filename
+
+Parses the outputs of reboot_check_test.sh from a C3 submission tar file
+
+positional arguments:
+  filename              path to the stress test tarball
+
+options:
+  -h, --help            show this help message and exit
+  -g, --group-by-err    Group run-indices by error messages. Similar messages might be shown twice
+  -v, --verbose         Whether to print detailed messages
+  -n EXPECTED_N_RUNS, --num-runs EXPECTED_N_RUNS
+                        Specify a value to show a warning when the number of boot files != the number of runs you expect. Default=30. Note that this number applies to both CB and WB
+                        since checkbox doesn't use a different number for CB/WB either.
+```
