@@ -15,6 +15,8 @@ branch = "│   "
 tee = "├── "
 last = "└── "
 
+D = dict[str, dict[int, list[str]]]
+
 
 class Input:
     filename: str
@@ -54,7 +56,7 @@ GroupedResultByIndex = dict[
 # for device cmp it's lsusb, lspci, iw)
 # key is index to actual message map
 BootType = Literal["warm", "cold"]
-TestType = Literal["fwts", "device_cmp"]
+TestType = Literal["fwts", "device_cmp", "renderer", "check_failed_services"]
 
 
 class SubmissionTarReader:
@@ -115,7 +117,6 @@ class SubmissionTarReader:
                 "Is the submission broken?",
             )
         return len(self.warm_stdout_files)
-
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser(
@@ -211,6 +212,18 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
     return fail_type_to_lines
 
 
+def group_renderer_check_output(file: io.TextIOWrapper):
+    prefix = "[ ERR ] unity support test"
+    out: dict[str, list[str]] = {}
+
+    for line in file:
+        if not line.startswith(prefix):
+            continue
+        out["hardware_renderer_test"] = [line]
+
+    return out
+
+
 def group_device_cmp_output(file: io.TextIOWrapper):
     regex = re.compile(r"\[ ERR \] The output of (.*) differs!")
     out: dict[str, list[str]] = {}
@@ -220,6 +233,17 @@ def group_device_cmp_output(file: io.TextIOWrapper):
             continue
         device_name = m.group(1)
         out[device_name] = [line]
+
+    return out
+
+
+def group_failed_service_errors(file: io.TextIOWrapper):
+    prefix = "These services failed: "
+    out: dict[str, list[str]] = {}
+    for line in file:
+        if not line.startswith(prefix):
+            continue
+        out["check_failed_services"] = [line]
 
     return out
 
@@ -275,7 +299,9 @@ def short_print(
     prefix="",
 ):
     if len(boot_results) == 0:
+        print(prefix, end="")
         Log.ok("No failures!")
+
     for fail_type, results in boot_results.items():
         failed_runs = sorted(list(results.keys()))
         print(
@@ -305,15 +331,16 @@ def group_by_index(reader: SubmissionTarReader):
             "test_output/com.canonical.certification__"
             f"{boot_type}-boot-loop-test"
         )
+
         # it's always the prefix followed by a multi-digit number
         # NOTE: This assumes everything useful is on stdout.
         # NOTE: stderr outputs are in files that end with ".err"
-        fwts_results: dict[str, dict[int, list[str]]] = defaultdict(
+        fwts_results: D = defaultdict(
             lambda: defaultdict(list)
         )  # {fail_type: {run_index: list[actual_message]}}
-        device_cmp_results: dict[str, dict[int, list[str]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
+        renderer_test_results: D = defaultdict(lambda: defaultdict(list))
+        device_cmp_results: D = defaultdict(lambda: defaultdict(list))
+        failed_service_results: D = defaultdict(lambda: defaultdict(list))
 
         for stdout_filename in reader.get_files(boot_type, "stdout"):
             run_index = int(stdout_filename[len(prefix) :])  # noqa: E203
@@ -343,10 +370,24 @@ def group_by_index(reader: SubmissionTarReader):
                         device_cmp_results[device][run_index].append(
                             msg.strip()
                         )
+                f.seek(0)
+                for key, messages in group_renderer_check_output(f).items():
+                    for msg in messages:
+                        renderer_test_results[key][run_index].append(
+                            msg.strip()
+                        )
+                f.seek(0)
+                for key, messages in group_failed_service_errors(f).items():
+                    for msg in messages:
+                        failed_service_results[key][run_index].append(
+                            msg.strip()
+                        )
 
         # sort by boot number
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_cmp"] = device_cmp_results
+        out[boot_type]["renderer"] = renderer_test_results
+        out[boot_type]["check_failed_services"] = failed_service_results
 
     return out
 
@@ -354,15 +395,17 @@ def group_by_index(reader: SubmissionTarReader):
 def main():
     args = parse_args()
     reader = SubmissionTarReader(args.filename)
-
     out = group_by_index(reader)
 
-    for test in "fwts", "device_cmp":
+    for test in "fwts", "device_cmp", "renderer", "check_failed_services":
         cold_result = out["cold"][test]
         warm_result = out["warm"][test]
+
         if (len(cold_result) + len(warm_result)) == 0:
+            print()
             Log.ok(f"No {test} failures")
             continue
+
         if test == "fwts":
             print(f"\n{f' FWTS failures ':=^80}\n")
 
@@ -418,15 +461,11 @@ def main():
                             f"{len(buffer[err_msg][b])} / {reader.boot_count}",
                         )
                     print("")  # new line
-        else:
+        elif test == "device_cmp":
             if args.verbose:
-                print(
-                    f"\n{f' Verbose cold boot device comparison ':-^80}\n"
-                )
+                print(f"\n{f' Verbose cold boot device comparison ':-^80}\n")
                 pretty_print(cold_result)
-                print(
-                    f"\n{f' Verbose warm boot device comparison ':-^80}\n"
-                )
+                print(f"\n{f' Verbose warm boot device comparison ':-^80}\n")
                 pretty_print(warm_result)
                 continue
             print(f"\n{f' Device comparison failures ':=^80}\n")
@@ -436,6 +475,40 @@ def main():
             if len(warm_result) > 0:
                 print("Warm boot:")
                 short_print(out["warm"]["device_cmp"], prefix=space)
+
+        elif test == "renderer":
+            if args.verbose:
+                print(f"\n{f' Verbose cold boot renderer test ':-^80}\n")
+                pretty_print(cold_result)
+                print(f"\n{f' Verbose warm boot renderer test ':-^80}\n")
+                pretty_print(warm_result)
+                continue
+            print(f"\n{f' Renderer test failures ':=^80}\n")
+            if len(cold_result) > 0:
+                print("Cold boot:")
+                short_print(cold_result, prefix=space)
+            if len(warm_result) > 0:
+                print("Warm boot:")
+                short_print(out["warm"]["renderer"], prefix=space)
+
+        elif test == "check_failed_services":
+            if args.verbose:
+                print(
+                    f"\n{f' Verbose cold boot failed services test ':-^80}\n"
+                )
+                pretty_print(cold_result)
+                print(
+                    f"\n{f' Verbose warm boot failed services test ':-^80}\n"
+                )
+                pretty_print(warm_result)
+                continue
+            print(f"\n{f' Found failed services ':=^80}\n")
+            if len(cold_result) > 0:
+                print("Cold boot:")
+                short_print(cold_result, prefix=space)
+            if len(warm_result) > 0:
+                print("Warm boot:")
+                short_print(out["warm"]["check_failed_services"], prefix=space)
 
 
 if __name__ == "__main__":
