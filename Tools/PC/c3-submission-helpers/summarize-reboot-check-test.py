@@ -1,6 +1,5 @@
 #! /usr/bin/python3
 
-import abc
 import argparse
 from collections import defaultdict
 from typing import Literal
@@ -57,7 +56,7 @@ GroupedResultByIndex = dict[
 # for device cmp it's lsusb, lspci, iw)
 # key is index to actual message map
 BootType = Literal["warm", "cold"]
-TestType = Literal["fwts", "device_cmp", "renderer", "service_check"]
+TestType = Literal["fwts", "device_comparison", "renderer", "service_check"]
 
 
 class SubmissionTarReader:
@@ -118,6 +117,7 @@ class SubmissionTarReader:
                 "Is the submission broken?",
             )
         return len(self.warm_stdout_files)
+
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser(
@@ -225,7 +225,7 @@ def group_renderer_check_output(file: io.TextIOWrapper):
     return out
 
 
-def group_device_cmp_output(file: io.TextIOWrapper):
+def group_device_comparison_output(file: io.TextIOWrapper):
     regex = re.compile(r"\[ ERR \] The output of (.*) differs!")
     out: dict[str, list[str]] = {}
     for line in file:
@@ -241,10 +241,16 @@ def group_device_cmp_output(file: io.TextIOWrapper):
 def group_failed_service_errors(file: io.TextIOWrapper):
     prefix = "These services failed: "
     out: dict[str, list[str]] = {}
+    searching_services = False
     for line in file:
-        if not line.startswith(prefix):
+        if line.startswith(prefix):
+            first_service = line.removeprefix(prefix)
+            out["service_check"] = [first_service]
+            searching_services = True
             continue
-        out["service_check"] = [line]
+        if searching_services:
+            if ".service" in line:
+                out["service_check"].append(line)
 
     return out
 
@@ -341,7 +347,7 @@ def group_by_index(reader: SubmissionTarReader):
             lambda: defaultdict(list)
         )  # {fail_type: {run_index: list[actual_message]}}
         renderer_test_results: D = defaultdict(lambda: defaultdict(list))
-        device_cmp_results: D = defaultdict(lambda: defaultdict(list))
+        device_comparison_results: D = defaultdict(lambda: defaultdict(list))
         failed_service_results: D = defaultdict(lambda: defaultdict(list))
 
         for stdout_filename in reader.get_files(boot_type, "stdout"):
@@ -366,10 +372,10 @@ def group_by_index(reader: SubmissionTarReader):
                 continue
 
             with io.TextIOWrapper(file) as f:
-                grouped_device_out = group_device_cmp_output(f)
+                grouped_device_out = group_device_comparison_output(f)
                 for device, messages in grouped_device_out.items():
                     for msg in messages:
-                        device_cmp_results[device][run_index].append(
+                        device_comparison_results[device][run_index].append(
                             msg.strip()
                         )
                 f.seek(0)
@@ -387,7 +393,7 @@ def group_by_index(reader: SubmissionTarReader):
 
         # sort by boot number
         out[boot_type]["fwts"] = fwts_results
-        out[boot_type]["device_cmp"] = device_cmp_results
+        out[boot_type]["device_comparison"] = device_comparison_results
         out[boot_type]["renderer"] = renderer_test_results
         out[boot_type]["service_check"] = failed_service_results
 
@@ -399,13 +405,13 @@ def main():
     reader = SubmissionTarReader(args.filename)
     out = group_by_index(reader)
 
-    for test in "fwts", "device_cmp", "renderer", "service_check":
+    for test in "fwts", "device_comparison", "renderer", "service_check":
         cold_result = out["cold"][test]
         warm_result = out["warm"][test]
 
         if (len(cold_result) + len(warm_result)) == 0:
             print()
-            Log.ok(f"No {test} failures")
+            Log.ok(f"No {test.replace('_', ' ')} failures")
             continue
 
         if test == "fwts":
@@ -425,7 +431,7 @@ def main():
                 short_print(warm_result)
                 continue
 
-            # key is message, value is {cold: [index], warm: index}
+            # key is message, value is {cold: [index], warm: [index]}
             for fail_type in cold_result:
                 print(
                     f"{getattr(C, fail_type.lower())}"
@@ -434,20 +440,28 @@ def main():
                 regrouped_cold = group_by_fwts_error(cold_result[fail_type])
                 regrouped_warm = group_by_fwts_error(warm_result[fail_type])
 
-                for err_msg in regrouped_cold:
+                all_err_msg = set(regrouped_cold.keys()).union(
+                    set(regrouped_warm.keys())
+                )
+
+                for err_msg in all_err_msg:
                     print(space, err_msg)
                     buffer = {
                         err_msg: {
-                            "cold": regrouped_cold[err_msg],
-                            "warm": regrouped_warm[err_msg],
+                            "cold": regrouped_cold.get(err_msg, []),
+                            "warm": regrouped_warm.get(err_msg, []),
                         }
                     }
                     for b in "cold", "warm":
                         wrapped = textwrap.wrap(
                             str(buffer[err_msg][b]), width=50
                         )
+                        num_fails = len(buffer[err_msg][b])
                         shared_prefix = " ".join((space, space))
-                        line1 = f"{b.capitalize()} Failures: "
+                        if num_fails > 0:
+                            line1 = f"{b.capitalize()} failures: "
+                        else:
+                            line1 = f"No {b} boot failures"
                         print(shared_prefix, tee, line1, wrapped[0])
 
                         for line in wrapped[1:]:
@@ -455,15 +469,17 @@ def main():
                                 shared_prefix, branch, len(line1) * " ", line
                             )
 
-                        print(
-                            space,
-                            space,
-                            last if b == "warm" else tee,
-                            f"{b.capitalize()} failure rate:",
-                            f"{len(buffer[err_msg][b])} / {reader.boot_count}",
-                        )
+                        
+                        if num_fails > 0:
+                            print(
+                                space,
+                                space,
+                                last if b == "warm" else tee,
+                                f"{b.capitalize()} failure rate:",
+                                f"{num_fails} / {reader.boot_count}",
+                            )
                     print("")  # new line
-        elif test == "device_cmp":
+        elif test == "device_comparison":
             if args.verbose:
                 print(f"\n{f' Verbose cold boot device comparison ':-^80}\n")
                 pretty_print(cold_result)
@@ -476,7 +492,7 @@ def main():
                 short_print(cold_result, prefix=space)
             if len(warm_result) > 0:
                 print("Warm boot:")
-                short_print(out["warm"]["device_cmp"], prefix=space)
+                short_print(out["warm"]["device_comparison"], prefix=space)
 
         elif test == "renderer":
             if args.verbose:
