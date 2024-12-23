@@ -64,12 +64,8 @@ class SubmissionTarReader:
         self.raw_tar = tarfile.open(filepath)
 
         slash_dot = r"\."
-        warm_prefix = (
-            "test_output/com.canonical.certification__warm-boot-loop-test"
-        )
-        cold_prefix = (
-            "test_output/com.canonical.certification__cold-boot-loop-test"
-        )
+        warm_prefix = "test_output/com.canonical.certification__warm-boot-loop-test"  # noqa: E501
+        cold_prefix = "test_output/com.canonical.certification__cold-boot-loop-test"  # noqa: E501
         # it's always the prefix followed by a multi-digit number
         # NOTE: stderr outputs are in files that end with ".err"
         warm_boot_stdout_pattern = f"{warm_prefix}[0-9]+$"
@@ -323,8 +319,8 @@ def short_print(
             print(" " * prefix_len, line)
         if expected_n_runs != 0:
             print(
-                f"{prefix}{space}- Fail rate: "
-                f"{len(failed_runs)}/{expected_n_runs}"
+                f"{prefix}{space}- Fail rate:",
+                f"{len(failed_runs)}/{expected_n_runs}",
             )
 
 
@@ -337,7 +333,7 @@ def group_by_index(reader: SubmissionTarReader):
     for boot_type in "warm", "cold":
         prefix = (
             "test_output/com.canonical.certification__"
-            f"{boot_type}-boot-loop-test"
+            + f"{boot_type}-boot-loop-test"
         )
 
         # it's always the prefix followed by a multi-digit number
@@ -454,30 +450,33 @@ def main():
                     }
                     for b in "cold", "warm":
                         wrapped = textwrap.wrap(
-                            str(buffer[err_msg][b]), width=50
+                            str(buffer[err_msg][b]),
+                            width=50,
                         )
                         num_fails = len(buffer[err_msg][b])
                         shared_prefix = " ".join((space, space))
                         if num_fails > 0:
                             line1 = f"{b.capitalize()} failures: "
+                            print(shared_prefix, tee, line1, wrapped[0])
                         else:
                             line1 = f"No {b} boot failures"
-                        print(shared_prefix, tee, line1, wrapped[0])
+                            print(shared_prefix, tee, line1)
+                            continue
 
                         for line in wrapped[1:]:
                             print(
-                                shared_prefix, branch, len(line1) * " ", line
+                                shared_prefix,
+                                branch,
+                                len(line1) * " ",
+                                line,
                             )
-
-                        
-                        if num_fails > 0:
-                            print(
-                                space,
-                                space,
-                                last if b == "warm" else tee,
-                                f"{b.capitalize()} failure rate:",
-                                f"{num_fails} / {reader.boot_count}",
-                            )
+                        print(
+                            space,
+                            space,
+                            last if b == "warm" else tee,
+                            f"{b.capitalize()} failure rate:",
+                            f"{num_fails} / {reader.boot_count}",
+                        )
                     print("")  # new line
         elif test == "device_comparison":
             if args.verbose:
