@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 
+import abc
 import argparse
 from collections import defaultdict
 from typing import Literal
@@ -56,7 +57,7 @@ GroupedResultByIndex = dict[
 # for device cmp it's lsusb, lspci, iw)
 # key is index to actual message map
 BootType = Literal["warm", "cold"]
-TestType = Literal["fwts", "device_cmp", "renderer", "check_failed_services"]
+TestType = Literal["fwts", "device_cmp", "renderer", "service_check"]
 
 
 class SubmissionTarReader:
@@ -243,7 +244,7 @@ def group_failed_service_errors(file: io.TextIOWrapper):
     for line in file:
         if not line.startswith(prefix):
             continue
-        out["check_failed_services"] = [line]
+        out["service_check"] = [line]
 
     return out
 
@@ -273,7 +274,7 @@ def pretty_print(
     if len(boot_results) == 0:
         Log.ok("No failures!")
     for fail_type, results in boot_results.items():
-        print(f"{prefix} {fail_type} failures".title())
+        print(f"{prefix} {fail_type.replace('_', ' ')} failures".title())
         result_items = list(results.items())
         result_items.sort(key=lambda i: i[0])
 
@@ -303,10 +304,11 @@ def short_print(
         Log.ok("No failures!")
 
     for fail_type, results in boot_results.items():
+
         failed_runs = sorted(list(results.keys()))
         print(
             f"{prefix}{getattr(C, fail_type.lower(), C.medium)}"
-            f"{fail_type} failures:{C.end}"  # noqa: E501
+            f"{fail_type.replace('_', ' ').title()} failures:{C.end}"  # noqa: E501
         )
         wrapped = textwrap.wrap(str(failed_runs))
         print(f"{prefix}{space}- Failed runs: {wrapped[0]}")
@@ -387,7 +389,7 @@ def group_by_index(reader: SubmissionTarReader):
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_cmp"] = device_cmp_results
         out[boot_type]["renderer"] = renderer_test_results
-        out[boot_type]["check_failed_services"] = failed_service_results
+        out[boot_type]["service_check"] = failed_service_results
 
     return out
 
@@ -397,7 +399,7 @@ def main():
     reader = SubmissionTarReader(args.filename)
     out = group_by_index(reader)
 
-    for test in "fwts", "device_cmp", "renderer", "check_failed_services":
+    for test in "fwts", "device_cmp", "renderer", "service_check":
         cold_result = out["cold"][test]
         warm_result = out["warm"][test]
 
@@ -491,7 +493,7 @@ def main():
                 print("Warm boot:")
                 short_print(out["warm"]["renderer"], prefix=space)
 
-        elif test == "check_failed_services":
+        elif test == "service_check":
             if args.verbose:
                 print(
                     f"\n{f' Verbose cold boot failed services test ':-^80}\n"
@@ -508,7 +510,7 @@ def main():
                 short_print(cold_result, prefix=space)
             if len(warm_result) > 0:
                 print("Warm boot:")
-                short_print(out["warm"]["check_failed_services"], prefix=space)
+                short_print(out["warm"]["service_check"], prefix=space)
 
 
 if __name__ == "__main__":
