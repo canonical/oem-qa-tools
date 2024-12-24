@@ -70,28 +70,3 @@ Example usage:
 ```bash
 python3 summarize_reboot_check_test.py -g /path/to/stress/test/submission.tar.xz
 ```
-
-## `better-cbwb-diffs.py`
-
-This is for grouping cold & warm boot results
-that uses `reboot_check_test.sh` (the bash version).
-
-<!-- markdownlint-disable MD013 -->
-
-```plaintext
-usage: better-cbwb-diffs.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] filename
-
-Parses the outputs of reboot_check_test.sh from a C3 submission tar file
-
-positional arguments:
-  filename              path to the stress test tarball
-
-options:
-  -h, --help            show this help message and exit
-  -g, --group-by-err    Group run-indices by error messages. Similar messages might be shown twice
-  -v, --verbose         Whether to print detailed messages
-  -n EXPECTED_N_RUNS, --num-runs EXPECTED_N_RUNS
-                        Specify a value to show a warning when the number of boot files != the number of runs you expect. Default=30. Note that this number applies to both CB and WB
-                        since checkbox doesn't use a different number for CB/WB either.
-```
-<!-- markdownlint-enable MD013 -->
