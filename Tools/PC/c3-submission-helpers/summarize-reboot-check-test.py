@@ -441,7 +441,7 @@ def main():
                 )
 
                 for err_msg in all_err_msg:
-                    print(space, err_msg)
+                    print(space, f"\033[1m{err_msg}\033[0m")
                     buffer = {
                         err_msg: {
                             "cold": regrouped_cold.get(err_msg, []),
@@ -486,12 +486,17 @@ def main():
                 pretty_print(warm_result)
                 continue
             print(f"\n{f' Device comparison failures ':=^80}\n")
+            print("Cold boot:")
             if len(cold_result) > 0:
-                print("Cold boot:")
                 short_print(cold_result, prefix=space)
+            else:
+                print(space + "No failures!")
+
+            print("Warm boot:")
             if len(warm_result) > 0:
-                print("Warm boot:")
-                short_print(out["warm"]["device_comparison"], prefix=space)
+                short_print(warm_result, prefix=space)
+            else:
+                print(space + "No failures!")
 
         elif test == "renderer":
             if args.verbose:
@@ -501,12 +506,17 @@ def main():
                 pretty_print(warm_result)
                 continue
             print(f"\n{f' Renderer test failures ':=^80}\n")
+            print("Cold boot:")
             if len(cold_result) > 0:
-                print("Cold boot:")
                 short_print(cold_result, prefix=space)
+            else:
+                print(space + "No failures!")
+
+            print("Warm boot:")
             if len(warm_result) > 0:
-                print("Warm boot:")
-                short_print(out["warm"]["renderer"], prefix=space)
+                short_print(warm_result, prefix=space)
+            else:
+                print(space + "No failures!")
 
         elif test == "service_check":
             if args.verbose:
@@ -520,12 +530,17 @@ def main():
                 pretty_print(warm_result)
                 continue
             print(f"\n{f' Found failed services ':=^80}\n")
+            print("Cold boot:")
             if len(cold_result) > 0:
-                print("Cold boot:")
                 short_print(cold_result, prefix=space)
+            else:
+                print(space + "No failures!")
+
+            print("Warm boot:")
             if len(warm_result) > 0:
-                print("Warm boot:")
-                short_print(out["warm"]["service_check"], prefix=space)
+                short_print(warm_result, prefix=space)
+            else:
+                print(space + "No failures!")
 
 
 if __name__ == "__main__":
