@@ -44,8 +44,6 @@ Examples:
 This script combines all the results from cold & warm boot tests that uses the
 new `reboot_check_test.py`.
 
-Note that it only has FWTS and device comparison results for now.
-
 <!-- markdownlint-disable MD013 -->
 ```plaintext
 usage: summarize-reboot-check-test.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] filename
