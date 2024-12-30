@@ -19,7 +19,7 @@ last = "└── "
 
 def pretty_print(
     boot_results: dict[str, dict[int, list[str]]],
-    expected_n_runs: int = 30,
+    expected_n_runs: int,
     prefix: str = "",
 ):
     if len(boot_results) == 0:
@@ -76,8 +76,9 @@ def short_print(
 class Input:
     filename: str
     group_by_err: bool
-    expected_n_runs: int | None  # if specified show a warning
+    expected_n_runs: int  # if specified show a warning
     verbose: bool
+    no_color: bool
 
 
 class Color:
@@ -88,6 +89,7 @@ class Color:
     other = "\033[96m"
     ok = "\033[92m"
     end = "\033[0m"
+    bold = "\033[1m"
 
 
 class Log:
@@ -179,16 +181,18 @@ class TestResultPrinter(abc.ABC):
         warm_results: GroupedResultByIndex,
         cold_results: GroupedResultByIndex,
         reader: SubmissionTarReader,
+        expected_n_runs: int,
     ) -> None:
         self.warm_results = warm_results
         self.cold_results = cold_results
         self.reader = reader
+        self.expected_n_runs = expected_n_runs
 
     def print_verbose(self):
         print(f"\n{f' Verbose cold boot {self.name} results ':-^80}\n")
-        pretty_print(self.cold_results)
+        pretty_print(self.cold_results, self.expected_n_runs)
         print(f"\n{f' Verbose warm boot device comparison ':-^80}\n")
-        pretty_print(self.warm_results)
+        pretty_print(self.warm_results, self.expected_n_runs)
 
     def print_by_err(self):
         # if not implemented, just do this
@@ -217,8 +221,9 @@ class FwtsPrinter(TestResultPrinter):
         warm_results: GroupedResultByIndex,
         cold_results: GroupedResultByIndex,
         reader: SubmissionTarReader,
+        expected_n_runs=30,
     ) -> None:
-        super().__init__(warm_results, cold_results, reader)
+        super().__init__(warm_results, cold_results, reader, expected_n_runs)
 
     def print_by_err(self):
         # key is message, value is {cold: [index], warm: [index]}
@@ -239,7 +244,7 @@ class FwtsPrinter(TestResultPrinter):
             )
 
             for err_msg in all_err_msg:
-                print(space, f"\033[1m{err_msg}\033[0m")
+                print(space, f"{Color.bold}{err_msg}{Color.end}")
                 buffer = {
                     err_msg: {
                         "cold": regrouped_cold.get(err_msg, []),
@@ -284,9 +289,9 @@ class FwtsPrinter(TestResultPrinter):
 
     def print_verbose(self):
         print(f"\n{f' Verbose cold boot FWTS results ':-^80}\n")
-        pretty_print(self.cold_results)
+        pretty_print(self.cold_results, self.expected_n_runs)
         print(f"\n{f' Verbose warm boot FWTS results ':-^80}\n")
-        pretty_print(self.warm_results)
+        pretty_print(self.warm_results, self.expected_n_runs)
 
     def _group_by_fwts_error(self, raw: RunIndexToMessageMap):
         timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
@@ -313,8 +318,9 @@ class DeviceComparisonPrinter(TestResultPrinter):
         warm_results: GroupedResultByIndex,
         cold_results: GroupedResultByIndex,
         reader: SubmissionTarReader,
+        expected_n_runs: int,
     ) -> None:
-        super().__init__(warm_results, cold_results, reader)
+        super().__init__(warm_results, cold_results, reader, expected_n_runs)
 
     def print_by_err(self):
         super().print_by_index()
@@ -331,8 +337,9 @@ class ServiceCheckPrinter(TestResultPrinter):
         warm_results: GroupedResultByIndex,
         cold_results: GroupedResultByIndex,
         reader: SubmissionTarReader,
+        expected_n_runs: int,
     ) -> None:
-        super().__init__(warm_results, cold_results, reader)
+        super().__init__(warm_results, cold_results, reader, expected_n_runs)
 
     def print_by_index(self):
         super().print_by_index()
@@ -349,8 +356,9 @@ class RendererCheckPrinter(TestResultPrinter):
         warm_results: GroupedResultByIndex,
         cold_results: GroupedResultByIndex,
         reader: SubmissionTarReader,
+        expected_n_runs: int,
     ) -> None:
-        super().__init__(warm_results, cold_results, reader)
+        super().__init__(warm_results, cold_results, reader, expected_n_runs)
 
     def print_by_index(self):
         super().print_by_index()
@@ -397,6 +405,11 @@ def parse_args() -> Input:
         ),
         type=int,
         default=30,
+    )
+    p.add_argument(
+        "--no-color",
+        help="Removes all colors and styles",
+        action="store_true",
     )
     return p.parse_args()  # type: ignore
 
@@ -574,6 +587,12 @@ def main():
     reader = SubmissionTarReader(args.filename)
     out = group_by_index(reader)
 
+    if args.no_color:
+        for prop in dir(Color):
+            if prop.startswith("__") and type(getattr(Color, prop)) is not str:
+                continue
+            setattr(Color, prop, "")
+
     printer_classes: dict[TestType, type[TestResultPrinter]] = {
         klass.name: klass
         for klass in (
@@ -588,8 +607,11 @@ def main():
         cold_results = out["cold"][test]
         warm_results = out["warm"][test]
 
-        printer = printer_classes[test](warm_results, cold_results, reader)
+        printer = printer_classes[test](
+            warm_results, cold_results, reader, args.expected_n_runs
+        )
         print(f"\n{f' {printer.name.capitalize()} failures ':=^80}\n")
+
         if (len(cold_results) + len(warm_results)) == 0:
             Log.ok(f"No {printer.name} failures")
             continue
