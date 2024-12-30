@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 
+import abc
 import argparse
 from collections import defaultdict
 from typing import Literal
@@ -15,8 +16,6 @@ branch = "│   "
 tee = "├── "
 last = "└── "
 
-D = dict[str, dict[int, list[str]]]
-
 
 class Input:
     filename: str
@@ -25,7 +24,7 @@ class Input:
     verbose: bool
 
 
-class C:  # color
+class Color:  # color
     high = "\033[94m"
     low = "\033[95m"
     medium = "\033[93m"
@@ -38,15 +37,15 @@ class C:  # color
 class Log:
     @staticmethod
     def ok(*args: str):
-        print(f"{C.ok}[ OK ]{C.end}", *args)
+        print(f"{Color.ok}[ OK ]{Color.end}", *args)
 
     @staticmethod
     def warn(*args: str):
-        print(f"{C.medium}[ WARN ]{C.end}", *args)
+        print(f"{Color.medium}[ WARN ]{Color.end}", *args)
 
     @staticmethod
     def err(*args: str):
-        print(f"{C.critical}[ WARN ]{C.end}", *args)
+        print(f"{Color.critical}[ WARN ]{Color.end}", *args)
 
 
 RunIndexToMessageMap = dict[int, list[str]]
@@ -113,6 +112,203 @@ class SubmissionTarReader:
                 "Is the submission broken?",
             )
         return len(self.warm_stdout_files)
+
+
+class TestResultPrinter(abc.ABC):
+
+    name: str
+
+    def __init__(
+        self,
+        warm_results: GroupedResultByIndex,
+        cold_results: GroupedResultByIndex,
+        reader: SubmissionTarReader,
+    ) -> None:
+        self.warm_results = warm_results
+        self.cold_results = cold_results
+        self.reader = reader
+
+    def print_verbose(self):
+        print(f"\n{f' Verbose cold boot {self.name} results ':-^80}\n")
+        pretty_print(self.cold_results)
+        print(f"\n{f' Verbose warm boot device comparison ':-^80}\n")
+        pretty_print(self.warm_results)
+
+    @abc.abstractmethod
+    def print_by_err(self): ...
+
+    def print_by_index(self):
+        print(f"\n{f' {self.name.capitalize()} failures ':=^80}\n")
+        print("Cold boot:")
+        if len(self.cold_results) > 0:
+            short_print(self.cold_results, prefix=space)
+        else:
+            print(space + "No failures!")
+
+        print("Warm boot:")
+        if len(self.warm_results) > 0:
+            short_print(self.warm_results, prefix=space)
+        else:
+            print(space + "No failures!")
+
+
+class FwtsPrinter(TestResultPrinter):
+
+    name = "fwts"
+
+    def __init__(
+        self,
+        warm_results: GroupedResultByIndex,
+        cold_results: GroupedResultByIndex,
+        reader: SubmissionTarReader,
+    ) -> None:
+        super().__init__(warm_results, cold_results, reader)
+
+    def print_by_err(self):
+        # key is message, value is {cold: [index], warm: [index]}
+        for fail_type in self.cold_results:
+            print(
+                f"{getattr(Color, fail_type.lower())}"
+                f"FWTS {fail_type} errors:{Color.end}"
+            )
+            regrouped_cold = self._group_by_fwts_error(
+                self.cold_results[fail_type]
+            )
+            regrouped_warm = self._group_by_fwts_error(
+                self.warm_results[fail_type]
+            )
+
+            all_err_msg = set(regrouped_cold.keys()).union(
+                set(regrouped_warm.keys())
+            )
+
+            for err_msg in all_err_msg:
+                print(space, f"\033[1m{err_msg}\033[0m")
+                buffer = {
+                    err_msg: {
+                        "cold": regrouped_cold.get(err_msg, []),
+                        "warm": regrouped_warm.get(err_msg, []),
+                    }
+                }
+                for b in "cold", "warm":
+                    wrapped = textwrap.wrap(
+                        str(buffer[err_msg][b]),
+                        width=50,
+                    )
+                    num_fails = len(buffer[err_msg][b])
+                    shared_prefix = " ".join((space, space))
+                    if num_fails > 0:
+                        line1 = f"{b.capitalize()} failures: "
+                        print(shared_prefix, tee, line1, wrapped[0])
+                    else:
+                        line1 = f"No {b} boot failures"
+                        print(shared_prefix, tee, line1)
+                        continue
+
+                    for line in wrapped[1:]:
+                        print(
+                            shared_prefix,
+                            branch,
+                            len(line1) * " ",
+                            line,
+                        )
+                    print(
+                        space,
+                        space,
+                        last if b == "warm" else tee,
+                        f"{b.capitalize()} failure rate:",
+                        f"{num_fails} / {self.reader.boot_count}",
+                    )
+                print("")  # new line
+
+    def print_by_index(self):
+        print(f"\n{f' Cold boot fwts failures ':-^80}\n")
+        short_print(self.cold_results)
+        print(f"\n{f' Warm boot fwts failures ':-^80}\n")
+        short_print(self.warm_results)
+
+    def print_verbose(self):
+        print(f"\n{f' Verbose cold boot FWTS results ':-^80}\n")
+        pretty_print(self.cold_results)
+        print(f"\n{f' Verbose warm boot FWTS results ':-^80}\n")
+        pretty_print(self.warm_results)
+
+    def _group_by_fwts_error(self, raw: RunIndexToMessageMap):
+        timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
+        prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+        message_to_run_index_map = defaultdict[str, list[int]](list)
+        for run_index, messages in raw.items():
+            for message in messages:
+                message = re.sub(
+                    prefix_pattern, "", re.sub(timestamp_pattern, "", message)
+                ).strip()
+                message_to_run_index_map[message].append(run_index)
+
+        for v in message_to_run_index_map.values():
+            v.sort()
+
+        return message_to_run_index_map
+
+
+class DeviceComparisonPrinter(TestResultPrinter):
+    name = "device comparison"
+
+    def __init__(
+        self,
+        warm_results: GroupedResultByIndex,
+        cold_results: GroupedResultByIndex,
+        reader: SubmissionTarReader,
+    ) -> None:
+        super().__init__(warm_results, cold_results, reader)
+
+    def print_by_err(self):
+        super().print_by_index()
+
+    def print_by_index(self):
+        super().print_by_index()
+
+    def print_verbose(self):
+        super().print_verbose()
+
+
+class ServiceCheckPrinter(TestResultPrinter):
+    name = "failed service check"
+
+    def __init__(
+        self,
+        warm_results: GroupedResultByIndex,
+        cold_results: GroupedResultByIndex,
+        reader: SubmissionTarReader,
+    ) -> None:
+        super().__init__(warm_results, cold_results, reader)
+
+    def print_by_err(self): ...
+
+    def print_by_index(self):
+        super().print_by_index()
+
+    def print_verbose(self):
+        super().print_verbose()
+
+
+class RendererCheckPrinter(TestResultPrinter):
+    name = "renderer check"
+
+    def __init__(
+        self,
+        warm_results: GroupedResultByIndex,
+        cold_results: GroupedResultByIndex,
+        reader: SubmissionTarReader,
+    ) -> None:
+        super().__init__(warm_results, cold_results, reader)
+
+    def print_by_err(self): ...
+
+    def print_by_index(self):
+        super().print_by_index()
+
+    def print_verbose(self):
+        super().print_verbose()
 
 
 def parse_args() -> Input:
@@ -251,23 +447,6 @@ def group_failed_service_errors(file: io.TextIOWrapper):
     return out
 
 
-def group_by_fwts_error(raw: RunIndexToMessageMap):
-    timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
-    prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
-    message_to_run_index_map = defaultdict[str, list[int]](list)
-    for run_index, messages in raw.items():
-        for message in messages:
-            message = re.sub(
-                prefix_pattern, "", re.sub(timestamp_pattern, "", message)
-            ).strip()
-            message_to_run_index_map[message].append(run_index)
-
-    for v in message_to_run_index_map.values():
-        v.sort()
-
-    return message_to_run_index_map
-
-
 def pretty_print(
     boot_results: dict[str, dict[int, list[str]]],
     expected_n_runs: int = 30,
@@ -309,8 +488,8 @@ def short_print(
 
         failed_runs = sorted(list(results.keys()))
         print(
-            f"{prefix}{getattr(C, fail_type.lower(), C.medium)}"
-            f"{fail_type.replace('_', ' ').title()} failures:{C.end}"  # noqa: E501
+            f"{prefix}{getattr(Color, fail_type.lower(), Color.medium)}"
+            f"{fail_type.replace('_', ' ').title()} failures:{Color.end}"  # noqa: E501
         )
         wrapped = textwrap.wrap(str(failed_runs))
         print(f"{prefix}{space}- Failed runs: {wrapped[0]}")
@@ -339,12 +518,18 @@ def group_by_index(reader: SubmissionTarReader):
         # it's always the prefix followed by a multi-digit number
         # NOTE: This assumes everything useful is on stdout.
         # NOTE: stderr outputs are in files that end with ".err"
-        fwts_results: D = defaultdict(
+        fwts_results: GroupedResultByIndex = defaultdict(
             lambda: defaultdict(list)
         )  # {fail_type: {run_index: list[actual_message]}}
-        renderer_test_results: D = defaultdict(lambda: defaultdict(list))
-        device_comparison_results: D = defaultdict(lambda: defaultdict(list))
-        failed_service_results: D = defaultdict(lambda: defaultdict(list))
+        renderer_test_results: GroupedResultByIndex = defaultdict(
+            lambda: defaultdict(list)
+        )
+        device_comparison_results: GroupedResultByIndex = defaultdict(
+            lambda: defaultdict(list)
+        )
+        failed_service_results: GroupedResultByIndex = defaultdict(
+            lambda: defaultdict(list)
+        )
 
         for stdout_filename in reader.get_files(boot_type, "stdout"):
             run_index = int(stdout_filename[len(prefix) :])  # noqa: E203
@@ -387,7 +572,6 @@ def group_by_index(reader: SubmissionTarReader):
                             msg.strip()
                         )
 
-        # sort by boot number
         out[boot_type]["fwts"] = fwts_results
         out[boot_type]["device_comparison"] = device_comparison_results
         out[boot_type]["renderer"] = renderer_test_results
@@ -400,147 +584,32 @@ def main():
     args = parse_args()
     reader = SubmissionTarReader(args.filename)
     out = group_by_index(reader)
+    print(type(FwtsPrinter))
+    printer_classes = {
+        "fwts": FwtsPrinter,
+        "device_comparison": DeviceComparisonPrinter,
+        "renderer": RendererCheckPrinter,
+        "service_check": ServiceCheckPrinter,
+    }
 
     for test in "fwts", "device_comparison", "renderer", "service_check":
-        cold_result = out["cold"][test]
-        warm_result = out["warm"][test]
+        cold_results = out["cold"][test]
+        warm_results = out["warm"][test]
 
-        if (len(cold_result) + len(warm_result)) == 0:
+        if (len(cold_results) + len(warm_results)) == 0:
             print()
             Log.ok(f"No {test.replace('_', ' ')} failures")
             continue
 
-        if test == "fwts":
-            print(f"\n{f' FWTS failures ':=^80}\n")
-
-            if args.verbose:
-                print(f"\n{f' Verbose cold boot FWTS results ':-^80}\n")
-                pretty_print(cold_result)
-                print(f"\n{f' Verbose warm boot FWTS results ':-^80}\n")
-                pretty_print(warm_result)
-                continue
-
-            if not args.group_by_err:
-                print(f"\n{f' Cold boot fwts failures ':-^80}\n")
-                short_print(cold_result)
-                print(f"\n{f' Warm boot fwts failures ':-^80}\n")
-                short_print(warm_result)
-                continue
-
-            # key is message, value is {cold: [index], warm: [index]}
-            for fail_type in cold_result:
-                print(
-                    f"{getattr(C, fail_type.lower())}"
-                    f"FWTS {fail_type} errors:{C.end}"
-                )
-                regrouped_cold = group_by_fwts_error(cold_result[fail_type])
-                regrouped_warm = group_by_fwts_error(warm_result[fail_type])
-
-                all_err_msg = set(regrouped_cold.keys()).union(
-                    set(regrouped_warm.keys())
-                )
-
-                for err_msg in all_err_msg:
-                    print(space, f"\033[1m{err_msg}\033[0m")
-                    buffer = {
-                        err_msg: {
-                            "cold": regrouped_cold.get(err_msg, []),
-                            "warm": regrouped_warm.get(err_msg, []),
-                        }
-                    }
-                    for b in "cold", "warm":
-                        wrapped = textwrap.wrap(
-                            str(buffer[err_msg][b]),
-                            width=50,
-                        )
-                        num_fails = len(buffer[err_msg][b])
-                        shared_prefix = " ".join((space, space))
-                        if num_fails > 0:
-                            line1 = f"{b.capitalize()} failures: "
-                            print(shared_prefix, tee, line1, wrapped[0])
-                        else:
-                            line1 = f"No {b} boot failures"
-                            print(shared_prefix, tee, line1)
-                            continue
-
-                        for line in wrapped[1:]:
-                            print(
-                                shared_prefix,
-                                branch,
-                                len(line1) * " ",
-                                line,
-                            )
-                        print(
-                            space,
-                            space,
-                            last if b == "warm" else tee,
-                            f"{b.capitalize()} failure rate:",
-                            f"{num_fails} / {reader.boot_count}",
-                        )
-                    print("")  # new line
-        elif test == "device_comparison":
-            if args.verbose:
-                print(f"\n{f' Verbose cold boot device comparison ':-^80}\n")
-                pretty_print(cold_result)
-                print(f"\n{f' Verbose warm boot device comparison ':-^80}\n")
-                pretty_print(warm_result)
-                continue
-            print(f"\n{f' Device comparison failures ':=^80}\n")
-            print("Cold boot:")
-            if len(cold_result) > 0:
-                short_print(cold_result, prefix=space)
-            else:
-                print(space + "No failures!")
-
-            print("Warm boot:")
-            if len(warm_result) > 0:
-                short_print(warm_result, prefix=space)
-            else:
-                print(space + "No failures!")
-
-        elif test == "renderer":
-            if args.verbose:
-                print(f"\n{f' Verbose cold boot renderer test ':-^80}\n")
-                pretty_print(cold_result)
-                print(f"\n{f' Verbose warm boot renderer test ':-^80}\n")
-                pretty_print(warm_result)
-                continue
-            print(f"\n{f' Renderer test failures ':=^80}\n")
-            print("Cold boot:")
-            if len(cold_result) > 0:
-                short_print(cold_result, prefix=space)
-            else:
-                print(space + "No failures!")
-
-            print("Warm boot:")
-            if len(warm_result) > 0:
-                short_print(warm_result, prefix=space)
-            else:
-                print(space + "No failures!")
-
-        elif test == "service_check":
-            if args.verbose:
-                print(
-                    f"\n{f' Verbose cold boot failed services test ':-^80}\n"
-                )
-                pretty_print(cold_result)
-                print(
-                    f"\n{f' Verbose warm boot failed services test ':-^80}\n"
-                )
-                pretty_print(warm_result)
-                continue
-            print(f"\n{f' Found failed services ':=^80}\n")
-            print("Cold boot:")
-            if len(cold_result) > 0:
-                short_print(cold_result, prefix=space)
-            else:
-                print(space + "No failures!")
-
-            print("Warm boot:")
-            if len(warm_result) > 0:
-                short_print(warm_result, prefix=space)
-            else:
-                print(space + "No failures!")
+        printer: TestResultPrinter = printer_classes[test](
+            warm_results, cold_results, reader
+        )
+        if args.verbose:
+            printer.print_verbose()
+        elif args.group_by_err:
+            printer.print_by_err()
+        else:
+            printer.print_by_index()
 
 
 if __name__ == "__main__":
