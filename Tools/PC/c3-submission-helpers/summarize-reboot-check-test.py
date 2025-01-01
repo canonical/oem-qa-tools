@@ -313,59 +313,12 @@ class FwtsPrinter(TestResultPrinter):
 class DeviceComparisonPrinter(TestResultPrinter):
     name = "device comparison"
 
-    def __init__(
-        self,
-        warm_results: GroupedResultByIndex,
-        cold_results: GroupedResultByIndex,
-        reader: SubmissionTarReader,
-        expected_n_runs: int,
-    ) -> None:
-        super().__init__(warm_results, cold_results, reader, expected_n_runs)
-
-    def print_by_err(self):
-        super().print_by_index()
-
-    def print_verbose(self):
-        super().print_verbose()
-
 
 class ServiceCheckPrinter(TestResultPrinter):
     name = "service check"
 
-    def __init__(
-        self,
-        warm_results: GroupedResultByIndex,
-        cold_results: GroupedResultByIndex,
-        reader: SubmissionTarReader,
-        expected_n_runs: int,
-    ) -> None:
-        super().__init__(warm_results, cold_results, reader, expected_n_runs)
-
-    def print_by_index(self):
-        super().print_by_index()
-
-    def print_verbose(self):
-        super().print_verbose()
-
-
 class RendererCheckPrinter(TestResultPrinter):
     name = "renderer"
-
-    def __init__(
-        self,
-        warm_results: GroupedResultByIndex,
-        cold_results: GroupedResultByIndex,
-        reader: SubmissionTarReader,
-        expected_n_runs: int,
-    ) -> None:
-        super().__init__(warm_results, cold_results, reader, expected_n_runs)
-
-    def print_by_index(self):
-        super().print_by_index()
-
-    def print_verbose(self):
-        super().print_verbose()
-
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser(
