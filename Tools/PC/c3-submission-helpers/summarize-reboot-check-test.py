@@ -10,7 +10,6 @@ import tarfile
 import re
 import textwrap
 
-
 space = "    "
 branch = "│   "
 tee = "├── "
@@ -317,8 +316,10 @@ class DeviceComparisonPrinter(TestResultPrinter):
 class ServiceCheckPrinter(TestResultPrinter):
     name = "service check"
 
+
 class RendererCheckPrinter(TestResultPrinter):
     name = "renderer"
+
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser(
@@ -405,6 +406,7 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
             "klog",
             "oops",
             "Listing all DRM",
+            "- ",  # the drm list bullet
         ]
         exclude_suffixes = ["is connected to display!", "connected", "seconds"]
         fail_type_to_lines[fail_type] = [
