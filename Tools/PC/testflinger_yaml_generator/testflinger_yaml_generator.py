@@ -160,6 +160,10 @@ class CheckboxLauncherBuilder(ConfigOperation):
         if os.path.exists(json_file_path):
             self.merge_with_file(json_file_path, "json", "manifest")
 
+    def merge_checkbox_conf(self, conf_path):
+        if os.path.exists(conf_path):
+            self.merge_with_file(conf_path, "conf")
+
     def set_test_plan(self, test_plan_name="client-cert-desktop-20-04-auto"):
         if "com.canonical.certification" not in test_plan_name:
             test_plan_name = f"com.canonical.certification::{test_plan_name}"
@@ -186,19 +190,21 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                                 if re.search(r'^(\d{2}).*', f)]
         self.shell_file_list.sort()
 
-    def build_launcher(self, manifest_json_path, test_plan_name,
-                       exclude_job_pattern_str, file_path="./final_launcher",
+    def build_launcher(self, manifest_json_path, checkbox_conf_path,
+                       test_plan_name, exclude_job_pattern_str,
+                       file_path="./final_launcher",
                        execute_path="/usr/bin/env checkbox-cli"):
         self.set_test_plan(test_plan_name)
         self.set_exclude_job(exclude_job_pattern_str)
         self.merge_manifest_json(json_file_path=manifest_json_path)
+        self.merge_checkbox_conf(conf_path=checkbox_conf_path)
         self.generate_config_file(file_path=file_path,
                                   execute_path=execute_path)
 
-    def generate_test_cmd(self, manifest_json_path, test_plan_name,
-                          exclude_job_pattern_str, is_distupgrade=False,
-                          checkbox_type="deb", is_runtest=True,
-                          session_desc=default_session_desc):
+    def generate_test_cmd(self, manifest_json_path, checkbox_conf_path,
+                          test_plan_name, exclude_job_pattern_str,
+                          is_distupgrade=False, checkbox_type="deb",
+                          is_runtest=True, session_desc=default_session_desc):
         if checkbox_type not in ["deb", "snap"]:
             raise ValueError(f"Checkbox type is not valid. \
                               Expected one of: {checkbox_type}")
@@ -216,7 +222,9 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
 
             if os.path.basename(file) == "90_start_test":
                 launcher_file_path = "final_launcher"
-                self.build_launcher(manifest_json_path, test_plan_name,
+                self.build_launcher(manifest_json_path,
+                                    checkbox_conf_path,
+                                    test_plan_name,
                                     exclude_job_pattern_str,
                                     launcher_file_path,
                                     "/usr/bin/env checkbox-cli")
@@ -301,10 +309,12 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         self.yaml_update_field(setting_dict)
 
     def test_cmd_setting(self, manifest_json_path="./template/manifest.json",
+                         checkbox_conf_path="./template/checkbox.conf",
                          test_plan_name="client-cert-desktop-20-04-automated",
                          exclude_job_pattern_str="",
                          checkbox_type="deb", session_desc="CE-QA-PC_Test"):
         test_cmds_str = self.generate_test_cmd(manifest_json_path,
+                                               checkbox_conf_path,
                                                test_plan_name,
                                                exclude_job_pattern_str,
                                                self.is_distupgrade,
@@ -384,6 +394,10 @@ def parse_input_arg():
                               default=f"{script_dir}/template/manifest.json",
                               help="Set the manifest json file to build \
                               the launcher.")
+    opt_launcher.add_argument("--checkboxConf", type=str,
+                              default=f"{script_dir}/template/checkbox.conf",
+                              help="Set the checkbox configuration file to \
+                              build the launcher.")
     opt_launcher.add_argument("--LauncherTemplate", type=str,
                               default=(
                                 f"{script_dir}/template/launcher_config/"
@@ -451,6 +465,7 @@ if __name__ == "__main__":
                                 timeout=args.reserveTime)
 
         builder.test_cmd_setting(manifest_json_path=args.manifestJson,
+                                 checkbox_conf_path=args.checkboxConf,
                                  test_plan_name=args.testplan,
                                  exclude_job_pattern_str=args.excludeJobs,
                                  checkbox_type=args.checkboxType,
