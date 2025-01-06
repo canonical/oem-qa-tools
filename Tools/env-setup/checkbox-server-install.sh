@@ -149,26 +149,34 @@ setup_ptp4l()
             done
             if [[ $supported == true ]]; then
                 echo "ptp4l supported eth-interface: $iface"
-                break
+                if sudo ethtool "$iface" | grep -q "Link detected: yes"; then
+                    echo "The link status of $iface is UP."
+                    echo "ptp4l will be started on this interface."
+                    ptp4l_iface=$iface
+                    break
+                else
+                    echo "The link status of $iface is DOWN."
+                    echo "ptp4l will not be started on this interface."
+                fi
             fi
         fi
     done
-    if [ -z "$iface" ]; then
+    if [ -z "$ptp4l_iface" ]; then
         echo "No suitable Ethernet interface which support ptp4l found."
         exit 1
     fi
 
     # Check the link status
-    LINK_STATUS=$(ip link show "$iface" | grep "state" | awk '{print $9}')
+    LINK_STATUS=$(ip link show "$ptp4l_iface" | grep "state" | awk '{print $9}')
 
     if [ "$LINK_STATUS" != "UP" ]; then
-        echo "The link status of $iface is DOWN. ptp4l will not be started."
+        echo "The link status of $ptp4l_iface is DOWN. ptp4l will not be started."
         exit 1
     fi
     # Add ptp4l.desktop with the correct ethernet interface name
     echo 's' | sudo -S bash -c "echo '[Desktop Entry]
 Type=Application
-Exec=gnome-terminal -- sudo ptp4l -i $iface -m --step_threshold=1 --logAnnounceInterval=0 --logSyncInterval=-3 --network_transport=L2
+Exec=gnome-terminal -- sudo ptp4l -i $ptp4l_iface -m --step_threshold=1 --logAnnounceInterval=0 --logSyncInterval=-3 --network_transport=L2
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
