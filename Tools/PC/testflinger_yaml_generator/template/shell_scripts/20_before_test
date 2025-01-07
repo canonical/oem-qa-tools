@@ -1,6 +1,5 @@
 echo
 echo "=====Before test setting start======"
-_run sudo dpkg --configure -a
 _run sudo reboot
 sleep 120
 wait_for_ssh
