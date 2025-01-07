@@ -334,7 +334,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
 def parse_input_arg():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(
-        description='Testflinger yaml file genertor',
+        description='Testflinger yaml file generator',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     req_args = parser.add_argument_group('Required', )

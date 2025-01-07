@@ -44,7 +44,7 @@ usage: testflinger_yaml_generator.py [-h] -c CID -o OUTPUTFILENAME [--outputFold
                                      [--checkboxConf CHECKBOXCONF] [--LauncherTemplate LAUNCHERTEMPLATE] [--LpID LPID] [--reserveTime RESERVETIME] [--TFYamlTemplate TFYAMLTEMPLATE]
                                      [--binFolder BINFOLDER]
 
-Testflinger yaml file genertor
+Testflinger yaml file generator
 
 options:
   -h, --help            show this help message and exit
@@ -85,25 +85,24 @@ general options:
 
 Launcher settion  options:
   --manifestJson MANIFESTJSON
-                        Set the manifest json file to build the launcher. (default: /home/isaacyang/Downloads/oem-qa-tools/Tools/PC/testflinger_yaml_generator/template/manifest.json)
+                        Set the manifest json file to build the launcher. (default: $SCRIPT_PATH/template/manifest.json)
   --needManifest        Set if need the Manifest. (default: True)
   --no-needManifest
   --checkboxConf CHECKBOXCONF
-                        Set the checkbox configuration file to build the launcher. (default: /home/isaacyang/Downloads/oem-qa-
-                        tools/Tools/PC/testflinger_yaml_generator/template/checkbox.conf)
+                        Set the checkbox configuration file to build the launcher. (default: $SCRIPT_PATH/template/checkbox.conf)
   --LauncherTemplate LAUNCHERTEMPLATE
-                        Set the launcher template folder (default: /home/isaacyang/Downloads/oem-qa-tools/Tools/PC/testflinger_yaml_generator/template/launcher_config/)
+                        Set the launcher template folder (default: $SCRIPT_PATH/template/launcher_config/)
 
 Testflinger yaml options:
   --LpID LPID           If you want to reserve the DUT, please input your Launchpad ID (default: )
   --reserveTime RESERVETIME
                         Set the timeout (sec) for reserve. (default: 1200)
   --TFYamlTemplate TFYAMLTEMPLATE
-                        Set the testflinger template yaml file (default: /home/isaacyang/Downloads/oem-qa-tools/Tools/PC/testflinger_yaml_generator/template/template.yaml)
+                        Set the testflinger template yaml file (default: $SCRIPT_PATH/template/template.yaml)
 
 Test command in testflinger yaml:
   --binFolder BINFOLDER
-                        Set the testflinger test command folder (default: /home/isaacyang/Downloads/oem-qa-tools/Tools/PC/testflinger_yaml_generator/template/shell_scripts/)
+                        Set the testflinger test command folder (default: $SCRIPT_PATH/template/shell_scripts/)
 ```
 
 ### Basically usage
