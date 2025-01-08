@@ -15,7 +15,7 @@ def is_valid_cid(cid: str) -> bool:
 def is_valid_location(location: str) -> bool:
     """Check if it's valid of the format of Location"""
     pattern = re.compile(
-        r"^TEL-(L\d-R\d{2}-S\d{1,2}-P[01]|L[2356789]-F\d{2}-S[1-8]-P[123])$"
+        r"^TEL-(L\d-R\d{2}-S\d{1,2}-P[01]|L[12356789]-F\d{2}-S[1-8]-P[123])$"
     )
     return True if re.match(pattern, location) else False
 
