@@ -60,7 +60,7 @@ def short_print(
             f"{prefix}{getattr(Color, fail_type.lower(), Color.medium)}"
             f"{fail_type.replace('_', ' ').title()} failures:{Color.end}"
         )
-        wrapped = textwrap.wrap(str(failed_runs))
+        wrapped = textwrap.wrap(str(failed_runs), width=50)
         print(f"{prefix}{space}- Failed runs: {wrapped[0]}")
         prefix_len = len(f"{prefix}{space}- Failed runs: ")
         for line in wrapped[1:]:
@@ -102,7 +102,7 @@ class Log:
 
     @staticmethod
     def err(*args: str):
-        print(f"{Color.critical}[ WARN ]{Color.end}", *args)
+        print(f"{Color.critical}[ ERR ]{Color.end}", *args)
 
 
 RunIndexToMessageMap = dict[int, list[str]]
@@ -406,9 +406,17 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
             "klog",
             "oops",
             "Listing all DRM",
+            "$DISPLAY is not set",
             "- ",  # the drm list bullet
+            "Checking if DUT has reached",
+            "Graphical target reached!",
         ]
-        exclude_suffixes = ["is connected to display!", "connected", "seconds"]
+        exclude_suffixes = [
+            "is connected to display!",
+            "connected",
+            "seconds",
+            "graphical.target was not reached",
+        ]
         fail_type_to_lines[fail_type] = [
             s
             for s in actual_messages
@@ -422,13 +430,17 @@ def group_fwts_output(file: io.TextIOWrapper) -> dict[str, list[str]]:
 
 
 def group_renderer_check_output(file: io.TextIOWrapper):
-    prefix = "[ ERR ] unity support test"
+    unity_fail_prefix = "[ ERR ] unity support test"
+    graphical_target_fail_prefix = (
+        "[ ERR ] systemd's graphical.target was not reached"
+    )
     out: dict[str, list[str]] = {}
 
     for line in file:
-        if not line.startswith(prefix):
-            continue
-        out["hardware_renderer_test"] = [line]
+        if line.startswith(unity_fail_prefix):
+            out["Unity support"] = [line]
+        elif line.startswith(graphical_target_fail_prefix):
+            out["Graphical target not reached"] = [line]
 
     return out
 
@@ -436,6 +448,7 @@ def group_renderer_check_output(file: io.TextIOWrapper):
 def group_device_comparison_output(file: io.TextIOWrapper):
     regex = re.compile(r"\[ ERR \] The output of (.*) differs!")
     out: dict[str, list[str]] = {}
+
     for line in file:
         m = regex.match(line)
         if not m:
@@ -547,6 +560,14 @@ def main():
             if prop.startswith("__") and type(getattr(Color, prop)) is not str:
                 continue
             setattr(Color, prop, "")
+
+    if reader.boot_count != args.expected_n_runs:
+        Log.err(
+            f"Expected {args.expected_n_runs} runs,",
+            f"but got {reader.boot_count}",
+        )
+    else:
+        Log.ok(f"COUNT OK! Found expected {args.expected_n_runs} runs.")
 
     printer_classes: dict[TestType, type[TestResultPrinter]] = {
         klass.name: klass
