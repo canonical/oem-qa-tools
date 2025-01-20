@@ -46,7 +46,7 @@ new `reboot_check_test.py`.
 
 <!-- markdownlint-disable MD013 -->
 ```plaintext
-usage: summarize-reboot-check-test.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] filename
+usage: summarize-reboot-check-test.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] [--no-color] filename
 
 Parses the outputs of reboot_check_test.py from a C3 submission tar file
 
@@ -60,6 +60,7 @@ options:
   -n EXPECTED_N_RUNS, --num-runs EXPECTED_N_RUNS
                         Specify a value to show a warning when the number of boot files != the number of runs you expect. Default=30. Note that this number applies to both cold and
                         warm boot since checkbox doesn't use a different number for CB/WB either.
+  --no-color            Removes all colors and styles
 ```
 <!-- markdownlint-enable MD013 -->
 
