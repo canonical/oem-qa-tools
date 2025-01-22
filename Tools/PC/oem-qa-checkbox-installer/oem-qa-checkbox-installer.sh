@@ -35,6 +35,11 @@ printf "\nCopying plainbox.conf to ~/.conf and /etc/xdg ...\n"
 sudo cp ./conf/plainbox.conf "$HOME"/.config/
 sudo cp ./conf/plainbox.conf /etc/xdg/
 
+# Copy checkbox.conf to the following path to prevent remote testing without ssid
+printf "\nCopying checkbox.conf to ~/.conf and /etc/xdg ...\n"
+sudo cp ./conf/plainbox.conf "$HOME"/.config/checkbox.conf
+sudo cp ./conf/plainbox.conf /etc/xdg/checkbox.conf
+
 while true; do
     read -r -p "Press 'r' to reboot or 'e' to exit: " rse
     case $rse in
