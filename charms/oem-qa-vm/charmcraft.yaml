@@ -1,0 +1,58 @@
+# This file configures Charmcraft.
+# See https://juju.is/docs/sdk/charmcraft-config for guidance.
+
+# (Required)
+name: oem-qa-vm
+
+
+# (Required)
+type: charm
+
+
+# (Recommended)
+title: OEM-QA-VM
+
+
+# (Required)
+summary: A Default Virtual Machine Environment for Daily OEM-QA Tasks.
+
+
+# (Required)
+description: |
+  This charm will create a lxc container that includes tmux, checkbox, testflinger-cli etc.
+
+  OEM-QA could use this VM to run checkbox and submit testflinger tasks.
+
+# (Required for 'charm' type)
+bases:
+  - build-on:
+    - name: ubuntu
+      channel: "22.04"
+    run-on:
+    - name: ubuntu
+      channel: "22.04"
+
+# Add libraries
+charm-libs:
+  - lib: operator_libs_linux.apt
+    version: "0"
+  - lib: operator_libs_linux.snap
+    version: "2"
+
+config:
+  options:
+    # An example config option to customise the log level of the workload
+    log-level:
+      description: |
+        Configures the log level of gunicorn.
+
+        Acceptable values are: "info", "debug", "warning", "error" and "critical"
+      default: "info"
+      type: string
+    launchpad-id:
+      description: The launchpad id that has to be imported into vm
+      type: string
+    static-ip:
+      description: The static ip for this vm
+      default: "127.0.0.1"
+      type: string
