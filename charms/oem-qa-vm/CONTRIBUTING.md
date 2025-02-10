@@ -11,8 +11,9 @@ source venv/bin/activate
 
 ## Testing
 
-This project uses `tox` for managing test environments. There are some pre-configured environments
-that can be used for linting and formatting code when you're preparing contributions to the charm:
+This project uses `tox` for managing test environments. There are some
+pre-configured environments that can be used for linting and formatting
+code when you're preparing contributions to the charm:
 
 ```shell
 tox run -e format        # update your code according to linting rules

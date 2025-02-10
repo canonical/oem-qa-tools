@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2025 u
+# Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import asyncio
@@ -29,6 +29,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await asyncio.gather(
         ops_test.model.deploy(charm, application_name=APP_NAME),
         ops_test.model.wait_for_idle(
-            apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000
+            apps=[APP_NAME],
+            status="active",
+            raise_on_blocked=True,
+            timeout=1000,
         ),
     )
