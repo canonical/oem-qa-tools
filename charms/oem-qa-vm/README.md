@@ -4,6 +4,7 @@ Used to set up an lxc container that preinstalled tmux, checkbox
 and testflinger-cli.
 
 ## prerequestment
+
 Please note you should have an environment for juju machine charm to deploy,
 such as lxd
 
@@ -20,4 +21,5 @@ charmcraft pack
 ```
 
 ## How to deploy
+
 juju deploy -m [juju model name] ./bundle.yaml --debug --verbose
