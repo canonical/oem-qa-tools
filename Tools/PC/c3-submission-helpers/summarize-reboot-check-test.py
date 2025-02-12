@@ -115,15 +115,19 @@ BootType = Literal["warm", "cold"]
 TestType = Literal["fwts", "device comparison", "renderer", "service check"]
 
 
-def group_by_err(index_results: RunIndexToMessageMap):
+def group_by_err(
+    index_results: RunIndexToMessageMap,
+    msg_transform: None | Callable[[str], str] = None,
+):
     out: dict[str, list[int]] = {}
 
     for idx, messages in index_results.items():
         for msg in messages:
-            if msg in out:
-                out[msg].append(idx)
+            msg_transformed = msg_transform(msg) if msg_transform else msg
+            if msg_transformed in out:
+                out[msg_transformed].append(idx)
             else:
-                out[msg] = [idx]
+                out[msg_transformed] = [idx]
 
     return out
 
@@ -203,16 +207,25 @@ class TestResultPrinter(abc.ABC):
     def print_verbose(self):
         print(f"\n{f' Verbose cold boot {self.name} results ':-^80}\n")
         pretty_print(self.cold_results, self.expected_n_runs)
-        print(f"\n{f' Verbose warm boot device comparison ':-^80}\n")
+        print(f"\n{f' Verbose warm boot {self.name} results ':-^80}\n")
         pretty_print(self.warm_results, self.expected_n_runs)
 
     def print_by_err(self):
         self._default_print_by_err()
 
+    def _default_title_transform(self, fail_type: str):
+        return (
+            f"{getattr(Color, fail_type.lower(), Color.medium)}"
+            f"{fail_type} errors:{Color.end}"
+        )
+
+    def _default_err_msg_transform(self, msg: str):
+        return msg
+
     def _default_print_by_err(
         self,
-        title_transform: Callable[[str], str] = lambda s: s,
-        err_msg_transform: Callable[[str], str] = lambda s: s,
+        title_transform: None | Callable[[str], str] = None,
+        err_msg_transform: None | Callable[[str], str] = None,
     ):
         fail_types = (
             self.cold_results
@@ -222,11 +235,16 @@ class TestResultPrinter(abc.ABC):
 
         for fail_type in fail_types:
             print(
-                f"{getattr(Color, fail_type.lower(), Color.medium)}"
-                f"{fail_type} errors:{Color.end}"
+                title_transform(fail_type)
+                if title_transform
+                else self._default_title_transform(fail_type)
             )
-            regrouped_cold = group_by_err(self.cold_results.get(fail_type, {}))
-            regrouped_warm = group_by_err(self.warm_results.get(fail_type, {}))
+            regrouped_cold = group_by_err(
+                self.cold_results.get(fail_type, {}), err_msg_transform
+            )
+            regrouped_warm = group_by_err(
+                self.warm_results.get(fail_type, {}), err_msg_transform
+            )
 
             all_err_msg = set(regrouped_cold.keys()).union(
                 set(regrouped_warm.keys())
@@ -244,7 +262,7 @@ class TestResultPrinter(abc.ABC):
 
                 for b in "cold", "warm":
                     wrapped = textwrap.wrap(
-                        str(buffer[err_msg][b]),
+                        str(sorted(buffer[err_msg][b])),
                         width=50,
                     )
                     n_fails = len(buffer[err_msg][b])
@@ -301,88 +319,24 @@ class FwtsPrinter(TestResultPrinter):
         super().__init__(warm_results, cold_results, reader, expected_n_runs)
 
     def print_by_err(self):
-        # key is message, value is {cold: [index], warm: [index]}
-        for fail_type in self.cold_results:
-            print(
+        def title_transform(fail_type: str):
+            return (
                 f"{getattr(Color, fail_type.lower())}"
                 f"FWTS {fail_type} errors:{Color.end}"
             )
-            regrouped_cold = self._group_by_fwts_error(
-                self.cold_results[fail_type]
+
+        def err_msg_transform(msg: str):
+            prefix_pattern = (
+                r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
             )
-            regrouped_warm = self._group_by_fwts_error(
-                self.warm_results[fail_type]
+            timestamp_pattern = (
+                r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
             )
+            return re.sub(
+                prefix_pattern, "", re.sub(timestamp_pattern, "", msg)
+            ).strip()
 
-            all_err_msg = set(regrouped_cold.keys()).union(
-                set(regrouped_warm.keys())
-            )
-
-            for err_msg in all_err_msg:
-                print(space, f"{Color.bold}{err_msg}{Color.end}")
-                buffer = {
-                    err_msg: {
-                        "cold": regrouped_cold.get(err_msg, []),
-                        "warm": regrouped_warm.get(err_msg, []),
-                    }
-                }
-                for b in "cold", "warm":
-                    wrapped = textwrap.wrap(
-                        str(buffer[err_msg][b]),
-                        width=50,
-                    )
-                    num_fails = len(buffer[err_msg][b])
-                    shared_prefix = " ".join((space, space))
-                    if num_fails > 0:
-                        line1 = f"{b.capitalize()} failures: "
-                        print(shared_prefix, tee, line1, wrapped[0])
-                    else:
-                        line1 = f"No {b} boot failures"
-                        print(shared_prefix, tee, line1)
-                        continue
-
-                    for line in wrapped[1:]:
-                        print(
-                            shared_prefix,
-                            branch,
-                            len(line1) * " ",
-                            line,
-                        )
-                    print(
-                        space,
-                        space,
-                        last if b == "warm" else tee,
-                        f"{b.capitalize()} failure rate:",
-                        f"{num_fails} / {self.reader.boot_count}",
-                    )
-
-    def print_by_index(self):
-        print(f"\n{f' Cold boot fwts failures ':-^80}\n")
-        short_print(self.cold_results)
-        print(f"\n{f' Warm boot fwts failures ':-^80}\n")
-        short_print(self.warm_results)
-
-    def print_verbose(self):
-        print(f"\n{f' Verbose cold boot FWTS results ':-^80}\n")
-        pretty_print(self.cold_results, self.expected_n_runs)
-        print(f"\n{f' Verbose warm boot FWTS results ':-^80}\n")
-        pretty_print(self.warm_results, self.expected_n_runs)
-
-    def _group_by_fwts_error(self, raw: RunIndexToMessageMap):
-        timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
-        prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
-        message_to_run_index_map = defaultdict[str, list[int]](list)
-        for run_index, messages in raw.items():
-            for message in messages:
-                message = re.sub(
-                    prefix_pattern, "", re.sub(timestamp_pattern, "", message)
-                ).strip()
-                message_to_run_index_map[message].append(run_index)
-
-        for v in message_to_run_index_map.values():
-            v.sort()
-
-        return message_to_run_index_map
+        self._default_print_by_err(title_transform, err_msg_transform)
 
 
 class DeviceComparisonPrinter(TestResultPrinter):
@@ -642,7 +596,7 @@ def main():
             f"but got {reader.boot_count}",
         )
     else:
-        Log.ok(f"COUNT OK! Found expected {args.expected_n_runs} runs.")
+        Log.ok(f"COUNT OK! Found the expected {args.expected_n_runs} runs.")
 
     printer_classes: dict[TestType, type[TestResultPrinter]] = {
         klass.name: klass
