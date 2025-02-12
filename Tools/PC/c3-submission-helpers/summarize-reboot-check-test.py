@@ -3,7 +3,7 @@
 import abc
 import argparse
 from collections import defaultdict
-from typing import Literal
+from typing import Callable, Literal
 import io
 import itertools
 import tarfile
@@ -110,9 +110,22 @@ GroupedResultByIndex = dict[
     str, RunIndexToMessageMap
 ]  # key is fail type (for fwts it's critical, high, medium, low
 # for device cmp it's lsusb, lspci, iw)
-# key is index to actual message map
+# value is index to actual message map
 BootType = Literal["warm", "cold"]
 TestType = Literal["fwts", "device comparison", "renderer", "service check"]
+
+
+def group_by_err(index_results: RunIndexToMessageMap):
+    out: dict[str, list[int]] = {}
+
+    for idx, messages in index_results.items():
+        for msg in messages:
+            if msg in out:
+                out[msg].append(idx)
+            else:
+                out[msg] = [idx]
+
+    return out
 
 
 class SubmissionTarReader:
@@ -194,8 +207,71 @@ class TestResultPrinter(abc.ABC):
         pretty_print(self.warm_results, self.expected_n_runs)
 
     def print_by_err(self):
-        # if not implemented, just do this
-        self.print_by_index()
+        self._default_print_by_err()
+
+    def _default_print_by_err(
+        self,
+        title_transform: Callable[[str], str] = lambda s: s,
+        err_msg_transform: Callable[[str], str] = lambda s: s,
+    ):
+        fail_types = (
+            self.cold_results
+            if len(self.cold_results) > len(self.warm_results)
+            else self.warm_results
+        ).keys()
+
+        for fail_type in fail_types:
+            print(
+                f"{getattr(Color, fail_type.lower(), Color.medium)}"
+                f"{fail_type} errors:{Color.end}"
+            )
+            regrouped_cold = group_by_err(self.cold_results.get(fail_type, {}))
+            regrouped_warm = group_by_err(self.warm_results.get(fail_type, {}))
+
+            all_err_msg = set(regrouped_cold.keys()).union(
+                set(regrouped_warm.keys())
+            )
+
+            for err_msg in all_err_msg:
+                print(space, f"{Color.bold}{err_msg}{Color.end}")
+
+                buffer = {
+                    err_msg: {
+                        "cold": regrouped_cold.get(err_msg, []),
+                        "warm": regrouped_warm.get(err_msg, []),
+                    }
+                }
+
+                for b in "cold", "warm":
+                    wrapped = textwrap.wrap(
+                        str(buffer[err_msg][b]),
+                        width=50,
+                    )
+                    n_fails = len(buffer[err_msg][b])
+                    shared_prefix = " ".join((space, space))
+
+                    if n_fails > 0:
+                        line1 = f"{b.capitalize()} failures: "
+                        print(shared_prefix, tee, line1, wrapped[0])
+                    else:
+                        line1 = f"No {b} boot failures!"
+                        print(shared_prefix, tee, line1)
+                        continue
+
+                    for line in wrapped[1:]:
+                        print(
+                            shared_prefix,
+                            branch,
+                            len(line1) * " ",
+                            line,
+                        )
+                    print(
+                        space,
+                        space,
+                        last if b == "warm" else tee,
+                        f"{b.capitalize()} failure rate:",
+                        f"{n_fails} / {self.reader.boot_count}",
+                    )
 
     def print_by_index(self):
         print("Cold boot:")
@@ -472,7 +548,6 @@ def group_failed_service_errors(file: io.TextIOWrapper):
         if searching_services:
             if ".service" in line:
                 out["service_check"].append(line)
-
     return out
 
 
