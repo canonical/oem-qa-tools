@@ -9,7 +9,7 @@ import itertools
 import tarfile
 import re
 import textwrap
-
+import sys
 
 SPACE = "    "
 BRANCH = "│   "
@@ -184,7 +184,7 @@ class TestResultPrinter(abc.ABC):
     def _default_title_transform(self, fail_type: str):
         color = getattr(Color, fail_type.lower(), Color.medium)
         return (
-            f"{color}{fail_type.lower().replace("_", " ").capitalize()}"
+            f"{color}{fail_type.lower().replace('_', ' ').capitalize()}"
             f" errors:{Color.end}"
         )
 
