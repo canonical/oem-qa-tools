@@ -497,7 +497,7 @@ class DeviceComparisonPrinter(TestResultPrinter):
                         res[device_name][run_index] = [
                             line.strip()
                             + f" Diff: {Color.critical}"
-                            + f"{re.sub(r'\s\s+'," ", ', '.join(diff))}"
+                            + f"{re.sub(r'\s\s+'," ", str(diff))}"
                             + Color.end
                         ]
                         i += 1
@@ -615,14 +615,16 @@ def main():
                 continue
             setattr(Color, prop, "")
 
-    print("Checking if the tar file has the expected number of runs...")
+    print(
+        "Checking if the tar file has the expected number of runs...", end=" "
+    )
     if reader.boot_count != args.expected_n_runs:
         Log.err(
             f"Expected {args.expected_n_runs} runs,",
             f"but got {reader.boot_count}",
         )
     else:
-        Log.ok(f"COUNT OK! Found the expected {args.expected_n_runs} runs.")
+        Log.ok(f"Found the expected {args.expected_n_runs} runs.")
 
     printer_classes: dict[TestType, type[TestResultPrinter]] = {
         klass.name: klass
