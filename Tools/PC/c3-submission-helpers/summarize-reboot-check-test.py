@@ -3,7 +3,7 @@
 import abc
 import argparse
 from collections import defaultdict, Counter
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional
 import io
 import itertools
 import tarfile
@@ -111,7 +111,7 @@ class SubmissionTarReader:
         run_index: int,
         ch: Literal["stdout", "stderr"],
         boot_type: BootType,
-    ) -> io.TextIOWrapper | None:
+    ) -> Optional[io.TextIOWrapper]:
         prefix = (
             "test_output/com.canonical.certification__"
             + f"{boot_type}-boot-loop-test"
@@ -149,12 +149,12 @@ class TestResultPrinter(abc.ABC):
         reader: SubmissionTarReader,
         expected_n_runs: int = 30,
     ) -> None:
-        self.warm_results: GroupedResultByIndex = defaultdict(
+        self.warm_results = defaultdict(
             lambda: defaultdict(list)
-        )
-        self.cold_results: GroupedResultByIndex = defaultdict(
+        )  # type: GroupedResultByIndex
+        self.cold_results = defaultdict(
             lambda: defaultdict(list)
-        )
+        )  # type: GroupedResultByIndex
         self.reader = reader
         self.expected_n_runs = expected_n_runs
         self._group_by_index()
@@ -193,8 +193,8 @@ class TestResultPrinter(abc.ABC):
 
     def _default_print_by_err(
         self,
-        title_transform: None | Callable[[str], str] = None,
-        err_msg_transform: None | Callable[[str], str] = None,
+        title_transform: Optional[Callable[[str], str]] = None,
+        err_msg_transform: Optional[Callable[[str], str]] = None,
     ):
         fail_types = (
             self.cold_results
@@ -270,9 +270,9 @@ class TestResultPrinter(abc.ABC):
     def _group_by_err(
         self,
         index_results: RunIndexToMessageMap,
-        msg_transform: None | Callable[[str], str] = None,
+        msg_transform: Optional[Callable[[str], str]] = None,
     ):
-        out: dict[str, list[int]] = {}
+        out = {}  # type: dict[str, list[int]]
 
         for idx, messages in index_results.items():
             for msg in messages:
@@ -472,8 +472,8 @@ class DeviceComparisonPrinter(TestResultPrinter):
                             continue
 
                         device_name = m.group(1)
-                        expected: list[str] = []
-                        actual: list[str] = []
+                        expected = []  # type: list[str]
+                        actual = []  # type: list[str]
 
                         i += 2
                         while i < len(lines):
@@ -633,7 +633,7 @@ def main():
     else:
         Log.ok(f"Found the expected {args.expected_n_runs} runs.")
 
-    printer_classes: dict[TestType, type[TestResultPrinter]] = {
+    printer_classes = {
         klass.name: klass
         for klass in (
             FwtsPrinter,
@@ -641,7 +641,7 @@ def main():
             RendererCheckPrinter,
             ServiceCheckPrinter,
         )
-    }
+    }  # type: dict[TestType, type[TestResultPrinter]]
 
     for test in printer_classes:
         printer = printer_classes[test](reader, args.expected_n_runs)
