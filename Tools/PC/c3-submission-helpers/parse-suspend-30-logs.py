@@ -22,6 +22,7 @@ class Input:
     verbose: bool
     num_runs: int | None
     inverse_find: bool
+    no_summary: bool
 
 
 class C:  # color
@@ -46,6 +47,11 @@ class Meta(TypedDict):
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
+    p.add_argument(
+        "--no-summary",
+        action="store_true",
+        help="Don't print the summary file at the top",
+    )
     p.add_argument(
         "filename",
         help="The path to the suspend logs or the stress test submission .tar",
@@ -218,19 +224,22 @@ def main():
     log_file, summary_file = open_log_file(args.filename)
 
     if args.filename.endswith(".tar.xz"):
-        if summary_file:
-            print(f"\n{' Begin Summary Attachment ':-^80}\n")
-            for line in summary_file.readlines():
-                clean_line = line.strip()
-                if clean_line != "":
-                    print(clean_line)
-            summary_file.close()
-        else:
-            print(
-                "No suspend-30-cycles-with-reboot-3-log-check attachment",
-                "was found in the tarball",
-            )
-        print(f"\n{' End of Summary ':-^80}")
+        if not args.no_summary:
+            if summary_file:
+
+                print(f"\n{' Begin Summary Attachment ':-^80}\n")
+                for line in summary_file.readlines():
+                    clean_line = line.strip()
+                    if clean_line != "":
+                        print(clean_line)
+                summary_file.close()
+
+                print(f"\n{' End of Summary ':-^80}")
+            else:
+                print(
+                    "No suspend-30-cycles-with-reboot-3-log-check attachment",
+                    "was found in the tarball",
+                )
 
     with log_file as file:
         lines = file.readlines()
