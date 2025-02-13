@@ -19,7 +19,7 @@ LAST = "└── "
 
 class Input:
     filename: str
-    group_by_err: bool
+    group_by_index: bool
     expected_n_runs: int  # if specified show a warning
     verbose: bool
     no_color: bool
@@ -576,7 +576,14 @@ def parse_args() -> Input:
             "Similar messages might be shown twice"
         ),
         action="store_true",
-    )
+    )  # -g is only here to be backwards compatible, this is the default now
+    p.add_argument(
+        "-i",
+        "--index-only",
+        help="Only show the indices of the failed runs",
+        dest="group_by_index",
+        action="store_true",
+    )  # specify this to show only indicies
     p.add_argument(
         "-v",
         "--verbose",
@@ -646,10 +653,10 @@ def main():
 
         if args.verbose:
             printer.print_verbose()
-        elif args.group_by_err:
-            printer.print_by_err()
-        else:
+        elif args.group_by_index:
             printer.print_by_index()
+        else:
+            printer.print_by_err()
 
 
 if __name__ == "__main__":
