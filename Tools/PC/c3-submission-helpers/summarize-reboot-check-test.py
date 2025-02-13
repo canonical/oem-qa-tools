@@ -1,8 +1,8 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 
 import abc
 import argparse
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Callable, Literal
 import io
 import itertools
@@ -10,10 +10,11 @@ import tarfile
 import re
 import textwrap
 
-space = "    "
-branch = "│   "
-tee = "├── "
-last = "└── "
+
+SPACE = "    "
+BRANCH = "│   "
+TEE = "├── "
+LAST = "└── "
 
 
 class Input:
@@ -105,6 +106,30 @@ class SubmissionTarReader:
     ) -> list[str]:
         return getattr(self, f"{boot_type}_{ch}_files")
 
+    def get_file(
+        self,
+        run_index: int,
+        ch: Literal["stdout", "stderr"],
+        boot_type: BootType,
+    ) -> io.TextIOWrapper | None:
+        prefix = (
+            "test_output/com.canonical.certification__"
+            + f"{boot_type}-boot-loop-test"
+        )
+        if ch == "stderr":
+            suffix = ".stderr"
+        else:
+            suffix = ""
+
+        try:
+            raw_file = self.raw_tar.extractfile(f"{prefix}{run_index}{suffix}")
+        except KeyError:
+            return None
+        if not raw_file:
+            return None
+
+        return io.TextIOWrapper(raw_file)
+
     @property
     def boot_count(self) -> int:
         if len(self.warm_stdout_files) != len(self.cold_stdout_files):
@@ -121,13 +146,9 @@ class TestResultPrinter(abc.ABC):
 
     def __init__(
         self,
-        # warm_results: GroupedResultByIndex,
-        # cold_results: GroupedResultByIndex,
         reader: SubmissionTarReader,
         expected_n_runs: int = 30,
     ) -> None:
-        # self.warm_results = warm_results
-        # self.cold_results = cold_results
         self.warm_results: GroupedResultByIndex = defaultdict(
             lambda: defaultdict(list)
         )
@@ -150,15 +171,15 @@ class TestResultPrinter(abc.ABC):
     def print_by_index(self):
         print("Cold boot:")
         if len(self.cold_results) > 0:
-            self._short_print(self.cold_results, prefix=space)
+            self._short_print(self.cold_results, prefix=SPACE)
         else:
-            print(space + "No failures!")
+            print(SPACE + "No failures!")
 
         print("Warm boot:")
         if len(self.warm_results) > 0:
-            self._short_print(self.warm_results, prefix=space)
+            self._short_print(self.warm_results, prefix=SPACE)
         else:
-            print(space + "No failures!")
+            print(SPACE + "No failures!")
 
     def _default_title_transform(self, fail_type: str):
         color = getattr(Color, fail_type.lower(), Color.medium)
@@ -199,7 +220,7 @@ class TestResultPrinter(abc.ABC):
             )
 
             for err_msg in all_err_msg:
-                print(space, f"{Color.bold}{err_msg}{Color.end}")
+                print(SPACE, f"{Color.bold}{err_msg}{Color.end}")
 
                 buffer = {
                     err_msg: {
@@ -208,22 +229,22 @@ class TestResultPrinter(abc.ABC):
                     }
                 }
 
-                for b in "cold", "warm":
+                for boot_type in "cold", "warm":
                     wrapped = textwrap.wrap(
-                        str(sorted(buffer[err_msg][b])),
+                        str(sorted(buffer[err_msg][boot_type])),
                         width=50,
                     )
-                    n_fails = len(buffer[err_msg][b])
-                    shared_prefix = " ".join((space, space))
+                    n_fails = len(buffer[err_msg][boot_type])
+                    shared_prefix = " ".join((SPACE, SPACE))
 
                     if n_fails > 0:
-                        line_1 = f"{b.capitalize()} failures: "
-                        print(shared_prefix, tee, line_1, wrapped[0])
+                        line_1 = f"{boot_type.capitalize()} failures: "
+                        print(shared_prefix, TEE, line_1, wrapped[0])
                     else:
-                        line_1 = f"No {b} boot failures!"
+                        line_1 = f"No {boot_type} boot failures!"
                         print(
                             shared_prefix,
-                            tee if b == "cold" else last,
+                            TEE if boot_type == "cold" else LAST,
                             line_1,
                         )
                         continue
@@ -231,15 +252,15 @@ class TestResultPrinter(abc.ABC):
                     for line in wrapped[1:]:
                         print(
                             shared_prefix,
-                            branch,
+                            BRANCH,
                             len(line_1) * " ",
                             line,
                         )
                     print(
-                        space,
-                        space,
-                        last if b == "warm" else tee,
-                        f"{b.capitalize()} failure rate:",
+                        SPACE,
+                        SPACE,
+                        LAST if boot_type == "warm" else TEE,
+                        f"{boot_type.capitalize()} failure rate:",
                         f"{n_fails} / {self.reader.boot_count}",
                     )
 
@@ -282,20 +303,20 @@ class TestResultPrinter(abc.ABC):
 
             for list_idx, (run_index, messages) in enumerate(result_items):
                 is_last = list_idx == len(result_items) - 1
-                print(space, last if is_last else tee, "Run", run_index)
+                print(SPACE, LAST if is_last else TEE, "Run", run_index)
 
                 for m_i, message in enumerate(messages):
                     if m_i == len(messages) - 1:
                         print(
-                            space, space if is_last else branch, last, message
+                            SPACE, SPACE if is_last else BRANCH, LAST, message
                         )
                     else:
                         print(
-                            space, space if is_last else branch, tee, message
+                            SPACE, SPACE if is_last else BRANCH, TEE, message
                         )
             if expected_n_runs != 0:
                 print(
-                    space,
+                    SPACE,
                     f"Fail rate: {len(results)} / {expected_n_runs}",
                 )
 
@@ -317,13 +338,13 @@ class TestResultPrinter(abc.ABC):
                 f"{fail_type.replace('_', ' ').title()} failures:{Color.end}"
             )
             wrapped = textwrap.wrap(str(failed_runs), width=50)
-            print(f"{prefix}{space}- Failed runs: {wrapped[0]}")
-            prefix_len = len(f"{prefix}{space}- Failed runs: ")
+            print(f"{prefix}{SPACE}- Failed runs: {wrapped[0]}")
+            prefix_len = len(f"{prefix}{SPACE}- Failed runs: ")
             for line in wrapped[1:]:
                 print(" " * prefix_len, line)
             if expected_n_runs != 0:
                 print(
-                    f"{prefix}{space}- Fail rate:",
+                    f"{prefix}{SPACE}- Fail rate:",
                     f"{len(failed_runs)}/{expected_n_runs}",
                 )
 
@@ -352,32 +373,19 @@ class FwtsPrinter(TestResultPrinter):
         self._default_print_by_err(title_transform, err_msg_transform)
 
     def _group_by_index(self):
-        """
-        Picks out the fwts output lines from a
-        single file and groups them by severity/fail_type
-        """
-
         for boot_type in ("cold", "warm"):
-            prefix = (
-                "test_output/com.canonical.certification__"
-                + f"{boot_type}-boot-loop-test"
+            res = (
+                self.cold_results if boot_type == "cold" else self.warm_results
             )
-            for stdout_filename in self.reader.get_files(boot_type, "stdout"):
-                run_index = int(stdout_filename[len(prefix) :])  # noqa: E203
-
-                raw_file = self.reader.raw_tar.extractfile(stdout_filename)
-                if not raw_file:
+            for run_index in range(1, self.reader.boot_count + 1):
+                f = self.reader.get_file(run_index, "stdout", boot_type)
+                if not f:
                     continue
-
-                if boot_type == "cold":
-                    res = self.cold_results
-                else:
-                    res = self.warm_results
-                with io.TextIOWrapper(raw_file) as file:
+                with f:
                     grouped_output = [
                         (a, list(s.strip() for s in iter(b)))
                         for a, b in itertools.groupby(
-                            file,
+                            f,
                             key=lambda line: line.strip().endswith(
                                 "failures:"
                             ),
@@ -385,7 +393,6 @@ class FwtsPrinter(TestResultPrinter):
                     ]
 
                     for i, (is_fail_type, lines) in enumerate(grouped_output):
-                        # print(i, (is_fail_type, lines))
                         if not is_fail_type:
                             continue
                         assert len(lines) > 0, "Broken fwts output"
@@ -400,6 +407,8 @@ class FwtsPrinter(TestResultPrinter):
                         # get rid of everything before the divider
                         divider = "========================================"
 
+                        # this is kinda dumb but fwts output is mixed with
+                        # output from other tests
                         exclude_prefixes = [
                             "[ OK ]",
                             "Comparing devices",
@@ -424,15 +433,14 @@ class FwtsPrinter(TestResultPrinter):
                             for s in actual_messages
                             if s != ""
                             and s != divider
-                            and sum(
-                                1
-                                for _ in filter(s.startswith, exclude_prefixes)
+                            and all(
+                                not s.startswith(prefix)
+                                for prefix in exclude_prefixes
                             )
-                            == 0
-                            and sum(
-                                1 for _ in filter(s.endswith, exclude_suffixes)
+                            and all(
+                                not s.endswith(suffix)
+                                for suffix in exclude_suffixes
                             )
-                            == 0
                         ]  # also filter out empty strings
 
 
@@ -441,35 +449,58 @@ class DeviceComparisonPrinter(TestResultPrinter):
 
     def _group_by_index(self):
         for boot_type in ("cold", "warm"):
-            prefix = (
-                "test_output/com.canonical.certification__"
-                + f"{boot_type}-boot-loop-test"
+            res = (
+                self.cold_results if boot_type == "cold" else self.warm_results
             )
-            for stderr_filename in self.reader.get_files(boot_type, "stderr"):
-                run_index = int(
-                    stderr_filename[len(prefix) : -7]  # noqa: E203,
-                )  # cut off .stderr
-                file = self.reader.raw_tar.extractfile(stderr_filename)
-                if not file:
+            for run_index in range(1, self.reader.boot_count + 1):
+                f = self.reader.get_file(run_index, "stderr", boot_type)
+                if not f:
                     continue
-
-                with io.TextIOWrapper(file) as f:
+                with f:
                     regex = re.compile(
                         r"\[ ERR \] The output of (.*) differs!"
                     )
 
-                    if boot_type == "cold":
-                        res = self.cold_results
-                    else:
-                        res = self.warm_results
-
-                    for line in f:
+                    lines = f.readlines()
+                    i = 0
+                    while i < len(lines):
+                        line = lines[i]
                         m = regex.match(line)
+
                         if not m:
+                            i += 1
                             continue
+
                         device_name = m.group(1)
-                        res[device_name][run_index] = [line.strip()]
-                        break
+                        expected: list[str] = []
+                        actual: list[str] = []
+
+                        i += 2
+                        while i < len(lines):
+                            if lines[i].startswith("Actual"):
+                                break
+
+                            expected.append(lines[i].strip())
+                            i += 1
+
+                        i += 1
+                        while i < len(lines):
+                            if lines[i].startswith("End of"):
+                                break
+
+                            actual.append(lines[i].strip())
+                            i += 1
+
+                        diff = list(Counter(expected) - Counter(actual))
+                        diff.sort()
+
+                        res[device_name][run_index] = [
+                            line.strip()
+                            + f" Diff: {Color.critical}"
+                            + f"{re.sub(r'\s\s+'," ", ', '.join(diff))}"
+                            + Color.end
+                        ]
+                        i += 1
 
 
 class ServiceCheckPrinter(TestResultPrinter):
@@ -480,19 +511,11 @@ class ServiceCheckPrinter(TestResultPrinter):
             res = (
                 self.cold_results if boot_type == "cold" else self.warm_results
             )
-            file_prefix = (
-                "test_output/com.canonical.certification__"
-                + f"{boot_type}-boot-loop-test"
-            )
-            for stderr_filename in self.reader.get_files(boot_type, "stderr"):
-                run_index = int(
-                    stderr_filename[len(file_prefix) : -7]  # noqa: E203,
-                )  # cut off .stderr
-                file = self.reader.raw_tar.extractfile(stderr_filename)
-                if not file:
+            for run_index in range(1, self.reader.boot_count + 1):
+                f = self.reader.get_file(run_index, "stderr", boot_type)
+                if not f:
                     continue
-
-                with io.TextIOWrapper(file) as f:
+                with f:
                     msg_prefix = "These services failed: "
                     searching_services = False
 
@@ -517,24 +540,14 @@ class RendererCheckPrinter(TestResultPrinter):
         )
 
         for boot_type in ("cold", "warm"):
-            if boot_type == "cold":
-                res = self.cold_results
-            else:
-                res = self.warm_results
-            file_prefix = (
-                "test_output/com.canonical.certification__"
-                + f"{boot_type}-boot-loop-test"
+            res = (
+                self.cold_results if boot_type == "cold" else self.warm_results
             )
-
-            for stderr_filename in self.reader.get_files(boot_type, "stderr"):
-                run_index = int(
-                    stderr_filename[len(file_prefix) : -7]  # noqa: E203,
-                )  # cut off .stderr
-                file = self.reader.raw_tar.extractfile(stderr_filename)
-                if not file:
+            for run_index in range(1, self.reader.boot_count + 1):
+                f = self.reader.get_file(run_index, "stderr", boot_type)
+                if not f:
                     continue
-
-                with io.TextIOWrapper(file) as f:
+                with f:
                     for line in f:
                         line = line.strip()
                         if line.startswith(unity_fail_prefix):
