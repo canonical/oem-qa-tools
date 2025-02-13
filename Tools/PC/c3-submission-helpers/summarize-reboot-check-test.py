@@ -9,7 +9,6 @@ import itertools
 import tarfile
 import re
 import textwrap
-import sys
 
 SPACE = "    "
 BRANCH = "│   "
@@ -497,7 +496,7 @@ class DeviceComparisonPrinter(TestResultPrinter):
                         res[device_name][run_index] = [
                             line.strip()
                             + f" Diff: {Color.critical}"
-                            + f"{re.sub(r'\s\s+', " ", str(diff))}"
+                            + re.sub(r"\s\s+", " ", str(diff))
                             + Color.end
                         ]
                         i += 1
