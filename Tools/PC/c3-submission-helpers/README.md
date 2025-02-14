@@ -46,7 +46,9 @@ new `reboot_check_test.py`.
 
 <!-- markdownlint-disable MD013 -->
 ```plaintext
-usage: summarize-reboot-check-test.py [-h] [-g] [-v] [-n EXPECTED_N_RUNS] [--no-color] filename
+usage: summarize-reboot-check-test.py [-h] [-g] [-i] [-v]
+                                      [-n EXPECTED_N_RUNS] [--no-color]
+                                      filename
 
 Parses the outputs of reboot_check_test.py from a C3 submission tar file
 
@@ -55,17 +57,23 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -g, --group-by-err    Group run-indices by error messages. Similar messages might be shown twice
+  -g, --group-by-err    Group run-indices by error messages. Similar messages
+                        might be shown twice
+  -i, --index-only      Only show the indices of the failed runs
   -v, --verbose         Whether to print detailed messages
   -n EXPECTED_N_RUNS, --num-runs EXPECTED_N_RUNS
-                        Specify a value to show a warning when the number of boot files != the number of runs you expect. Default=30. Note that this number applies to both cold and
-                        warm boot since checkbox doesn't use a different number for CB/WB either.
+                        Specify a value to show a warning when the number of
+                        boot files != the number of runs you expect.
+                        Default=30. Note that this number applies to both
+                        cold and warm boot since checkbox doesn't use a
+                        different number for CB/WB either.
   --no-color            Removes all colors and styles
+
 ```
 <!-- markdownlint-enable MD013 -->
 
 Example usage:
 
 ```bash
-python3 summarize_reboot_check_test.py -g /path/to/stress/test/submission.tar.xz
+python3 summarize_reboot_check_test.py /path/to/stress/test/submission.tar.xz
 ```
