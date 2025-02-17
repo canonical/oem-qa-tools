@@ -52,6 +52,13 @@ echo "$DCD" > artifacts/dcd.info
 echo "Files in artifacts:"
 ls artifacts
 
+cat << "EOF" | tee ~/stop_auto_upgrades
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Download-Upgradeable-Packages "0";
+APT::Periodic::AutocleanInterval "0";
+APT::Periodic::Unattended-Upgrade "0";
+EOF
+
 _run amixer set Master unmute
 _run amixer set Master 100
 _run amixer set Speaker 100
@@ -64,4 +71,6 @@ _run gsettings set org.gnome.desktop.screensaver lock-enabled false
 _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
 _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing'
 _run gsettings set org.gnome.desktop.session idle-delay 'uint32 0'
+_put ~/stop_auto_upgrades ~/20auto-upgrades
+_run sudo cp 20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades
 
