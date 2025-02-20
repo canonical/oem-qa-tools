@@ -110,7 +110,7 @@ class QaPcJira():
         """
         if tag:
             payload = {
-                'jql': 'project = {} AND summary ~ "{}" AND '
+                'jql': 'project = {} AND summary ~ "\\"{}\\"" AND '
                 'issuetype = Story order by created DESC'.format(
                     self.jira_api.jira_project['key'], tag
                 ),
