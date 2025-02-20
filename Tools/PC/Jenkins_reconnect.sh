@@ -63,8 +63,8 @@ setup_ssh()
 
 import_key()
 {
-	#import oem-taipei-bot key
-	sudo su -c 'ssh-import-id oem-taipei-bot' ${user}
+	#import oem-taipei-bot ce-certification-qa key
+	sudo su -c 'ssh-import-id oem-taipei-bot ce-certification-qa' ${user}
 }
 
 setup_user
