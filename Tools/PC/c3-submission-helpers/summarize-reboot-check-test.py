@@ -461,7 +461,7 @@ class DeviceComparisonPrinter(TestResultPrinter):
                             i += 1
                             continue
 
-                        device_name = m.group(1)
+                        device_type = m.group(1)  # usb/drm/pci
                         expected = []  # type: list[str]
                         actual = []  # type: list[str]
 
@@ -486,16 +486,20 @@ class DeviceComparisonPrinter(TestResultPrinter):
                         diff = list(ac - ec)
                         reverse_diff = list(ec - ac)
 
-                        res[device_name][run_index] = [
-                            line.strip()
-                            + f" Diff: {Color.critical}"
-                            + re.sub(
-                                r"\s\s+",
-                                " ",
-                                str(max(diff, reverse_diff, key=len)),
+                        actual_diff = max(diff, reverse_diff, key=len)
+                        diff_name = (
+                            "Extra device"
+                            if len(diff) > len(reverse_diff)
+                            else "Missing device"
+                        )
+
+                        if run_index not in res[device_type]:
+                            res[device_type][run_index] = []
+                        for msg in actual_diff:
+                            res[device_type][run_index].append(
+                                f'{diff_name}: "{msg}"'
                             )
-                            + Color.end
-                        ]
+
                         i += 1
 
 
