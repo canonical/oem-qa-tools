@@ -311,7 +311,9 @@ class TestResultPrinter(abc.ABC):
                             SPACE, SPACE if is_last else BRANCH, LAST, message
                         )
                     else:
-                        print(SPACE, SPACE if is_last else BRANCH, TEE, message)
+                        print(
+                            SPACE, SPACE if is_last else BRANCH, TEE, message
+                        )
             if expected_n_runs != 0:
                 print(
                     SPACE,
@@ -358,8 +360,10 @@ class FwtsPrinter(TestResultPrinter):
             )
 
         def err_msg_transform(msg: str):
-            prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
-            timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [    3.415050]
+            prefix_pattern = (
+                r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+            )
+            timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [   3.415050]
             return re.sub(
                 prefix_pattern, "", re.sub(timestamp_pattern, "", msg)
             ).strip()
@@ -380,7 +384,9 @@ class FwtsPrinter(TestResultPrinter):
                         (a, list(s.strip() for s in iter(b)))
                         for a, b in itertools.groupby(
                             f,
-                            key=lambda line: line.strip().endswith("failures:"),
+                            key=lambda line: line.strip().endswith(
+                                "failures:"
+                            ),
                         )
                     ]
 
@@ -449,7 +455,9 @@ class DeviceComparisonPrinter(TestResultPrinter):
                 if not f:
                     continue
                 with f:
-                    regex = re.compile(r"\[ ERR \] The output of (.*) differs!")
+                    regex = re.compile(
+                        r"\[ ERR \] The output of (.*) differs!"
+                    )
 
                     lines = f.readlines()
                     i = 0
