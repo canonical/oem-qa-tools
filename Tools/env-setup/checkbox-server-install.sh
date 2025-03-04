@@ -124,6 +124,32 @@ Comment[en_US]=#
 Comment=#" > /etc/xdg/autostart/iperf.desktop'	
 }
 
+
+setup_wakeonlan()
+{
+    #Install Wake-on-Lan server
+    echo " "
+    printf " \033[1;35m Wake-on-Lan server  \033[0m\n"
+    sudo apt update
+    sudo apt install wakeonlan -y
+    sudo apt install python3-fastapi -y
+    sudo apt install uvicorn -y
+    sudo cp wol_server.py /usr/bin/
+
+    #Add Wakeonlan.desktop
+    echo 's' | sudo -S bash -c 'echo "[Desktop Entry]
+Type=Application
+Exec=gnome-terminal -- bash -c \"cd /usr/bin && uvicorn wol_server:app --host 0.0.0.0 --port 8090 > /tmp/wol.log 2>&1\"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Terminal=true
+Name[en_US]=Starup script_Wake-on-Lan
+Name=Starup script_Wake-on-Lan
+Comment[en_US]=#
+Comment=#" > /etc/xdg/autostart/Wake-on-Lan.desktop'
+}
+
 setup_ptp4l()
 {
     # Install linuxptp
@@ -194,6 +220,7 @@ setup_server()
     setup_eddystone
     setup_iperf
     setup_ptp4l
+    setup_wakeonlan
 
     printf "\033[1;42;37m Done\033[0m\n"
     echo " "
