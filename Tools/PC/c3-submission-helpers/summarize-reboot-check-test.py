@@ -1,5 +1,12 @@
 #! /usr/bin/env python3
 
+"""
+!IMPORTANT!
+
+This script heavily depends on the output format of reboot_check_test.py
+If the test script changes, this script also need to be changed
+to report accurately
+"""
 import abc
 import argparse
 from collections import defaultdict, Counter
