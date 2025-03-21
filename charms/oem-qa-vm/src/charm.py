@@ -90,13 +90,13 @@ network:
       - {}/22
 """
         ip = self.config.get("static-ip")
-        if not ip:
-            logger.error("static-ip must be set")
-            raise ValueError("static-ip must be set")
-        file = "/etc/netplan/60-oemqa.yaml"
-        with open(file, "w") as f:
-            f.write(config.format(ip))
-        subprocess.check_output(["netplan", "apply"])
+        if not ip or ip == "127.0.0.1":
+            logger.error("static-ip is not provided, using dhcp mode")
+        else:
+            file = "/etc/netplan/60-oemqa.yaml"
+            with open(file, "w") as f:
+                f.write(config.format(ip))
+            subprocess.check_output(["netplan", "apply"])
 
     def set_tmux_config(self):
         """Make tumx could use mouse"""
