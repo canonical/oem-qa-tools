@@ -43,7 +43,7 @@ def create_send_dut_to_cert_card_in_telops(
             task_type='DUT_Send_To_Cert')
 
         # Assign Summary
-        fields['summary'] = f"Send CID#{d['cid']} to Cert Lab"
+        fields['summary'] = f"CID#{d['cid']} transferred to Cert Lab"
 
         # Assign Description
         fields['description'] = description_original_data
@@ -65,12 +65,12 @@ def create_send_dut_to_cert_card_in_telops(
 
         # Get the transition ID number which is from the TELOPS board
         transition_data = telops_jira_api.jira_project['transition_data']
-        transition_id = transition_data.get('To Do QA LAB')
+        transition_id = transition_data.get('To Do Cert LAB')
 
         created_issues = response.json()['issues']
 
         for created_issue in created_issues:
-            # Assign status with 'To Do QA LAB'
+            # Assign status with 'To Do Cert LAB'
             response = telops_jira_api.make_transition(
                 created_issue['key'], transition_id)
     else:
