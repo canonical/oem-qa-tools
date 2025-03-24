@@ -5,6 +5,7 @@
         "DUT_Send_To_Cert": "11730"
     },
     "transition_data": {
-        "To Do QA LAB": "2"
+        "To Do QA LAB": "2",
+        "To Do Cert LAB": "3"
     }
 }
