@@ -77,7 +77,6 @@ class OemQaVmCharm(ops.CharmBase):
             ]
         )
         self.import_ssh_key()
-        self.set_static_ip()
         self.set_tmux_config()
         self.unit.status = ops.ActiveStatus("Ready")
 
@@ -105,27 +104,6 @@ class OemQaVmCharm(ops.CharmBase):
                 f"Failed to import ssh key from [{lp_id}] with {repr(e)}"
             )
             raise ValueError("launchpad-id may be incorrect")
-
-    def set_static_ip(self):
-        """Add 60-oemqa.yaml to set static IP"""
-        config = """
-network:
-  version: 2
-  ethernets:
-    eth0:
-      dhcp4: false
-      dhcp-identifier: mac
-      addresses:
-      - {}/22
-"""
-        ip = self.config.get("static-ip")
-        if not ip or ip == "127.0.0.1":
-            logger.error("static-ip is not provided, using dhcp mode")
-        else:
-            file = "/etc/netplan/60-oemqa.yaml"
-            with open(file, "w") as f:
-                f.write(config.format(ip))
-            subprocess.check_output(["netplan", "apply"])
 
     def set_tmux_config(self):
         """Make tumx could use mouse"""

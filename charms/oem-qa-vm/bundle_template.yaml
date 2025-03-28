@@ -4,4 +4,3 @@ applications:
     num_units: 1
     options:
         launchpad-id: launchpad-id
-        static-ip: 127.0.0.1
