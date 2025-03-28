@@ -85,10 +85,7 @@ class OemQaVmCharm(ops.CharmBase):
         """Add checkbox beta PPA"""
         apt.import_key("968504F7952C9377")  # For checkbox
         repositories = apt.RepositoryMapping()
-        ppa = "https://ppa.launchpadcontent.net/checkbox-dev/beta/ubuntu/"
-        release = "jammy"
-        branch = "main"
-        line = f"deb {ppa} {release} {branch}"
+        line = f"deb {self.checkbox_ppa} {self.checkbox_release} {self.checkbox_branch}"
         repo = DebianRepository.from_repo_line(line)
         repositories.add(repo)
 
