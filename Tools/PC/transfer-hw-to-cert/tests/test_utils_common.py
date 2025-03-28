@@ -65,6 +65,14 @@ class IsValidLocationTest(unittest.TestCase):
             {
                 'name': 'correct location 2',
                 'location': 'TEL-L3-R01-S10-P0',
+            },
+            {
+                'name': 'correct location 3',
+                'location': 'TEL-L6-F03-S3-P3',
+            },
+            {
+                'name': 'correct location 4',
+                'location': 'TEL-L6-R02-S10-P1',
             }
         ]
 
@@ -113,6 +121,11 @@ class IsValidLocationTest(unittest.TestCase):
                 'location': 'tel-L5-F02-S1-P7',
                 'expect_value': False
             },
+            {
+                'name': 'wrong shelf',
+                'location': 'TEL-L6-F02-S9-P1',
+                'expect_value': False
+            }
         ]
 
         for case in test_cases:
@@ -126,14 +139,32 @@ class ParseLocationTest(unittest.TestCase):
     def test_parse_valid_location(self):
         """ Parse the valid location
         """
-        actual_result = parse_location(location='TEL-L3-F24-S5-P1')
-        expected_result = {
-            'Lab': 'TEL-L3',
-            'Frame': 'F24',
-            'Shelf': '5',
-            'Partition': '1'
-        }
-        self.assertEqual(expected_result, actual_result)
+        test_cases = [
+            {
+                'name': 'correct location',
+                'location': 'TEL-L3-F24-S5-P1',
+                'expected_result': {
+                    'Lab': 'TEL-L3',
+                    'Frame': 'F24',
+                    'Shelf': '5',
+                    'Partition': '1'
+                },
+            },
+            {
+                'name': 'correct location 1',
+                'location': 'TEL-L6-R02-S10-P1',
+                'expected_result': {
+                    'Lab': 'TEL-L6',
+                    'Frame': 'R02',
+                    'Shelf': '10',
+                    'Partition': '1'
+                },
+            },
+        ]
+        for case in test_cases:
+            actual_result = parse_location(case['location'])
+            expected_result = case['expected_result']
+            self.assertEqual(expected_result, actual_result)
 
     def test_parse_invalid_location(self):
         """ Parse the invalid location
@@ -151,7 +182,7 @@ class ParseLocationTest(unittest.TestCase):
         ]
 
         for case in test_cases:
-            actual_result = parse_location(location=case['location'])
+            actual_result = parse_location(case['location'])
             self.assertEqual({}, actual_result)
 
 

@@ -699,7 +699,10 @@ VALID_CONTENT_FROM_API = {
                         "version": 1
                     }
                 ]
-   },
+   }
+}
+# VALID_TABLE_FROM_API is the valid output from get_result_table_from_a_jira_card function # noqa: E501
+VALID_TABLE_FROM_API = {
   "table": [
     {
       "type": "tableRow",
@@ -1040,33 +1043,6 @@ VALID_CONTENT_FROM_API = {
       ]
     }
   ]
-}
-
-# The result who doesn't contains the table in "Test result" field.
-# This one can be used to mimic that users triggers wrong Jira card,
-# non "HW transfer to cert lab" card, so we should expect there's no any
-# "table" related data in this dictionary.
-EMPTY_TABLE_RESULT_FROM_API = {
-    "expand": "names,schema",
-    "startAt": 0,
-    "maxResults": 50,
-    "total": 1,
-    "issues": [
-        {
-            "expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",  # noqa: E501
-            "id": "192827",
-            "self": "https://warthogs.atlassian.net/rest/api/3/issue/192827",
-            "key": "VS-2645",
-            "fields": {
-                "description": {
-                    "type": "doc",
-                    "version": 1,
-                    "content": []
-                },
-                "customfield_10186": None
-            }
-        }
-    ]
 }
 
 # A single row data whose CID and Location are valid

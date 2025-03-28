@@ -110,7 +110,7 @@ def get_sheet_data() -> dict:
     wanted_headers = [
         'CID', 'Certified_OEM_Image', 'Lab', 'Frame', 'Shelf', 'Partition']
 
-    # t is TEL-L3 or TEL-L5
+    # t is TEL-L3, TEL-L5 or TEL-L6
     for t in GOOGLE_SHEET_CONF['tables']:
         sheet_data[t] = {}
         # Get the first row (a.k.a header), such as CID, Lab, Frame ...
