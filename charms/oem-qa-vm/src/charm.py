@@ -27,11 +27,15 @@ class OemQaVmCharm(ops.CharmBase):
         self._checkbox_branch = "main"
         framework.observe(self.on.start, self._on_start)
         framework.observe(self.on.install, self._on_install)
-        
+
     @property
     def checkbox_ppa(self):
         """Construct the full PPA URL dynamically."""
-        return f"https://ppa.launchpadcontent.net/checkbox-dev/{self._checkbox_ppa_channel}/ubuntu/"
+        return (
+            "https://ppa.launchpadcontent.net/checkbox-dev/{}/ubuntu/".format(
+                self._checkbox_ppa_channel
+            )
+        )
 
     @property
     def checkbox_ppa_channel(self):
@@ -84,7 +88,9 @@ class OemQaVmCharm(ops.CharmBase):
         """Add checkbox beta PPA"""
         apt.import_key("968504F7952C9377")  # For checkbox
         repositories = apt.RepositoryMapping()
-        line = f"deb {self.checkbox_ppa} {self.checkbox_release} {self.checkbox_branch}"
+        line = "deb {} {} {}".format(
+            self.checkbox_ppa, self.checkbox_release, self.checkbox_branch
+        )
         repo = DebianRepository.from_repo_line(line)
         repositories.add(repo)
 
