@@ -22,8 +22,40 @@ class OemQaVmCharm(ops.CharmBase):
 
     def __init__(self, framework: ops.Framework):
         super().__init__(framework)
+        self._checkbox_ppa_channel = "beta"
+        self._checkbox_release = "jammy"
+        self._checkbox_branch = "main"
         framework.observe(self.on.start, self._on_start)
         framework.observe(self.on.install, self._on_install)
+        
+    @property
+    def checkbox_ppa(self):
+        """Construct the full PPA URL dynamically."""
+        return f"https://ppa.launchpadcontent.net/checkbox-dev/{self._checkbox_ppa_channel}/ubuntu/"
+
+    @property
+    def checkbox_ppa_channel(self):
+        return self._checkbox_ppa_channel
+
+    @checkbox_ppa_channel.setter
+    def checkbox_ppa_channel(self, value):
+        self._checkbox_ppa_channel = value
+
+    @property
+    def checkbox_release(self):
+        return self._checkbox_release
+
+    @checkbox_release.setter
+    def checkbox_release(self, value):
+        self._checkbox_release = value
+
+    @property
+    def checkbox_branch(self):
+        return self._checkbox_branch
+
+    @checkbox_branch.setter
+    def checkbox_branch(self, value):
+        self._checkbox_branch = value
 
     def _on_start(self, event: ops.StartEvent):
         """Handle start event."""
