@@ -52,7 +52,3 @@ config:
     launchpad-id:
       description: The launchpad id that has to be imported into vm
       type: string
-    static-ip:
-      description: The static ip for this vm
-      default: "127.0.0.1"
-      type: string
