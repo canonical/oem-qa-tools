@@ -11,4 +11,5 @@ CHECKBOX_VERSION=$(_run $CHECKBOX_CLI_CMD --version)
 git clone --depth=1 https://github.com/canonical/hwcert-jenkins-tools.git > /dev/null
 git clone --filter=tree:0 https://github.com/canonical/checkbox.git > /dev/null
 hwcert-jenkins-tools/version-published/checkout_to_version.py ~/checkbox "$CHECKBOX_VERSION"
-(cd checkbox/checkbox-ng || return; sudo python3 setup.py install > /dev/null)
+pipx install --spec checkbox/checkbox-ng checkbox-ng
+sudo rm -rf checkbox
