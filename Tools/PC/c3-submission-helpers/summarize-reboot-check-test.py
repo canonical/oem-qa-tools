@@ -57,14 +57,16 @@ class Log:
         print(f"{Color.critical}[ ERR ]{Color.end}", *args)
 
 
-RunIndexToMessageMap = dict[int, list[str]]
-GroupedResultByIndex = dict[
+type RunIndexToMessageMap = dict[int, list[str]]
+type GroupedResultByIndex = dict[
     str, RunIndexToMessageMap
 ]  # key is fail type (for fwts it's critical, high, medium, low
 # for device cmp it's lsusb, lspci, iw)
 # value is index to actual message map
-BootType = Literal["warm", "cold"]
-TestType = Literal["fwts", "device comparison", "renderer", "service check"]
+type BootType = Literal["warm", "cold"]
+type TestType = Literal[
+    "fwts", "device comparison", "renderer", "service check"
+]
 
 
 class SubmissionTarReader:
@@ -368,6 +370,32 @@ class TestResultPrinter(abc.ABC):
 class FwtsPrinter(TestResultPrinter):
     name = "fwts"
 
+    # get rid of everything before the divider
+    divider = "========================================"
+
+    # this is kinda dumb but fwts output is mixed with
+    # output from other tests
+    # ! these strings should not start with spaces
+    exclude_prefixes = [
+        "[ OK ]",
+        "Comparing devices",
+        "These nodes",
+        "Checking $",
+        "klog",
+        "oops",
+        "Listing all DRM",
+        "$DISPLAY is not set",
+        "- card",  # the drm list bullet
+        "Checking if DUT has reached",
+        "Graphical target was reached!",
+    ]
+    exclude_suffixes = [
+        "is connected to display!",
+        "connected",
+        "seconds",
+        "graphical.target was not reached",
+    ]
+
     def print_by_err(self):
         def title_transform(fail_type: str):
             return (
@@ -418,46 +446,21 @@ class FwtsPrinter(TestResultPrinter):
                         # If False, then we have the actual lines of the
                         # immediate predecessor fail_type
                         actual_messages = grouped_output[i + 1][1]
-                        # get rid of everything before the divider
-                        divider = "========================================"
-
-                        # this is kinda dumb but fwts output is mixed with
-                        # output from other tests
-                        # ! these strings should not start with spaces
-                        exclude_prefixes = [
-                            "[ OK ]",
-                            "Comparing devices",
-                            "These nodes",
-                            "Checking $",
-                            "klog",
-                            "oops",
-                            "Listing all DRM",
-                            "$DISPLAY is not set",
-                            "- card",  # the drm list bullet
-                            "Checking if DUT has reached",
-                            "Graphical target was reached!",
-                        ]
-                        exclude_suffixes = [
-                            "is connected to display!",
-                            "connected",
-                            "seconds",
-                            "graphical.target was not reached",
-                        ]
 
                         res[fail_type][run_index] = []
                         for s in actual_messages:
                             if s == "":
                                 continue
-                            if s == divider:
+                            if s == self.divider:
                                 continue
                             if any(
                                 s.startswith(prefix)
-                                for prefix in exclude_prefixes
+                                for prefix in self.exclude_prefixes
                             ):
                                 continue
                             if any(
                                 s.endswith(suffix)
-                                for suffix in exclude_suffixes
+                                for suffix in self.exclude_suffixes
                             ):
                                 continue
 
