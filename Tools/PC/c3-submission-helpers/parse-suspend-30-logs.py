@@ -10,11 +10,10 @@ import io
 import sys
 import textwrap
 
-space = "    "
-branch = "│   "
-tee = "├── "
-last = "└── "
-bullet_point = "   -"
+SPACE = "    "
+BRANCH = "│   "
+TEE = "├── "
+LAST = "└── "
 
 
 FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
@@ -359,12 +358,12 @@ def main():
             )
 
         for boot_i in range(1, args.num_boots + 1):
-            branch_text = last if boot_i == args.num_boots else tee
+            branch_text = LAST if boot_i == args.num_boots else TEE
             if boot_i not in runs:
-                print(f"{space} {branch_text} Reboot {boot_i}: No failures!")
+                print(f"{SPACE} {branch_text} Reboot {boot_i}: No failures!")
                 continue
 
-            branch_text = last if boot_i == args.num_boots else branch
+            branch_text = LAST if boot_i == args.num_boots else BRANCH
             if args.inverse_find:
                 indices_to_print = list(
                     set(range(1, args.num_suspends + 1))
@@ -379,23 +378,23 @@ def main():
                 width=50,
             )
             line1 = (
-                f"{space} {tee} Reboot {boot_i}: {wrapped_suspend_indices[0]}"
+                f"{SPACE} {TEE} Reboot {boot_i}: {wrapped_suspend_indices[0]}"
             )
             print(line1)
             for line in wrapped_suspend_indices[1:]:
                 print(
-                    f"{space} {branch}{' ' * len(f' Reboot {boot_i}: ')}", line
+                    f"{SPACE} {BRANCH}{' ' * len(f' Reboot {boot_i}: ')}", line
                 )
 
             if args.inverse_find:
                 print(
-                    space,
+                    SPACE,
                     branch_text,
                     f"Success rate: {len(indices_to_print)}/{args.num_suspends}",
                 )
             else:
                 print(
-                    space,
+                    SPACE,
                     branch_text,
                     f"Fail rate: {len(indices_to_print)}/{args.num_suspends}",
                 )
