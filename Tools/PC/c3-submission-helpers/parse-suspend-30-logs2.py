@@ -35,6 +35,7 @@ class Input:
     num_boots: int
     inverse_find: bool
     no_summary: bool
+    no_meta: bool
 
 
 class C:  # color
@@ -64,6 +65,14 @@ def parse_args() -> Input:
         "--no-summary",
         action="store_true",
         help="Don't print the summary file at the top",
+    )
+    p.add_argument(
+        "--no-meta",
+        action="store_true",
+        help=(
+            "Don't write the metadata section when -w is specified. ("
+            f"The {'/'.join(Meta.__annotations__.keys())} section)"
+        ),
     )
     p.add_argument(
         "filename",
