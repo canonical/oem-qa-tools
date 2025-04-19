@@ -10,13 +10,13 @@ to report accurately
 
 import abc
 import argparse
-from collections import defaultdict, Counter
-from typing import Callable, Literal, Optional
 import io
 import itertools
-import tarfile
 import re
+import tarfile
 import textwrap
+from collections import Counter, defaultdict
+from typing import Callable, Literal, Optional
 
 SPACE = "    "
 BRANCH = "│   "
@@ -388,7 +388,10 @@ class FwtsPrinter(TestResultPrinter):
         "- card",  # the drm list bullet
         "Checking if DUT has reached",
         "Graphical target was reached!",
+        "Starting reboot checks",
+        "Finished reboot checks"
     ]
+
     exclude_suffixes = [
         "is connected to display!",
         "connected",
@@ -521,9 +524,9 @@ class DeviceComparisonPrinter(TestResultPrinter):
 
                         actual_diff = max(diff, reverse_diff, key=len)
                         diff_name = (
-                            "Extra device"
+                            "Extra"
                             if len(diff) > len(reverse_diff)
-                            else "Missing device"
+                            else "Missing"
                         )
 
                         if run_index not in res[device_type]:
@@ -650,6 +653,7 @@ def main():
     reader = SubmissionTarReader(args.filename)
 
     if args.no_color:
+        # if no color, just replace all the escape sequences with empty str
         for prop in dir(Color):
             if prop.startswith("__") and type(getattr(Color, prop)) is not str:
                 continue

@@ -1,14 +1,14 @@
 #! /usr/bin/env python3
 
-from collections import defaultdict
-import os
-from typing import Literal, TypedDict, cast
-import re
 import argparse
-import tarfile
 import io
+import os
+import re
 import sys
+import tarfile
 import textwrap
+from collections import defaultdict
+from typing import Literal, TypedDict, cast
 
 SPACE = "    "
 BRANCH = "│   "
@@ -402,8 +402,8 @@ def main():
 
 if __name__ == "__main__":
     print(
-        f"{C.medium}The summary file might not match the number of failures",
-        "found by this script.",
+        f"{C.medium}The summary file might not match",
+        "the number of failures found by this script.",
         "Please double check as the original test case did some filtering.",
         C.end,
     )
