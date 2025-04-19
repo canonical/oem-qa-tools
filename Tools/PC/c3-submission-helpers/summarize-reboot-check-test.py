@@ -375,7 +375,7 @@ class FwtsPrinter(TestResultPrinter):
 
     # this is kinda dumb but fwts output is mixed with
     # output from other tests
-    # ! these strings should not start with spaces
+    # !! these strings should not start with spaces
     exclude_prefixes = [
         "[ OK ]",
         "Comparing devices",
@@ -389,7 +389,9 @@ class FwtsPrinter(TestResultPrinter):
         "Checking if DUT has reached",
         "Graphical target was reached!",
         "Starting reboot checks",
-        "Finished reboot checks"
+        "Finished reboot checks",
+        "Found GL_RENDERER",
+        "Checking hardware renderer",
     ]
 
     exclude_suffixes = [
@@ -574,6 +576,11 @@ class RendererCheckPrinter(TestResultPrinter):
         graphical_target_fail_prefix = (
             "[ ERR ] systemd's graphical.target was not reached"
         )
+        software_rendering_prefix = "[ ERR ] Software rendering detected"
+        # this generic prefix works becuase we immediately stop the test
+        # once glmark2 errors out. If there're multiple glmark2 errors before 
+        # end of test, change this accordingly
+        glmark2_err_prefix = "[ ERR ] glmark2"
 
         for boot_type in ("cold", "warm"):
             res = (
@@ -592,6 +599,10 @@ class RendererCheckPrinter(TestResultPrinter):
                             res["Graphical target not reached"][run_index] = [
                                 line
                             ]
+                        elif line.startswith(software_rendering_prefix):
+                            res["Found software rendering"][run_index] = [line]
+                        elif line.startswith(glmark2_err_prefix):
+                            res["glmark2"][run_index] = [line]
 
 
 def parse_args() -> Input:
