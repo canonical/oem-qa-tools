@@ -7,15 +7,16 @@ This script heavily depends on the output format of reboot_check_test.py
 If the test script changes, this script also need to be changed
 to report accurately
 """
+
 import abc
 import argparse
-from collections import defaultdict, Counter
-from typing import Callable, Literal, Optional
 import io
 import itertools
-import tarfile
 import re
+import tarfile
 import textwrap
+from collections import Counter, defaultdict
+from typing import Callable, Literal, Optional
 
 SPACE = "    "
 BRANCH = "│   "
@@ -56,17 +57,21 @@ class Log:
         print(f"{Color.critical}[ ERR ]{Color.end}", *args)
 
 
-RunIndexToMessageMap = dict[int, list[str]]
-GroupedResultByIndex = dict[
+type RunIndexToMessageMap = dict[int, list[str]]
+type GroupedResultByIndex = dict[
     str, RunIndexToMessageMap
 ]  # key is fail type (for fwts it's critical, high, medium, low
 # for device cmp it's lsusb, lspci, iw)
 # value is index to actual message map
-BootType = Literal["warm", "cold"]
-TestType = Literal["fwts", "device comparison", "renderer", "service check"]
+type BootType = Literal["warm", "cold"]
+type TestType = Literal[
+    "fwts", "device comparison", "renderer", "service check"
+]
 
 
 class SubmissionTarReader:
+    warned_about_boot_count = False
+
     def __init__(self, filepath: str) -> None:
         self.raw_tar = tarfile.open(filepath)
 
@@ -138,11 +143,14 @@ class SubmissionTarReader:
 
     @property
     def boot_count(self) -> int:
-        if len(self.warm_stdout_files) != len(self.cold_stdout_files):
+        if not self.warned_about_boot_count and len(
+            self.warm_stdout_files
+        ) != len(self.cold_stdout_files):
             Log.warn(
-                "[ WARN ] num warm boots != num cold boots.",
+                "num warm boots != num cold boots.",
                 "Is the submission broken?",
             )
+            self.warned_about_boot_count = True
         return len(self.warm_stdout_files)
 
 
@@ -165,16 +173,16 @@ class TestResultPrinter(abc.ABC):
         self.expected_n_runs = expected_n_runs
         self._group_by_index()
 
-    def print_verbose(self):
+    def print_verbose(self) -> None:
         print(f"\n{f' Verbose cold boot {self.name} results ':-^80}\n")
         self._pretty_print(self.cold_results, self.expected_n_runs)
         print(f"\n{f' Verbose warm boot {self.name} results ':-^80}\n")
         self._pretty_print(self.warm_results, self.expected_n_runs)
 
-    def print_by_err(self):
+    def print_by_err(self) -> None:
         self._default_print_by_err()
 
-    def print_by_index(self):
+    def print_by_index(self) -> None:
         print("Cold boot:")
         if len(self.cold_results) > 0:
             self._short_print(self.cold_results, prefix=SPACE)
@@ -187,14 +195,24 @@ class TestResultPrinter(abc.ABC):
         else:
             print(SPACE + "No failures!")
 
-    def _default_title_transform(self, fail_type: str):
-        color = getattr(Color, fail_type.lower(), Color.medium)
-        return (
-            f"{color}{fail_type.lower().replace('_', ' ').capitalize()}"
-            f" errors:{Color.end}"
-        )
+    def _default_title_transform(self, fail_type: str) -> str:
+        fail_type_lower = fail_type.lower().replace("_", " ")
+        color = getattr(Color, fail_type_lower, Color.medium)
+        known_name_tranforms = {
+            "pci": "PCI device difference",
+            "usb": "USB device difference",
+            "fwts": "FWTS",
+        }
 
-    def _default_err_msg_transform(self, msg: str):
+        if fail_type_lower in known_name_tranforms:
+            capitalized = known_name_tranforms[fail_type_lower]
+        else:
+            capitalized = fail_type_lower.capitalize()
+
+        transformed_str = f"{color}{capitalized} errors:{Color.end}"
+        return transformed_str
+
+    def _default_err_msg_transform(self, msg: str) -> str:
         return msg
 
     def _default_print_by_err(
@@ -202,17 +220,11 @@ class TestResultPrinter(abc.ABC):
         title_transform: Optional[Callable[[str], str]] = None,
         err_msg_transform: Optional[Callable[[str], str]] = None,
     ):
-        fail_types = (
-            self.cold_results
-            if len(self.cold_results) > len(self.warm_results)
-            else self.warm_results
-        ).keys()
+        fail_types = max(self.cold_results, self.warm_results, key=len).keys()
 
         for fail_type in fail_types:
             print(
-                title_transform(fail_type)
-                if title_transform
-                else self._default_title_transform(fail_type)
+                (title_transform or self._default_title_transform)(fail_type)
             )
             regrouped_cold = self._group_by_err(
                 self.cold_results.get(fail_type, {}), err_msg_transform
@@ -271,8 +283,7 @@ class TestResultPrinter(abc.ABC):
                     )
 
     @abc.abstractmethod
-    def _group_by_index(self):
-        ...
+    def _group_by_index(self): ...
 
     def _group_by_err(
         self,
@@ -359,6 +370,37 @@ class TestResultPrinter(abc.ABC):
 class FwtsPrinter(TestResultPrinter):
     name = "fwts"
 
+    # get rid of everything before the divider
+    divider = "========================================"
+
+    # this is kinda dumb but fwts output is mixed with
+    # output from other tests
+    # !! these strings should not start with spaces
+    exclude_prefixes = [
+        "[ OK ]",
+        "Comparing devices",
+        "These nodes",
+        "Checking $",
+        "klog",
+        "oops",
+        "Listing all DRM",
+        "$DISPLAY is not set",
+        "- card",  # the drm list bullet
+        "Checking if DUT has reached",
+        "Graphical target was reached!",
+        "Starting reboot checks",
+        "Finished reboot checks",
+        "Found GL_RENDERER",
+        "Checking hardware renderer",
+    ]
+
+    exclude_suffixes = [
+        "is connected to display!",
+        "connected",
+        "seconds",
+        "graphical.target was not reached",
+    ]
+
     def print_by_err(self):
         def title_transform(fail_type: str):
             return (
@@ -409,44 +451,25 @@ class FwtsPrinter(TestResultPrinter):
                         # If False, then we have the actual lines of the
                         # immediate predecessor fail_type
                         actual_messages = grouped_output[i + 1][1]
-                        # get rid of everything before the divider
-                        divider = "========================================"
 
-                        # this is kinda dumb but fwts output is mixed with
-                        # output from other tests
-                        exclude_prefixes = [
-                            "[ OK ]",
-                            "Comparing devices",
-                            "These nodes",
-                            "Checking $",
-                            "klog",
-                            "oops",
-                            "Listing all DRM",
-                            "$DISPLAY is not set",
-                            "- ",  # the drm list bullet
-                            "Checking if DUT has reached",
-                            "Graphical target reached!",
-                        ]
-                        exclude_suffixes = [
-                            "is connected to display!",
-                            "connected",
-                            "seconds",
-                            "graphical.target was not reached",
-                        ]
-                        res[fail_type][run_index] = [
-                            s
-                            for s in actual_messages
-                            if s != ""
-                            and s != divider
-                            and all(
-                                not s.startswith(prefix)
-                                for prefix in exclude_prefixes
-                            )
-                            and all(
-                                not s.endswith(suffix)
-                                for suffix in exclude_suffixes
-                            )
-                        ]  # also filter out empty strings
+                        res[fail_type][run_index] = []
+                        for s in actual_messages:
+                            if s == "":
+                                continue
+                            if s == self.divider:
+                                continue
+                            if any(
+                                s.startswith(prefix)
+                                for prefix in self.exclude_prefixes
+                            ):
+                                continue
+                            if any(
+                                s.endswith(suffix)
+                                for suffix in self.exclude_suffixes
+                            ):
+                                continue
+
+                            res[fail_type][run_index].append(s)
 
 
 class DeviceComparisonPrinter(TestResultPrinter):
@@ -503,9 +526,9 @@ class DeviceComparisonPrinter(TestResultPrinter):
 
                         actual_diff = max(diff, reverse_diff, key=len)
                         diff_name = (
-                            "Extra device"
+                            "Extra"
                             if len(diff) > len(reverse_diff)
-                            else "Missing device"
+                            else "Missing"
                         )
 
                         if run_index not in res[device_type]:
@@ -553,6 +576,11 @@ class RendererCheckPrinter(TestResultPrinter):
         graphical_target_fail_prefix = (
             "[ ERR ] systemd's graphical.target was not reached"
         )
+        software_rendering_prefix = "[ ERR ] Software rendering detected"
+        # this generic prefix works becuase we immediately stop the test
+        # once glmark2 errors out. If there're multiple glmark2 errors before 
+        # end of test, change this accordingly
+        glmark2_err_prefix = "[ ERR ] glmark2"
 
         for boot_type in ("cold", "warm"):
             res = (
@@ -571,6 +599,10 @@ class RendererCheckPrinter(TestResultPrinter):
                             res["Graphical target not reached"][run_index] = [
                                 line
                             ]
+                        elif line.startswith(software_rendering_prefix):
+                            res["Found software rendering"][run_index] = [line]
+                        elif line.startswith(glmark2_err_prefix):
+                            res["glmark2"][run_index] = [line]
 
 
 def parse_args() -> Input:
@@ -632,6 +664,7 @@ def main():
     reader = SubmissionTarReader(args.filename)
 
     if args.no_color:
+        # if no color, just replace all the escape sequences with empty str
         for prop in dir(Color):
             if prop.startswith("__") and type(getattr(Color, prop)) is not str:
                 continue
