@@ -70,6 +70,7 @@ type TestType = Literal[
 
 
 class SubmissionTarReader:
+    # avoid constantly printing warnings
     warned_about_boot_count = False
 
     def __init__(self, filepath: str) -> None:
@@ -151,7 +152,9 @@ class SubmissionTarReader:
                 "Is the submission broken?",
             )
             self.warned_about_boot_count = True
-        return len(self.warm_stdout_files)
+        # return the min
+        # if the submission isn't broken, this returns the actual count
+        return min(len(self.cold_stdout_files), len(self.warm_stdout_files))
 
 
 class TestResultPrinter(abc.ABC):
@@ -220,6 +223,12 @@ class TestResultPrinter(abc.ABC):
         title_transform: Optional[Callable[[str], str]] = None,
         err_msg_transform: Optional[Callable[[str], str]] = None,
     ):
+        """
+        Prints the results from 
+
+        :param title_transform: _description_, defaults to None
+        :param err_msg_transform: _description_, defaults to None
+        """        
         fail_types = max(self.cold_results, self.warm_results, key=len).keys()
 
         for fail_type in fail_types:
@@ -283,13 +292,25 @@ class TestResultPrinter(abc.ABC):
                     )
 
     @abc.abstractmethod
-    def _group_by_index(self): ...
+    def _group_by_index(self):
+        """
+        Child classes should impl the main collection routine in this method
+        - populate the self.cold_results and self.warm_results
+        """
+        pass
 
     def _group_by_err(
         self,
         index_results: RunIndexToMessageMap,
         msg_transform: Optional[Callable[[str], str]] = None,
-    ):
+    ) -> dict[str, list[int]]:
+        """
+        Default method for regrouping _group_by_index results by error messages
+
+        :param index_results: results from _group_by_index
+        :param msg_transform: pure function that transforms an error message
+        :return: a dict that has the errors as keys and run indices as values
+        """
         out = {}  # type: dict[str, list[int]]
 
         for idx, messages in index_results.items():
@@ -578,7 +599,7 @@ class RendererCheckPrinter(TestResultPrinter):
         )
         software_rendering_prefix = "[ ERR ] Software rendering detected"
         # this generic prefix works becuase we immediately stop the test
-        # once glmark2 errors out. If there're multiple glmark2 errors before 
+        # once glmark2 errors out. If there're multiple glmark2 errors before
         # end of test, change this accordingly
         glmark2_err_prefix = "[ ERR ] glmark2"
 
@@ -666,7 +687,7 @@ def main():
     if args.no_color:
         # if no color, just replace all the escape sequences with empty str
         for prop in dir(Color):
-            if prop.startswith("__") and type(getattr(Color, prop)) is not str:
+            if prop.startswith("__") or type(getattr(Color, prop)) is not str:
                 continue
             setattr(Color, prop, "")
 
