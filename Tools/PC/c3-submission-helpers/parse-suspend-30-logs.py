@@ -218,7 +218,8 @@ def open_log_file(
 def transform_err_msg(msg: str) -> str:
     # some known error message transforms to help group them together
     # this is disabled with --no-transform flag
-    msg = msg.strip()
+    timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
+    msg = re.sub(timestamp_pattern, "", msg).strip()
     s3_total_hw_sleep = (
         "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase"
     )
@@ -258,15 +259,15 @@ def group_by_err(
 
 def print_by_err(
     grouped: dict[FailType, dict[str, dict[int, list[int]]]],
-    num_boots: int,
     num_suspends: int,
 ):
     for fail_type, msg_group in grouped.items():
         print(f"{getattr(C, fail_type.lower())}{fail_type} failures{C.end}")
         for msg in msg_group:
             print(SPACE, f"{C.bold}{msg}{C.end}")
-            for boot_i, suspends in msg_group[msg].items():
-                branch_text = LAST if boot_i == num_boots  else BRANCH
+            for pos, (boot_i, suspends) in enumerate(msg_group[msg].items()):
+                branch_text = LAST if pos == len(msg_group[msg])-1 else BRANCH
+
                 wrapped_indices = textwrap.wrap(
                     str(suspends),
                     width=50,
@@ -460,7 +461,7 @@ def main():
     print(C.gray + "=" * 80 + C.end)
 
     grouped = group_by_err(failed_runs_by_type)
-    print_by_err(grouped, args.num_boots, args.num_suspends)
+    print_by_err(grouped, args.num_suspends)
 
     return
 
