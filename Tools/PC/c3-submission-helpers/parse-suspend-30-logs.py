@@ -146,10 +146,6 @@ def parse_args() -> Input:
     return cast(Input, out)
 
 
-def line_is_summary_table(l: str) -> bool:
-    return l.replace(" ", "") == "Test|Pass|Fail|Abort|Warn|Skip|Info|"
-
-
 def open_log_file(
     args: Input,
 ) -> tuple[
@@ -228,14 +224,14 @@ def trim_time_and_counts(msg: str) -> str:
 
     msg = re.sub(timestamp_pattern, "", msg)
     msg = re.sub(kernel_msg_prefix_pattern, "", msg)
-    msg = re.sub(" +", " ", msg) # remove double spaces
+    msg = re.sub(" +", " ", msg)  # remove double spaces
     msg = msg.strip()
 
     known_prefixes = [
         "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase",
         "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec to increase",
         r"s3: Expected /sys/power/suspend_stats/last_hw_sleep "
-        + r"to be at least 70% of the last sleep cycle"
+        + r"to be at least 70% of the last sleep cycle",
     ]
     for prefix in known_prefixes:
         if msg.startswith(prefix):
@@ -409,30 +405,18 @@ def main():
                                 suspend_i
                             ] = set()
 
-                        if fail_type == "Other":
-                            error_msg_i = i + 1
+                        error_msg_i = i + 1
+                        while (
+                            error_msg_i < len(log_file_lines)
+                            and len(log_file_lines[error_msg_i].strip()) != 0
+                        ):
                             msg = transform_err_msg(
                                 log_file_lines[error_msg_i]
                             )
-                            while error_msg_i < len(
-                                log_file_lines
-                            ) and not line_is_summary_table(msg):
-                                failed_runs_by_type[fail_type][boot_i][
-                                    suspend_i
-                                ].add(msg)
-                                error_msg_i += 1
-                        else:
-                            error_msg_i = i + 1
-                            msg = transform_err_msg(
-                                log_file_lines[error_msg_i]
-                            )
-                            while error_msg_i < len(
-                                log_file_lines
-                            ) and not msg.startswith(fail_type[fi + 1]):
-                                failed_runs_by_type[fail_type][boot_i][
-                                    suspend_i
-                                ].add(msg)
-                                error_msg_i += 1
+                            failed_runs_by_type[fail_type][boot_i][
+                                suspend_i
+                            ].add(msg)
+                            error_msg_i += 1
 
             if args.write_individual_files:
                 print(
@@ -467,7 +451,6 @@ def main():
                     for line in log_file_lines:
                         f.write(line)
 
-
     Console().print(failed_runs_by_type)
     # done collecting, pretty print results
     n_missing_runs = sum(map(len, missing_runs.values()))
@@ -482,7 +465,7 @@ def main():
             print(
                 f"{C.ok}[ OK ]{C.end}",
                 f"No failures across {args.num_boots} boots",
-                f"and {args.num_suspends} suspends!"
+                f"and {args.num_suspends} suspends!",
             )
             return
     else:
