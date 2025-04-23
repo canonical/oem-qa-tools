@@ -433,7 +433,7 @@ class FwtsPrinter(TestResultPrinter):
             prefix_pattern = (
                 r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
             )
-            timestamp_pattern = r"\[ +[0-9]+.[0-9]+\]"  # example [   3.415050]
+            timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"  # example [   3.415050]
             return re.sub(
                 prefix_pattern, "", re.sub(timestamp_pattern, "", msg)
             ).strip()
