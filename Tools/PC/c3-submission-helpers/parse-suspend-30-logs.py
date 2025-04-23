@@ -9,8 +9,6 @@ import tarfile
 import textwrap
 from collections import defaultdict
 from typing import Literal, TypedDict, cast
-from rich import console
-from rich.console import Console
 
 SPACE = "    "
 BRANCH = "│   "
@@ -144,6 +142,10 @@ def parse_args() -> Input:
     out = p.parse_args()
     out.write_directory = out.write_directory or f"{out.filename}-split"
     return cast(Input, out)
+
+
+def line_is_summary_table(l: str) -> bool:
+    return l.replace(" ", "") == "Test|Pass|Fail|Abort|Warn|Skip|Info|"
 
 
 def open_log_file(
@@ -387,9 +389,7 @@ def main():
                         )
                     continue
 
-                for fi, fail_type in enumerate(
-                    ("Critical", "High", "Medium", "Low", "Other")
-                ):
+                for fail_type in "Critical", "High", "Medium", "Low", "Other":
                     if line.startswith(f"{fail_type} failures: "):
                         fail_count = line.split(":")[1].strip()
                         if fail_count == "NONE":
@@ -406,10 +406,13 @@ def main():
                             ] = set()
 
                         error_msg_i = i + 1
-                        while (
-                            error_msg_i < len(log_file_lines)
-                            and len(log_file_lines[error_msg_i].strip()) != 0
-                        ):
+                        while error_msg_i < len(log_file_lines):
+                            raw_line = log_file_lines[error_msg_i].strip()
+                            if raw_line == "" or line_is_summary_table(
+                                raw_line
+                            ):
+                                break
+
                             msg = transform_err_msg(
                                 log_file_lines[error_msg_i]
                             )
@@ -451,7 +454,6 @@ def main():
                     for line in log_file_lines:
                         f.write(line)
 
-    Console().print(failed_runs_by_type)
     # done collecting, pretty print results
     n_missing_runs = sum(map(len, missing_runs.values()))
     n_failed_runs = sum(map(len, failed_runs_by_type.values()))
