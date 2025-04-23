@@ -9,6 +9,7 @@ import tarfile
 import textwrap
 from collections import defaultdict
 from typing import Literal, TypedDict, cast
+from rich.console import Console
 
 SPACE = "    "
 BRANCH = "│   "
@@ -16,7 +17,7 @@ TEE = "├── "
 LAST = "└── "
 
 
-FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
+type FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
 
 
 SUMMARY_FILE_PATTERN = (
@@ -46,6 +47,7 @@ class C:  # color
     ok = "\033[92m"
     end = "\033[0m"
     gray = "\033[90m"
+    bold = "\033[1m"
 
 
 class Meta(TypedDict):
@@ -141,6 +143,10 @@ def parse_args() -> Input:
     return cast(Input, out)
 
 
+def line_is_summary_table(l: str) -> bool:
+    return l.replace(" ", "") == "Test|Pass|Fail|Abort|Warn|Skip|Info|"
+
+
 def open_log_file(
     args: Input,
 ) -> tuple[
@@ -152,7 +158,7 @@ def open_log_file(
         raise TypeError("File must be a tar file")
 
     try:
-        tar = tarfile.open(args.filename)
+        tarball = tarfile.open(args.filename)
     except FileNotFoundError:
         print(f"{C.critical}{args.filename} not found!{C.end}")
         exit(1)
@@ -160,7 +166,7 @@ def open_log_file(
     summary_file_name = None
     possible_summary_files = [
         m.name
-        for m in tar.getmembers()
+        for m in tarball.getmembers()
         if re.match(SUMMARY_FILE_PATTERN, m.name) is not None
     ]
     if len(possible_summary_files) == 0:
@@ -176,7 +182,7 @@ def open_log_file(
     summary_file = None
     if summary_file_name:
         print("Found this summary attachment:", f'"{summary_file_name}"')
-        summary_file = tar.extractfile(summary_file_name)
+        summary_file = tarball.extractfile(summary_file_name)
         if summary_file is None:
             print(
                 f"Found {summary_file_name} in {args.filename},"
@@ -196,7 +202,7 @@ def open_log_file(
                 + f"suspend_cycles_{suspend_i}_reboot{boot_i}"
             )
             try:
-                extracted = tar.extractfile(individual_file_name)
+                extracted = tarball.extractfile(individual_file_name)
                 assert extracted, f"Failed to extract {individual_file_name}"
                 log_files[boot_i][suspend_i] = io.TextIOWrapper(extracted)
             except KeyError:  # from extract
@@ -209,8 +215,88 @@ def open_log_file(
     )
 
 
+def transform_err_msg(msg: str) -> str:
+    # some known error message transforms to help group them together
+    # this is disabled with --no-transform flag
+    msg = msg.strip()
+    s3_total_hw_sleep = (
+        "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase"
+    )
+    if msg.startswith(s3_total_hw_sleep):
+        return s3_total_hw_sleep
+    s3_last_hw_sleep = r"s3: Expected /sys/power/suspend_stats/last_hw_sleep to be at least 70% of the last sleep cycle"
+    if msg.startswith(s3_last_hw_sleep):
+        return s3_last_hw_sleep
+
+    return msg
+
+
+def group_by_err(
+    failed_runs_by_type: dict[FailType, dict[int, dict[int, set[str]]]],
+):
+    # [fail_type][boot_i][suspend_i][msg_i] = msg
+    # convert to => [fail_type][msg][boot_i] = list of suspend indices
+    out: dict[FailType, dict[str, dict[int, list[int]]]] = {}
+    for fail_type, runs in failed_runs_by_type.items():
+        if len(runs) == 0:
+            continue
+
+        for boot_i, suspends in runs.items():
+            for suspend_i, messages in suspends.items():
+                for msg in messages:
+                    if fail_type not in out:
+                        out[fail_type] = {}
+                    if msg not in out[fail_type]:
+                        out[fail_type][msg] = {}
+                    if boot_i not in out[fail_type][msg]:
+                        out[fail_type][msg][boot_i] = []
+
+                    out[fail_type][msg][boot_i].append(suspend_i)
+
+    return out
+
+
+def print_by_err(
+    grouped: dict[FailType, dict[str, dict[int, list[int]]]],
+    num_boots: int,
+    num_suspends: int,
+):
+    for fail_type, msg_group in grouped.items():
+        print(f"{getattr(C, fail_type.lower())}{fail_type} failures{C.end}")
+        for msg in msg_group:
+            print(SPACE, f"{C.bold}{msg}{C.end}")
+            for boot_i, suspends in msg_group[msg].items():
+                branch_text = LAST if boot_i == num_boots  else BRANCH
+                wrapped_indices = textwrap.wrap(
+                    str(suspends),
+                    width=50,
+                )
+                line1 = f"{SPACE} {SPACE} {TEE} Reboot {boot_i}: {wrapped_indices[0]}"
+                print(line1)
+                for line in wrapped_indices[1:]:
+                    print(
+                        f"{SPACE} {SPACE} {BRANCH}{' ' * len(f' Reboot {boot_i}: ')}",
+                        line,
+                    )
+                print(
+                    SPACE,
+                    SPACE,
+                    branch_text,
+                    f"Fail rate: {len(suspends)}/{num_suspends}",
+                )
+
+
 def main():
     args = parse_args()
+
+    print(
+        f"{C.medium}[ WARN ] The summary file might not match",
+        "the number of failures found by this script.",
+        "Please double check since the original test case did some filtering",
+        "and may consider some failures to be not worth reporting",
+        C.end,
+    )
+
     expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
 
     print(
@@ -241,7 +327,8 @@ def main():
                 "was found in the tarball",
             )
 
-    failed_runs_by_type: dict[FailType, dict[int, list[int]]] = {
+    # [fail_type][boot_i][suspend_i][msg_i] = msg
+    failed_runs_by_type: dict[FailType, dict[int, dict[int, set[str]]]] = {
         "Critical": {},
         "High": {},
         "Medium": {},
@@ -253,7 +340,8 @@ def main():
             log_file = log_files[boot_i][suspend_i]
             curr_meta = None  # type: Meta | None
 
-            for line in log_file:
+            log_file_lines = log_file.readlines()
+            for i, line in enumerate(log_file_lines):
                 if line.startswith("This test run on"):
                     # Example:
                     # This test run on 13/08/24 at
@@ -268,20 +356,48 @@ def main():
                         )
                     continue
 
-                for fail_type in "Critical", "High", "Medium", "Low", "Other":
+                for fi, fail_type in enumerate(
+                    ("Critical", "High", "Medium", "Low", "Other")
+                ):
                     if line.startswith(f"{fail_type} failures: "):
                         fail_count = line.split(":")[1].strip()
                         if fail_count == "NONE":
                             continue
 
-                        if boot_i in failed_runs_by_type[fail_type]:
-                            failed_runs_by_type[fail_type][boot_i].append(
+                        if boot_i not in failed_runs_by_type[fail_type]:
+                            failed_runs_by_type[fail_type][boot_i] = {}
+                        if (
+                            suspend_i
+                            not in failed_runs_by_type[fail_type][boot_i]
+                        ):
+                            failed_runs_by_type[fail_type][boot_i][
                                 suspend_i
+                            ] = set()
+
+                        if fail_type == "Other":
+                            error_msg_i = i + 1
+                            msg = transform_err_msg(
+                                log_file_lines[error_msg_i]
                             )
+                            while error_msg_i < len(
+                                log_file_lines
+                            ) and not line_is_summary_table(msg):
+                                failed_runs_by_type[fail_type][boot_i][
+                                    suspend_i
+                                ].add(msg)
+                                error_msg_i += 1
                         else:
-                            failed_runs_by_type[fail_type][boot_i] = [
-                                suspend_i
-                            ]
+                            error_msg_i = i + 1
+                            msg = transform_err_msg(
+                                log_file_lines[error_msg_i]
+                            )
+                            while error_msg_i < len(
+                                log_file_lines
+                            ) and not msg.startswith(fail_type[fi + 1]):
+                                failed_runs_by_type[fail_type][boot_i][
+                                    suspend_i
+                                ].add(msg)
+                                error_msg_i += 1
 
             if args.write_individual_files:
                 print(
@@ -318,11 +434,20 @@ def main():
             log_file.close()
 
     # done collecting, pretty print results
-    if sum(map(len, missing_runs.values())) == 0:
+    n_missing_runs = sum(map(len, missing_runs.values()))
+    n_failed_runs = sum(map(len, failed_runs_by_type.values()))
+
+    if n_missing_runs == 0:
         print(
             f"{C.ok}[ OK ]{C.end} Found all {expected_num_results}",
             "expected log files!",
         )
+        if n_failed_runs == 0:
+            print(
+                f"{C.ok}No failures across {args.num_boots} boots "
+                f"and {args.num_suspends} suspends!{C.end}"
+            )
+            return
     else:
         print(
             f"{C.critical}These log files are missing;",
@@ -330,15 +455,14 @@ def main():
         )
         for boot_i, suspend_indicies in missing_runs.items():
             print(f"- Reboot {boot_i}, suspend {str(suspend_indicies)}")
-    if sum(map(len, failed_runs_by_type.values())) == 0:
-        print(
-            f"{C.ok}No failures across {args.num_boots} boots "
-            f"and {args.num_suspends} suspends!{C.end}"
-        )
-        return
 
     print()
     print(C.gray + "=" * 80 + C.end)
+
+    grouped = group_by_err(failed_runs_by_type)
+    print_by_err(grouped, args.num_boots, args.num_suspends)
+
+    return
 
     for fail_type, runs in failed_runs_by_type.items():
         fail_type = fail_type.lower()
@@ -401,10 +525,4 @@ def main():
 
 
 if __name__ == "__main__":
-    print(
-        f"{C.medium}The summary file might not match",
-        "the number of failures found by this script.",
-        "Please double check as the original test case did some filtering.",
-        C.end,
-    )
     main()
