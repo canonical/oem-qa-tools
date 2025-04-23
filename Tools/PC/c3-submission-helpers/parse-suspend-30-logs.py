@@ -33,9 +33,10 @@ class Input:
     verbose: bool
     num_suspends: int
     num_boots: int
-    inverse_find: bool
+    # inverse_find: bool
     no_summary: bool
     no_meta: bool
+    no_transform: bool
 
 
 class C:  # color
@@ -127,15 +128,14 @@ def parse_args() -> Input:
         type=int,
     )
     p.add_argument(
-        "-i",
-        "--inverse",
-        dest="inverse_find",
+        "-t",
+        "--no-transform",
         action="store_true",
-        default=False,
-        help=(
-            "Find runs that do NOT have a failure instead of the opposite. "
-            "Useful if you encounter machines that fails almost every run."
-        ),
+        help="Disables any form of error message tranformation "
+        "except trimming whitespaces. "
+        "By default, this script will attempt to remove timestamps and "
+        "certain numbers to better group the error messages. "
+        "This option disables this behavior.",
     )
 
     out = p.parse_args()
@@ -215,7 +215,7 @@ def open_log_file(
     )
 
 
-def transform_err_msg(msg: str) -> str:
+def trim_time_and_counts(msg: str) -> str:
     # some known error message transforms to help group them together
     # this is disabled with --no-transform flag
     timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
@@ -225,7 +225,10 @@ def transform_err_msg(msg: str) -> str:
     )
     if msg.startswith(s3_total_hw_sleep):
         return s3_total_hw_sleep
-    s3_last_hw_sleep = r"s3: Expected /sys/power/suspend_stats/last_hw_sleep to be at least 70% of the last sleep cycle"
+    s3_last_hw_sleep = (
+        r"s3: Expected /sys/power/suspend_stats/last_hw_sleep "
+        + r"to be at least 70% of the last sleep cycle"
+    )
     if msg.startswith(s3_last_hw_sleep):
         return s3_last_hw_sleep
 
@@ -259,14 +262,16 @@ def group_by_err(
 
 def print_by_err(
     grouped: dict[FailType, dict[str, dict[int, list[int]]]],
-    num_suspends: int,
+    expected_n_suspends: int,
 ):
     for fail_type, msg_group in grouped.items():
         print(f"{getattr(C, fail_type.lower())}{fail_type} failures{C.end}")
         for msg in msg_group:
             print(SPACE, f"{C.bold}{msg}{C.end}")
             for pos, (boot_i, suspends) in enumerate(msg_group[msg].items()):
-                branch_text = LAST if pos == len(msg_group[msg])-1 else BRANCH
+                branch_text = (
+                    LAST if pos == len(msg_group[msg]) - 1 else BRANCH
+                )
 
                 wrapped_indices = textwrap.wrap(
                     str(suspends),
@@ -283,12 +288,19 @@ def print_by_err(
                     SPACE,
                     SPACE,
                     branch_text,
-                    f"Fail rate: {len(suspends)}/{num_suspends}",
+                    f"Fail rate: {len(suspends)}/{expected_n_suspends}",
                 )
+
+
+transform_err_msg = trim_time_and_counts
 
 
 def main():
     args = parse_args()
+
+    if args.no_transform:
+        global transform_err_msg
+        transform_err_msg = lambda s: s.strip()
 
     print(
         f"{C.medium}[ WARN ] The summary file might not match",
@@ -462,67 +474,6 @@ def main():
 
     grouped = group_by_err(failed_runs_by_type)
     print_by_err(grouped, args.num_suspends)
-
-    return
-
-    for fail_type, runs in failed_runs_by_type.items():
-        fail_type = fail_type.lower()
-        if len(runs) == 0:
-            continue
-
-        total_fails_of_this_type = sum(map(len, runs.values()))
-
-        if args.inverse_find:
-            print(
-                f"\nRuns without {getattr(C, fail_type)}{fail_type}{C.end} failures:"
-            )
-        else:
-            print(
-                f"\nFound {total_fails_of_this_type} run(s) with",
-                f"{getattr(C, fail_type)}{fail_type}{C.end} failures:",
-            )
-
-        for boot_i in range(1, args.num_boots + 1):
-            branch_text = LAST if boot_i == args.num_boots else TEE
-            if boot_i not in runs:
-                print(f"{SPACE} {branch_text} Reboot {boot_i}: No failures!")
-                continue
-
-            branch_text = LAST if boot_i == args.num_boots else BRANCH
-            if args.inverse_find:
-                indices_to_print = list(
-                    set(range(1, args.num_suspends + 1))
-                    - set(missing_runs[boot_i])
-                    - set(runs[boot_i])
-                )
-            else:
-                indices_to_print = runs[boot_i]
-
-            wrapped_suspend_indices = textwrap.wrap(
-                str(indices_to_print),
-                width=50,
-            )
-            line1 = (
-                f"{SPACE} {TEE} Reboot {boot_i}: {wrapped_suspend_indices[0]}"
-            )
-            print(line1)
-            for line in wrapped_suspend_indices[1:]:
-                print(
-                    f"{SPACE} {BRANCH}{' ' * len(f' Reboot {boot_i}: ')}", line
-                )
-
-            if args.inverse_find:
-                print(
-                    SPACE,
-                    branch_text,
-                    f"Success rate: {len(indices_to_print)}/{args.num_suspends}",
-                )
-            else:
-                print(
-                    SPACE,
-                    branch_text,
-                    f"Fail rate: {len(indices_to_print)}/{args.num_suspends}",
-                )
 
 
 if __name__ == "__main__":
