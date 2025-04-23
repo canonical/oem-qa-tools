@@ -9,6 +9,8 @@ import tarfile
 import textwrap
 from collections import defaultdict
 from typing import Literal, TypedDict, cast
+from rich import console
+from rich.console import Console
 
 SPACE = "    "
 BRANCH = "│   "
@@ -219,19 +221,25 @@ def open_log_file(
 def trim_time_and_counts(msg: str) -> str:
     # some known error message transforms to help group them together
     # this is disabled with --no-transform flag
-    timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
-    msg = re.sub(timestamp_pattern, "", msg).strip()
-    s3_total_hw_sleep = (
-        "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase"
+    kernel_msg_prefix_pattern = (
+        r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
     )
-    if msg.startswith(s3_total_hw_sleep):
-        return s3_total_hw_sleep
-    s3_last_hw_sleep = (
+    timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
+
+    msg = re.sub(timestamp_pattern, "", msg)
+    msg = re.sub(kernel_msg_prefix_pattern, "", msg)
+    msg = re.sub(" +", " ", msg) # remove double spaces
+    msg = msg.strip()
+
+    known_prefixes = [
+        "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase",
+        "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec to increase",
         r"s3: Expected /sys/power/suspend_stats/last_hw_sleep "
         + r"to be at least 70% of the last sleep cycle"
-    )
-    if msg.startswith(s3_last_hw_sleep):
-        return s3_last_hw_sleep
+    ]
+    for prefix in known_prefixes:
+        if msg.startswith(prefix):
+            return prefix
 
     return msg
 
@@ -459,6 +467,8 @@ def main():
                     for line in log_file_lines:
                         f.write(line)
 
+
+    Console().print(failed_runs_by_type)
     # done collecting, pretty print results
     n_missing_runs = sum(map(len, missing_runs.values()))
     n_failed_runs = sum(map(len, failed_runs_by_type.values()))
@@ -470,8 +480,9 @@ def main():
         )
         if n_failed_runs == 0:
             print(
-                f"{C.ok}No failures across {args.num_boots} boots "
-                f"and {args.num_suspends} suspends!{C.end}"
+                f"{C.ok}[ OK ]{C.end}",
+                f"No failures across {args.num_boots} boots",
+                f"and {args.num_suspends} suspends!"
             )
             return
     else:
