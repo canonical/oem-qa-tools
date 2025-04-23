@@ -383,6 +383,8 @@ def parse_input_arg():
     opt_args.add_argument('--provisionAuthKeys', default="", type=str,
                           help='ssh authorized_keys file to add in \
                           provisioned system')
+    opt_args.add_argument('--provisionYAML', default="", type=str,
+                          help='provision yaml file path')
     opt_args.add_argument('--provisionOnly', action='store_true',
                           help='Run only provisioning without tests. \
                           Removes test_data before generating the yaml.')
@@ -468,6 +470,21 @@ if __name__ == "__main__":
                               provision_token=args.provisionToken,
                               provision_user_data=args.provisionUserData,
                               provision_auth_keys=args.provisionAuthKeys)
+
+    if args.provisionYAML:
+        # if using the provision yaml file,
+        # remove provision_data and test_data section
+        if os.path.exists(args.provisionYAML):
+            builder.yaml_remove_field("provision_data")
+            builder.yaml_remove_field("test_data")
+            with open(args.provisionYAML, "r", encoding="utf-8") as f:
+                provision_yaml = yaml.load(f, Loader=yaml.SafeLoader)
+                builder.yaml_update_field(provision_yaml)
+        else:
+            raise ValueError(
+                f"Provision yaml file not found: {args.provisionYAML}"
+            )
+
     if args.provisionOnly:
         # remove test and reserve stages that were added by default
         builder.yaml_remove_field("test_data")
