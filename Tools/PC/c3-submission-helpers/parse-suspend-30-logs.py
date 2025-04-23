@@ -9,7 +9,6 @@ import tarfile
 import textwrap
 from collections import defaultdict
 from typing import Literal, TypedDict, cast
-from rich.console import Console
 
 SPACE = "    "
 BRANCH = "│   "
@@ -64,11 +63,13 @@ class Meta(TypedDict):
 def parse_args() -> Input:
     p = argparse.ArgumentParser()
     p.add_argument(
+        "-s",
         "--no-summary",
         action="store_true",
         help="Don't print the summary file at the top",
     )
     p.add_argument(
+        "-m",
         "--no-meta",
         action="store_true",
         help=(
@@ -348,12 +349,15 @@ def main():
         "Low": {},
         "Other": {},
     }
+
     for boot_i in log_files:
         for suspend_i in log_files[boot_i]:
             log_file = log_files[boot_i][suspend_i]
+            log_file_lines = log_file.readlines()
+            log_file.close()
+
             curr_meta = None  # type: Meta | None
 
-            log_file_lines = log_file.readlines()
             for i, line in enumerate(log_file_lines):
                 if line.startswith("This test run on"):
                     # Example:
@@ -441,10 +445,9 @@ def main():
                             f"{C.high}[ WARN ]{C.end} No meta data was found",
                             f"for boot {boot_i} suspend {suspend_i}",
                         )
-                    log_file.seek(0)
-                    f.write(log_file.read())
 
-            log_file.close()
+                    for line in log_file_lines:
+                        f.write(line)
 
     # done collecting, pretty print results
     n_missing_runs = sum(map(len, missing_runs.values()))
