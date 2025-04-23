@@ -242,10 +242,8 @@ def group_by_err(
     # [fail_type][boot_i][suspend_i][msg_i] = msg
     # convert to => [fail_type][msg][boot_i] = list of suspend indices
     out: dict[FailType, dict[str, dict[int, list[int]]]] = {}
-    for fail_type, runs in failed_runs_by_type.items():
-        if len(runs) == 0:
-            continue
 
+    for fail_type, runs in failed_runs_by_type.items():
         for boot_i, suspends in runs.items():
             for suspend_i, messages in suspends.items():
                 for msg in messages:
@@ -263,6 +261,7 @@ def group_by_err(
 
 def print_by_err(
     grouped: dict[FailType, dict[str, dict[int, list[int]]]],
+    actual_suspend_counts: dict[int, int],
     expected_n_suspends: int,
 ):
     for fail_type, msg_group in grouped.items():
@@ -270,6 +269,14 @@ def print_by_err(
         for msg in msg_group:
             print(SPACE, f"{C.bold}{msg}{C.end}")
             for pos, (boot_i, suspends) in enumerate(msg_group[msg].items()):
+                suspend_count = actual_suspend_counts[boot_i]
+                if suspend_count != expected_n_suspends:
+                    fail_rate_text = (
+                        f"{C.critical}{len(suspends)}/{suspend_count}{C.end}"
+                    )
+                else:
+                    fail_rate_text = f"{len(suspends)}/{str(suspend_count)}"
+
                 branch_text = (
                     LAST if pos == len(msg_group[msg]) - 1 else BRANCH
                 )
@@ -285,11 +292,12 @@ def print_by_err(
                         f"{SPACE} {SPACE} {BRANCH}{' ' * len(f' Reboot {boot_i}: ')}",
                         line,
                     )
+
                 print(
                     SPACE,
                     SPACE,
                     branch_text,
-                    f"Fail rate: {len(suspends)}/{expected_n_suspends}",
+                    f"Fail rate: {fail_rate_text}",
                 )
 
 
@@ -349,8 +357,10 @@ def main():
         "Low": {},
         "Other": {},
     }
+    actual_suspend_counts: dict[int, int] = {}
 
     for boot_i in log_files:
+        actual_suspend_counts[boot_i] = len(log_files[boot_i])
         for suspend_i in log_files[boot_i]:
             log_file = log_files[boot_i][suspend_i]
             log_file_lines = log_file.readlines()
@@ -466,7 +476,7 @@ def main():
             return
     else:
         print(
-            f"{C.critical}These log files are missing;",
+            f"{C.critical}These log files are missing,",
             f"DUT might have crashed during these jobs!{C.end}",
         )
         for boot_i, suspend_indicies in missing_runs.items():
@@ -474,9 +484,10 @@ def main():
 
     print()
     print(C.gray + "=" * 80 + C.end)
+    print()
 
     grouped = group_by_err(failed_runs_by_type)
-    print_by_err(grouped, args.num_suspends)
+    print_by_err(grouped, actual_suspend_counts, args.num_suspends)
 
 
 if __name__ == "__main__":
