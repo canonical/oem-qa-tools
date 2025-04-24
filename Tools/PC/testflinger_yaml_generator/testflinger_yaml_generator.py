@@ -258,8 +258,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
                  is_runtest=True, need_manifest=True, is_distupgrade=False):
         YamlGenerator.__init__(self,
                                default_yaml_file_path=default_yaml_file_path)
-        TestCommandGenerator.__init__(self, template_bin_folder,
-                                      launcher_temp_folder)
+        TestCommandGenerator.__init__(self, template_bin_folder)
         self.yaml_update_field({"global_timeout": globaltimeout})
         self.yaml_update_field({"output_timeout": outputtimeout})
         self.yaml_update_field({"job_queue": cid})
@@ -270,15 +269,25 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
     def add_attachments_test_phase(self, attachments):
         if not attachments:
             return
-        if self.yaml_get_field('test_data'):
-            attachments_list = self.yaml_get_field('test_data').get('attachments', [])
-        else:
-            attachments_list = []
-        for attachment in attachments:
-            attachments_list.append({'local': attachment, 'agent': attachment})
 
-        setting_dict = {'test_data': {'attachments': attachments}}
-        self.yaml_update_field(setting_dict)
+        # Convert single string to list for consistent handling
+        if isinstance(attachments, str):
+            attachments = [attachments]
+
+        # Get existing test_data and attachments list
+        test_data = self.yaml_get_field('test_data') or {}
+        attachments_list = test_data.get('attachments', [])
+
+        # Add new attachments
+        for attachment in attachments:
+            attachments_list.append({
+                'local': attachment,
+                'agent': attachment
+            })
+
+        # Update test_data with new attachments
+        test_data['attachments'] = attachments_list
+        self.yaml_update_field({'test_data': test_data})
 
     def provision_setting(self, is_provision, image="desktop-22-04-2-uefi",
                           provision_type="distro", provision_token="",
@@ -319,13 +328,14 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
                          exclude_job_pattern_str=""):
         if self.is_runtest:
             launcher_file_path = "launcher_config"
-            self.build_launcher(manifest_json_path,
-                                checkbox_conf_path,
-                                test_plan_name,
-                                exclude_job_pattern_str,
-                                launcher_file_path,
-                                "/usr/bin/env checkbox-cli",
-                                self.need_manifest)
+            launcher_builder = CheckboxLauncherBuilder()
+            launcher_builder.build_launcher(manifest_json_path,
+                                            checkbox_conf_path,
+                                            test_plan_name,
+                                            exclude_job_pattern_str,
+                                            launcher_file_path,
+                                            "/usr/bin/env checkbox-cli",
+                                            self.need_manifest)
             self.add_attachments_test_phase(launcher_file_path)
 
     def test_cmd_setting(self, launcher_file="",
@@ -467,7 +477,7 @@ if __name__ == "__main__":
         reserve = False
     if not args.provisionImage:
         provision = False
-    if not args.testplan:
+    if not args.testplan and not args.launcherFile:
         runtest = False
     if args.dist_upgrade:
         distupgrade = True
