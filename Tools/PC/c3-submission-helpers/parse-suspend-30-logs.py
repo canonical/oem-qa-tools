@@ -16,7 +16,7 @@ TEE = "├── "
 LAST = "└── "
 
 
-type FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
+FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
 
 
 SUMMARY_FILE_PATTERN = (
@@ -144,8 +144,8 @@ def parse_args() -> Input:
     return cast(Input, out)
 
 
-def line_is_summary_table(l: str) -> bool:
-    return l.replace(" ", "") == "Test|Pass|Fail|Abort|Warn|Skip|Info|"
+def line_is_summary_table(line: str) -> bool:
+    return line.replace(" ", "") == "Test|Pass|Fail|Abort|Warn|Skip|Info|"
 
 
 def open_log_file(
@@ -182,7 +182,10 @@ def open_log_file(
 
     summary_file = None
     if summary_file_name:
-        print(f"{C.low}[ INFO ]{C.end} Found this summary attachment:", f'"{summary_file_name}"')
+        print(
+            f"{C.low}[ INFO ]{C.end} Found this summary attachment:",
+            f'"{summary_file_name}"',
+        )
         summary_file = tarball.extractfile(summary_file_name)
         if summary_file is None:
             print(
@@ -231,9 +234,14 @@ def default_err_msg_transform(msg: str) -> str:
 
     known_prefixes = [
         "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase",
-        "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec to increase",
-        r"s3: Expected /sys/power/suspend_stats/last_hw_sleep "
-        + r"to be at least 70% of the last sleep cycle",
+        (
+            "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec "
+            + "to increase"
+        ),
+        (
+            r"s3: Expected /sys/power/suspend_stats/last_hw_sleep "
+            + r"to be at least 70% of the last sleep cycle"
+        ),
     ]
     for prefix in known_prefixes:
         if msg.startswith(prefix):
@@ -295,11 +303,15 @@ def print_by_err(
                     str(suspends),
                     width=50,
                 )
-                line1 = f"{SPACE} {SPACE} {TEE} Reboot {boot_i}: {wrapped_indices[0]}"
+                line1 = (
+                    f"{SPACE} {SPACE} {TEE} "
+                    + f"Reboot {boot_i}: {wrapped_indices[0]}"
+                )
                 print(line1)
                 for line in wrapped_indices[1:]:
                     print(
-                        f"{SPACE} {SPACE} {BRANCH}{' ' * len(f' Reboot {boot_i}: ')}",
+                        f"{SPACE} {SPACE} {BRANCH}"
+                        + f"{' ' * len(f' Reboot {boot_i}: ')}",
                         line,
                     )
 
@@ -320,7 +332,8 @@ def main():
 
     if args.no_transform:
         global transform_err_msg
-        transform_err_msg = lambda s: s.strip()
+        # idk why tox doesn't like this, this is super common
+        transform_err_msg = lambda s: s.strip()  # noqa: E731
 
     print(
         f"{C.medium}[ WARN ]{C.end} The summary file might not match",
@@ -440,7 +453,7 @@ def main():
                     os.mkdir(args.write_directory)
 
                 with open(
-                    f"{args.write_directory}/boot_{boot_i}_suspend_{suspend_i}.txt",
+                    f"{args.write_directory}/boot_{boot_i}_suspend_{suspend_i}.txt",  # noqa: E501
                     "w",
                 ) as f:
                     if curr_meta:
@@ -452,7 +465,7 @@ def main():
                         )
                         f.write(
                             "\n\n"
-                            f"{' END OF METADATA, BEGIN ORIGINAL OUTPUT  ':*^80}"
+                            f"{' END OF METADATA, BEGIN ORIGINAL FILE ':*^80}"
                             "\n\n"
                         )
                     else:

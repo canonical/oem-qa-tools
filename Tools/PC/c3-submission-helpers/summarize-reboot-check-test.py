@@ -57,16 +57,14 @@ class Log:
         print(f"{Color.critical}[ ERR ]{Color.end}", *args)
 
 
-type RunIndexToMessageMap = dict[int, list[str]]
-type GroupedResultByIndex = dict[
+RunIndexToMessageMap = dict[int, list[str]]
+GroupedResultByIndex = dict[
     str, RunIndexToMessageMap
 ]  # key is fail type (for fwts it's critical, high, medium, low
 # for device cmp it's lsusb, lspci, iw)
 # value is index to actual message map
-type BootType = Literal["warm", "cold"]
-type TestType = Literal[
-    "fwts", "device comparison", "renderer", "service check"
-]
+BootType = Literal["warm", "cold"]
+TestType = Literal["fwts", "device comparison", "renderer", "service check"]
 
 
 class SubmissionTarReader:
@@ -224,11 +222,11 @@ class TestResultPrinter(abc.ABC):
         err_msg_transform: Optional[Callable[[str], str]] = None,
     ):
         """
-        Prints the results from 
+        Prints the results from
 
         :param title_transform: _description_, defaults to None
         :param err_msg_transform: _description_, defaults to None
-        """        
+        """
         fail_types = max(self.cold_results, self.warm_results, key=len).keys()
 
         for fail_type in fail_types:
