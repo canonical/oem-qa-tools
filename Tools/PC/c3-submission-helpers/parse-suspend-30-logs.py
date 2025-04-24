@@ -182,7 +182,7 @@ def open_log_file(
 
     summary_file = None
     if summary_file_name:
-        print("Found this summary attachment:", f'"{summary_file_name}"')
+        print(f"{C.low}[ INFO ]{C.end} Found this summary attachment:", f'"{summary_file_name}"')
         summary_file = tarball.extractfile(summary_file_name)
         if summary_file is None:
             print(
@@ -216,7 +216,7 @@ def open_log_file(
     )
 
 
-def trim_time_and_counts(msg: str) -> str:
+def default_err_msg_transform(msg: str) -> str:
     # some known error message transforms to help group them together
     # this is disabled with --no-transform flag
     kernel_msg_prefix_pattern = (
@@ -238,6 +238,10 @@ def trim_time_and_counts(msg: str) -> str:
     for prefix in known_prefixes:
         if msg.startswith(prefix):
             return prefix
+
+    known_patterns = {r"slept for (.*) seconds,": "slept"}
+    for pattern, replacement in known_patterns.items():
+        msg = re.sub(pattern, replacement, msg)
 
     return msg
 
@@ -305,9 +309,10 @@ def print_by_err(
                     branch_text,
                     f"Fail rate: {fail_rate_text}",
                 )
+        print()  # new line between critical, high ...
 
 
-transform_err_msg = trim_time_and_counts
+transform_err_msg = default_err_msg_transform
 
 
 def main():
@@ -318,23 +323,28 @@ def main():
         transform_err_msg = lambda s: s.strip()
 
     print(
-        f"{C.medium}[ WARN ] The summary file might not match",
+        f"{C.medium}[ WARN ]{C.end} The summary file might not match",
         "the number of failures found by this script.",
-        "Please double check since the original test case did some filtering",
+    )
+    print(
+        f"{C.medium}[ WARN ]{C.end} Please double check since",
+        "the original test case did some filtering",
         "and may consider some failures to be not worth reporting",
-        C.end,
     )
 
     expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
 
     print(
-        f"Expecting ({args.num_boots} boots * "
+        f"{C.low}[ INFO ]{C.end} Expecting ({args.num_boots} boots * "
         f"{args.num_suspends} suspends per boot) = "
         f"{expected_num_results} results"
     )
 
     if args.write_individual_files:
-        print(f'Individual results will be in "{args.write_directory}"')
+        print(
+            f"{C.low}[ INFO ]{C.end} Individual results will be in",
+            f'"{args.write_directory}"',
+        )
 
     log_files, summary_file, missing_runs = open_log_file(args)
 
@@ -460,12 +470,12 @@ def main():
 
     if n_missing_runs == 0:
         print(
-            f"{C.ok}[ OK ]{C.end} Found all {expected_num_results}",
+            f"{C.ok}[  OK  ]{C.end} Found all {expected_num_results}",
             "expected log files!",
         )
         if n_failed_runs == 0:
             print(
-                f"{C.ok}[ OK ]{C.end}",
+                f"{C.ok}[  OK  ]{C.end}",
                 f"No failures across {args.num_boots} boots",
                 f"and {args.num_suspends} suspends!",
             )
