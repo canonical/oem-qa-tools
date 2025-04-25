@@ -695,7 +695,8 @@ def main():
     for filename in args.filenames:
         reader = SubmissionTarReader(filename)
         print(
-            "Checking if the tar file has the expected number of runs...",
+            "Checking if the tar file has all",
+            f"{args.expected_n_runs} expected runs...",
             end=" ",
         )
         if reader.boot_count != args.expected_n_runs:
@@ -704,7 +705,7 @@ def main():
                 f"but got {reader.boot_count}",
             )
         else:
-            Log.ok(f"Found the expected {args.expected_n_runs} runs.")
+            Log.ok("")
 
         printer_classes = {
             klass.name: klass
@@ -718,7 +719,8 @@ def main():
 
         for test in printer_classes:
             printer = printer_classes[test](reader, args.expected_n_runs)
-            print(f"\n{f' {printer.name.capitalize()} failures ':-^80}\n")
+            print(f"\n{f' {printer.name.capitalize()} failures ':-^80}")
+            print(f"{Color.gray}In file {filename}{Color.end}\n")
 
             if (len(printer.cold_results) + len(printer.warm_results)) == 0:
                 Log.ok(f"No {printer.name} failures")
@@ -730,8 +732,6 @@ def main():
                 printer.print_by_index()
             else:
                 printer.print_by_err()
-
-        print(f"\n{Color.gray}{f' End of {filename} ':=^80}{Color.end}\n")
 
 
 if __name__ == "__main__":
