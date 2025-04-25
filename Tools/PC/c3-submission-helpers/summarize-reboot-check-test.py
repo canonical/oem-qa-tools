@@ -25,7 +25,7 @@ LAST = "└── "
 
 
 class Input:
-    filename: str
+    filenames: list[str]
     group_by_index: bool
     expected_n_runs: int  # if specified show a warning
     verbose: bool
@@ -41,6 +41,7 @@ class Color:
     ok = "\033[92m"
     end = "\033[0m"
     bold = "\033[1m"
+    gray = "\033[90m"
 
 
 class Log:
@@ -630,8 +631,11 @@ def parse_args() -> Input:
         "from a C3 submission tar file"
     )
     p.add_argument(
-        "filename",
-        help="path to the stress test tarball",
+        "filenames",
+        help="Path to the stress test tarball. "
+        "If multiple paths are specified, "
+        "run the script for each of them",
+        nargs="+",  # at least 1
     )
     p.add_argument(
         "-g",
@@ -680,7 +684,6 @@ def parse_args() -> Input:
 
 def main():
     args = parse_args()
-    reader = SubmissionTarReader(args.filename)
 
     if args.no_color:
         # if no color, just replace all the escape sequences with empty str
@@ -689,41 +692,46 @@ def main():
                 continue
             setattr(Color, prop, "")
 
-    print(
-        "Checking if the tar file has the expected number of runs...", end=" "
-    )
-    if reader.boot_count != args.expected_n_runs:
-        Log.err(
-            f"Expected {args.expected_n_runs} runs,",
-            f"but got {reader.boot_count}",
+    for filename in args.filenames:
+        reader = SubmissionTarReader(filename)
+        print(
+            "Checking if the tar file has the expected number of runs...",
+            end=" ",
         )
-    else:
-        Log.ok(f"Found the expected {args.expected_n_runs} runs.")
-
-    printer_classes = {
-        klass.name: klass
-        for klass in (
-            FwtsPrinter,
-            DeviceComparisonPrinter,
-            RendererCheckPrinter,
-            ServiceCheckPrinter,
-        )
-    }  # type: dict[TestType, type[TestResultPrinter]]
-
-    for test in printer_classes:
-        printer = printer_classes[test](reader, args.expected_n_runs)
-        print(f"\n{f' {printer.name.capitalize()} failures ':=^80}\n")
-
-        if (len(printer.cold_results) + len(printer.warm_results)) == 0:
-            Log.ok(f"No {printer.name} failures")
-            continue
-
-        if args.verbose:
-            printer.print_verbose()
-        elif args.group_by_index:
-            printer.print_by_index()
+        if reader.boot_count != args.expected_n_runs:
+            Log.err(
+                f"Expected {args.expected_n_runs} runs,",
+                f"but got {reader.boot_count}",
+            )
         else:
-            printer.print_by_err()
+            Log.ok(f"Found the expected {args.expected_n_runs} runs.")
+
+        printer_classes = {
+            klass.name: klass
+            for klass in (
+                FwtsPrinter,
+                DeviceComparisonPrinter,
+                RendererCheckPrinter,
+                ServiceCheckPrinter,
+            )
+        }  # type: dict[TestType, type[TestResultPrinter]]
+
+        for test in printer_classes:
+            printer = printer_classes[test](reader, args.expected_n_runs)
+            print(f"\n{f' {printer.name.capitalize()} failures ':-^80}\n")
+
+            if (len(printer.cold_results) + len(printer.warm_results)) == 0:
+                Log.ok(f"No {printer.name} failures")
+                continue
+
+            if args.verbose:
+                printer.print_verbose()
+            elif args.group_by_index:
+                printer.print_by_index()
+            else:
+                printer.print_by_err()
+
+        print(f"\n{Color.gray}{f' End of {filename} ':=^80}{Color.end}\n")
 
 
 if __name__ == "__main__":
