@@ -8,7 +8,7 @@ import sys
 import tarfile
 import textwrap
 from collections import defaultdict
-from typing import Literal, TypedDict, cast
+from typing import Iterable, Literal, TypedDict, cast
 
 SPACE = "    "
 BRANCH = "│   "
@@ -28,7 +28,7 @@ SUMMARY_FILE_PATTERN = (
 class Input:
     filename: str
     write_individual_files: bool
-    write_directory: str
+    write_dir: str
     verbose: bool
     num_suspends: int
     num_boots: int
@@ -93,7 +93,7 @@ def parse_args() -> Input:
     p.add_argument(
         "-d",
         "--directory",
-        dest="write_directory",
+        dest="write_dir",
         default="",
         required=False,
         help=(
@@ -140,7 +140,7 @@ def parse_args() -> Input:
     )
 
     out = p.parse_args()
-    out.write_directory = out.write_directory or f"{out.filename}-split"
+    out.write_dir = out.write_dir or f"{out.filename}-split"
     return cast(Input, out)
 
 
@@ -164,7 +164,6 @@ def open_log_file(
         print(f"{C.critical}{args.filename} not found!{C.end}")
         exit(1)
 
-    summary_file_name = None
     possible_summary_files = [
         m.name
         for m in tarball.getmembers()
@@ -195,10 +194,10 @@ def open_log_file(
             )
 
     # 1 based indices
-    log_files = defaultdict(
+    log_files: dict[int, dict[int, io.TextIOWrapper]] = defaultdict(
         defaultdict
-    )  # type: dict[int, dict[int,io.TextIOWrapper]]
-    missing_runs = defaultdict(list)  # type: dict[int, list[int]]
+    )
+    missing_runs: dict[int, list[int]] = defaultdict(list)
     for boot_i in range(1, args.num_boots + 1):
         for suspend_i in range(1, args.num_suspends + 1):
             individual_file_name = (
@@ -324,6 +323,38 @@ def print_by_err(
         print()  # new line between critical, high ...
 
 
+def write_suspend_output(
+    write_dir: str,
+    boot_i: int,
+    suspend_i: int,
+    meta: Meta | None,
+    lines: Iterable[str],
+):
+    """Write a singel fwts output to a file along with extracted metadata
+
+    :param write_dir: directory to write to
+    :param boot_i: index of boot, 1-based
+    :param suspend_i: index of suspend, 1-based
+    :param meta: metadata extracted from fwts output
+    :param lines: original lines found in the tar ball
+    """
+    with open(
+        f"{write_dir}/boot_{boot_i}_suspend_{suspend_i}.txt",
+        "w",
+    ) as f:
+        if meta:
+            f.write(f"{' BEGIN METADATA  ':*^80}\n\n")
+            f.writelines(f"{k}: {v}\n" for k, v in meta.items())
+            f.write(f"\n{' END OF META, BEGIN ORIGINAL FILE ':*^80}\n\n")
+        else:
+            print(
+                f"{C.high}[ WARN ]{C.end} No meta data was found",
+                f"for boot {boot_i} suspend {suspend_i}",
+            )
+
+        f.writelines(lines)
+
+
 transform_err_msg = default_err_msg_transform
 
 
@@ -356,8 +387,10 @@ def main():
     if args.write_individual_files:
         print(
             f"{C.low}[ INFO ]{C.end} Individual results will be in",
-            f'"{args.write_directory}"',
+            f'"{args.write_dir}"',
         )
+        if not os.path.exists(args.write_dir):
+            os.mkdir(args.write_dir)
 
     log_files, summary_file, missing_runs = open_log_file(args)
 
@@ -378,24 +411,25 @@ def main():
                 "was found in the tarball",
             )
 
-    # [fail_type][boot_i][suspend_i][msg_i] = msg
-    failed_runs_by_type: dict[FailType, dict[int, dict[int, set[str]]]] = {
+    # failed_runs[fail_type][boot_i][suspend_i] = set of messages
+    failed_runs: dict[FailType, dict[int, dict[int, set[str]]]] = {
         "Critical": {},
         "High": {},
         "Medium": {},
         "Low": {},
         "Other": {},
     }
+    # actual_suspend_counts[boot_i] = num files actually found
     actual_suspend_counts: dict[int, int] = {}
 
     for boot_i in log_files:
         actual_suspend_counts[boot_i] = len(log_files[boot_i])
         for suspend_i in log_files[boot_i]:
-            log_file = log_files[boot_i][suspend_i]
-            log_file_lines = log_file.readlines()
-            log_file.close()
+            with log_files[boot_i][suspend_i] as f:
+                log_file_lines = f.readlines()
+                # let f close
 
-            curr_meta = None  # type: Meta | None
+            curr_meta: Meta | None = None
 
             for i, line in enumerate(log_file_lines):
                 if line.startswith("This test run on"):
@@ -414,19 +448,14 @@ def main():
 
                 for fail_type in "Critical", "High", "Medium", "Low", "Other":
                     if line.startswith(f"{fail_type} failures: "):
-                        fail_count = line.split(":")[1].strip()
-                        if fail_count == "NONE":
+                        fail_count_str = line.split(":")[1].strip()
+                        if fail_count_str == "NONE":
                             continue
 
-                        if boot_i not in failed_runs_by_type[fail_type]:
-                            failed_runs_by_type[fail_type][boot_i] = {}
-                        if (
-                            suspend_i
-                            not in failed_runs_by_type[fail_type][boot_i]
-                        ):
-                            failed_runs_by_type[fail_type][boot_i][
-                                suspend_i
-                            ] = set()
+                        if boot_i not in failed_runs[fail_type]:
+                            failed_runs[fail_type][boot_i] = {}
+                        if suspend_i not in failed_runs[fail_type][boot_i]:
+                            failed_runs[fail_type][boot_i][suspend_i] = set()
 
                         error_msg_i = i + 1
                         while error_msg_i < len(log_file_lines):
@@ -439,9 +468,7 @@ def main():
                             msg = transform_err_msg(
                                 log_file_lines[error_msg_i]
                             )
-                            failed_runs_by_type[fail_type][boot_i][
-                                suspend_i
-                            ].add(msg)
+                            failed_runs[fail_type][boot_i][suspend_i].add(msg)
                             error_msg_i += 1
 
             if args.write_individual_files:
@@ -449,37 +476,17 @@ def main():
                     f"Writing boot_{boot_i}_suspend_{suspend_i}.txt...",
                     end="\r",
                 )
-                if not os.path.exists(args.write_directory):
-                    os.mkdir(args.write_directory)
-
-                with open(
-                    f"{args.write_directory}/boot_{boot_i}_suspend_{suspend_i}.txt",  # noqa: E501
-                    "w",
-                ) as f:
-                    if curr_meta:
-                        f.write(f"{' BEGIN METADATA  ':*^80}\n\n")
-                        f.write(
-                            "\n".join(
-                                f"{k}: {v}" for k, v in curr_meta.items()
-                            )
-                        )
-                        f.write(
-                            "\n\n"
-                            f"{' END OF METADATA, BEGIN ORIGINAL FILE ':*^80}"
-                            "\n\n"
-                        )
-                    else:
-                        print(
-                            f"{C.high}[ WARN ]{C.end} No meta data was found",
-                            f"for boot {boot_i} suspend {suspend_i}",
-                        )
-
-                    for line in log_file_lines:
-                        f.write(line)
+                write_suspend_output(
+                    args.write_dir,
+                    boot_i,
+                    suspend_i,
+                    curr_meta,
+                    log_file_lines,
+                )
 
     # done collecting, pretty print results
     n_missing_runs = sum(map(len, missing_runs.values()))
-    n_failed_runs = sum(map(len, failed_runs_by_type.values()))
+    n_failed_runs = sum(map(len, failed_runs.values()))
 
     if n_missing_runs == 0:
         print(
@@ -502,10 +509,10 @@ def main():
             print(f"- Reboot {boot_i}, suspend {str(suspend_indicies)}")
 
     print()
-    print(C.gray + "=" * 80 + C.end)
+    print(C.gray + f"{' Begin parsed output ':-^80}" + C.end)
     print()
 
-    grouped = group_by_err(failed_runs_by_type)
+    grouped = group_by_err(failed_runs)
     print_by_err(grouped, actual_suspend_counts, args.num_suspends)
 
 
