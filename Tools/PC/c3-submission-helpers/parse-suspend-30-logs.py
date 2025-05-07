@@ -8,7 +8,7 @@ import sys
 import tarfile
 import textwrap
 from collections import defaultdict
-from typing import Callable, Iterable, Literal, TypedDict, cast
+from typing import Callable, Iterable, Literal, MutableMapping, TypedDict, cast
 
 SPACE = "    "
 BRANCH = "│   "
@@ -17,9 +17,13 @@ LAST = "└── "
 
 
 FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
-RunsGroupedByIndex = dict[FailType, dict[int, dict[int, set[str]]]]
-RunsGroupedByError = dict[FailType, dict[str, dict[int, list[int]]]]
-LogFilesByIndex = dict[int, dict[int, io.TextIOWrapper]]
+RunsGroupedByIndex = MutableMapping[
+    FailType, MutableMapping[int, MutableMapping[int, set[str]]]
+]
+RunsGroupedByError = MutableMapping[
+    FailType, MutableMapping[str, MutableMapping[int, list[int]]]
+]
+LogFilesByIndex = MutableMapping[int, MutableMapping[int, io.TextIOWrapper]]
 
 
 class Input:
@@ -96,6 +100,7 @@ SUMMARY_FILE_PATTERN = (
     r"test_output/com.canonical.certification__stress-tests"
     r"_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-check"
 )
+FAIL_TYPES = ("Critical", "High", "Medium", "Low", "Other")
 
 
 def parse_args() -> Input:
@@ -314,19 +319,14 @@ def group_by_err(
     :param failed_runs: [fail_type][boot_i][suspend_i][msg_i] = msg
     :return: [fail_type][msg][boot_i] = suspend index array
     """
-    out: RunsGroupedByError = {}
+    out: RunsGroupedByError = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
 
     for fail_type, runs in failed_runs.items():
         for boot_i, suspends in runs.items():
             for suspend_i, messages in suspends.items():
                 for msg in messages:
-                    if fail_type not in out:
-                        out[fail_type] = {}
-                    if msg not in out[fail_type]:
-                        out[fail_type][msg] = {}
-                    if boot_i not in out[fail_type][msg]:
-                        out[fail_type][msg][boot_i] = []
-
                     out[fail_type][msg][boot_i].append(suspend_i)
 
     return out
@@ -420,15 +420,13 @@ def write_suspend_output(
 
 def main():
     args = parse_args()
+    C.no_color = args.no_color
 
     if args.no_transform:
         # idk why tox doesn't like this, this is super common
         transform_err_msg: Callable[[str], str] = lambda msg: msg.strip()
     else:
         transform_err_msg = default_err_msg_transform
-
-    if args.no_color:
-        C.no_color = True
 
     print(
         C.medium("[ WARN ]"),
@@ -481,11 +479,7 @@ def main():
 
     # failed_runs[fail_type][boot_i][suspend_i] = set of messages
     failed_runs: RunsGroupedByIndex = {
-        "Critical": {},
-        "High": {},
-        "Medium": {},
-        "Low": {},
-        "Other": {},
+        k: defaultdict(lambda: defaultdict(set)) for k in FAIL_TYPES
     }
     # actual_suspend_counts[boot_i] = num files actually found
     actual_suspend_counts: dict[int, int] = {}
@@ -512,16 +506,11 @@ def main():
                         )
                     continue
 
-                for fail_type in "Critical", "High", "Medium", "Low", "Other":
+                for fail_type in FAIL_TYPES:
                     if line.startswith(f"{fail_type} failures: "):
                         fail_count_str = line.split(":")[1].strip()
                         if fail_count_str == "NONE":
                             continue
-
-                        if boot_i not in failed_runs[fail_type]:
-                            failed_runs[fail_type][boot_i] = {}
-                        if suspend_i not in failed_runs[fail_type][boot_i]:
-                            failed_runs[fail_type][boot_i][suspend_i] = set()
 
                         error_msg_i = i + 1
                         while error_msg_i < len(log_file_lines):
