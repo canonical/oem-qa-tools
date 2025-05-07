@@ -450,8 +450,7 @@ def main():
     if args.write_individual_files:
         print(
             C.low("[ INFO ]"),
-            f"Individual results will be in",
-            f'"{args.write_dir}"',
+            f'Individual results will be in "{args.write_dir}"',
         )
         if not os.path.exists(args.write_dir):
             os.mkdir(args.write_dir)
