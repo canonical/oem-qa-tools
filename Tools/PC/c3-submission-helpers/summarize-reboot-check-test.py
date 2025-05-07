@@ -33,29 +33,65 @@ class Input:
 
 
 class Color:
-    high = "\033[94m"
-    low = "\033[95m"
-    medium = "\033[93m"
-    critical = "\033[91m"
-    other = "\033[96m"
-    ok = "\033[92m"
-    end = "\033[0m"
-    bold = "\033[1m"
-    gray = "\033[90m"
+    def __init__(self, no_color=False) -> None:
+        self.no_color = no_color
+
+    def critical(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[91m{s}\033[0m"
+
+    def high(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[94m{s}\033[0m"
+
+    def medium(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[93m{s}\033[0m"
+
+    def low(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[95m{s}\033[0m"
+
+    def other(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[96m{s}\033[0m"
+
+    def ok(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[92m{s}\033[0m"
+
+    def gray(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[90m{s}\033[0m"
+
+    def bold(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[1m{s}\033[0m"
+
+
+C = Color()
 
 
 class Log:
     @staticmethod
     def ok(*args: str):
-        print(f"{Color.ok}[ OK ]{Color.end}", *args)
+        print(C.ok("[ OK ]"), *args)
 
     @staticmethod
     def warn(*args: str):
-        print(f"{Color.medium}[ WARN ]{Color.end}", *args)
+        print(C.medium("[ WARN ]"), *args)
 
     @staticmethod
     def err(*args: str):
-        print(f"{Color.critical}[ ERR ]{Color.end}", *args)
+        print(C.critical("[ ERR ]"), *args)
 
 
 RunIndexToMessageMap = dict[int, list[str]]
@@ -198,7 +234,7 @@ class TestResultPrinter(abc.ABC):
 
     def _default_title_transform(self, fail_type: str) -> str:
         fail_type_lower = fail_type.lower().replace("_", " ")
-        color = getattr(Color, fail_type_lower, Color.medium)
+        color = getattr(C, fail_type_lower, C.medium)
         known_name_tranforms = {
             "pci": "PCI device difference",
             "usb": "USB device difference",
@@ -210,7 +246,7 @@ class TestResultPrinter(abc.ABC):
         else:
             capitalized = fail_type_lower.capitalize()
 
-        transformed_str = f"{color}{capitalized} errors:{Color.end}"
+        transformed_str = color(f"{capitalized} errors:")
         return transformed_str
 
     def _default_err_msg_transform(self, msg: str) -> str:
@@ -245,7 +281,7 @@ class TestResultPrinter(abc.ABC):
             )
 
             for err_msg in all_err_msg:
-                print(SPACE, f"{Color.bold}{err_msg}{Color.end}")
+                print(SPACE, C.bold(err_msg))
 
                 buffer = {
                     err_msg: {
@@ -369,10 +405,10 @@ class TestResultPrinter(abc.ABC):
 
         for fail_type, results in boot_results.items():
             failed_runs = sorted(list(results.keys()))
-            print(
-                f"{prefix}{getattr(Color, fail_type.lower(), Color.medium)}"
-                f"{fail_type.replace('_', ' ').title()} failures:{Color.end}"
+            colorized: str = getattr(C, fail_type.lower(), C.medium)(
+                f"{fail_type.replace('_', ' ').title()} failures:"
             )
+            print(f"{prefix}{colorized}")
 
             wrapped = textwrap.wrap(str(failed_runs), width=50)
             print(f"{prefix}{SPACE}- Failed runs: {wrapped[0]}")
@@ -425,8 +461,7 @@ class FwtsPrinter(TestResultPrinter):
     def print_by_err(self):
         def title_transform(fail_type: str):
             return (
-                f"{getattr(Color, fail_type.lower())}"
-                f"FWTS {fail_type} errors:{Color.end}"
+                f"{getattr(C, fail_type.lower())(f'FWTS {fail_type} errors:')}"
             )
 
         def err_msg_transform(msg: str):
@@ -694,12 +729,7 @@ def parse_args() -> Input:
 def main():
     args = parse_args()
 
-    if args.no_color:
-        # if no color, just replace all the escape sequences with empty str
-        for prop in dir(Color):
-            if prop.startswith("__") or type(getattr(Color, prop)) is not str:
-                continue
-            setattr(Color, prop, "")
+    C.no_color = args.no_color
 
     for filename in args.filenames:
         reader = SubmissionTarReader(filename)
@@ -729,7 +759,7 @@ def main():
         for test in printer_classes:
             printer = printer_classes[test](reader, args.expected_n_runs)
             print(f"\n{f' {printer.name.capitalize()} failures ':-^80}")
-            print(f"{Color.gray}In file {filename}{Color.end}\n")
+            print(C.gray(f"In file {filename}\n"))
 
             if (len(printer.cold_results) + len(printer.warm_results)) == 0:
                 Log.ok(f"No {printer.name} failures")
