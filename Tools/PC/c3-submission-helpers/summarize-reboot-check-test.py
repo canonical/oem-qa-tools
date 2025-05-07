@@ -743,8 +743,6 @@ def main():
                 f"Expected {args.expected_n_runs} runs,",
                 f"but got {reader.boot_count}",
             )
-        else:
-            Log.ok("")
 
         printer_classes: dict[TestType, type[TestResultPrinter]] = {
             klass.name: klass
