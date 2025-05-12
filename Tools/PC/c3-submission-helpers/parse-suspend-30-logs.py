@@ -424,7 +424,7 @@ def print_summary_for_1_submission(
     args: Input, filename: str, transform_err_msg: Callable[[str], str]
 ) -> None:
     expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
-    write_dir = f"{args.write_dir}/{filename.replace("/", '-')}-split"
+    write_dir = f"{args.write_dir}/{filename.replace('/', '-')}-split"
 
     if args.write_individual_files:
         print(
