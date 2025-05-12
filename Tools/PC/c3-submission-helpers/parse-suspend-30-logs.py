@@ -27,7 +27,7 @@ LogFilesByIndex = MutableMapping[int, MutableMapping[int, io.TextIOWrapper]]
 
 
 class Input:
-    filename: str
+    filenames: list[str]
     write_individual_files: bool
     write_dir: str
     verbose: bool
@@ -121,7 +121,8 @@ def parse_args() -> Input:
         ),
     )
     p.add_argument(
-        "filename",
+        "filenames",
+        nargs="+",
         help="The path to the suspend logs or the stress test submission .tar",
     )
     p.add_argument(
@@ -143,7 +144,7 @@ def parse_args() -> Input:
             "Where to write the individual logs. "
             "If not specified and the -w flag is true, "
             "it will create a new local directory called "
-            "{your original file name}-split"
+            "{your original file name}-split."
         ),
     )
     p.add_argument(
@@ -190,7 +191,7 @@ def parse_args() -> Input:
 
     out = p.parse_args()
     # have to wait until out.filename is populated
-    out.write_dir = out.write_dir or f"{out.filename}-split"
+    # out.write_dir = out.write_dir or f"{out.filename}-split"
     return cast(Input, out)
 
 
@@ -262,6 +263,7 @@ def open_log_file(filename: str, num_boots: int, num_suspends: int) -> tuple[
                 "test_output/com.canonical.certification__stress-tests_"
                 + f"suspend_cycles_{suspend_i}_reboot{boot_i}"
             )
+
             try:
                 extracted = tarball.extractfile(individual_file_name)
                 assert extracted, f"Failed to extract {individual_file_name}"
@@ -418,50 +420,27 @@ def write_suspend_output(
         f.writelines(lines)
 
 
-def main():
-    args = parse_args()
-    C.no_color = args.no_color
-
-    if args.no_transform:
-        # idk why tox doesn't like this, this is super common
-        transform_err_msg: Callable[[str], str] = lambda msg: msg.strip()
-    else:
-        transform_err_msg = default_err_msg_transform
-
-    print(
-        C.medium("[ WARN ]"),
-        "The summary file might not match",
-        "the number of failures found by this script.",
-    )
-    print(
-        C.medium("[ WARN ]"),
-        "Please double check since the original test case",
-        "may consider some failures to be not worth reporting",
-    )
-
+def print_summary_for_1_submission(
+    args: Input, filename: str, transform_err_msg: Callable[[str], str]
+) -> None:
     expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
-
-    print(
-        C.low("[ INFO ]"),
-        f"Expecting ({args.num_boots} boots * {args.num_suspends} suspends) = "
-        f"{expected_num_results} results",
-    )
+    write_dir = f"{args.write_dir}/{filename.replace("/", '-')}-split"
 
     if args.write_individual_files:
         print(
             C.low("[ INFO ]"),
-            f'Individual results will be in "{args.write_dir}"',
+            f'Individual results will be in "{write_dir}"',
         )
-        if not os.path.exists(args.write_dir):
-            os.mkdir(args.write_dir)
-
+        if not os.path.exists(write_dir):
+            os.makedirs(write_dir, exist_ok=True)
     log_files, summary_file, missing_runs = open_log_file(
-        args.filename, args.num_boots, args.num_suspends
+        filename, args.num_boots, args.num_suspends
     )
 
     if not args.no_summary:
         if summary_file:
-            print(f"\n{C.gray(' Begin Summary File '.center(80, '-'))}\n")
+            print(C.gray(" Begin Summary File ".center(80, "-")))
+            print(C.gray(f"In {filename}\n"))
 
             for line in summary_file.readlines():
                 clean_line = line.strip()
@@ -478,7 +457,7 @@ def main():
 
     # failed_runs[fail_type][boot_i][suspend_i] = set of messages
     failed_runs: RunsGroupedByIndex = {
-        k: defaultdict(lambda: defaultdict(set)) for k in FAIL_TYPES
+        ft: defaultdict(lambda: defaultdict(set)) for ft in FAIL_TYPES
     }
     # actual_suspend_counts[boot_i] = num files actually found
     actual_suspend_counts: dict[int, int] = {}
@@ -486,8 +465,8 @@ def main():
     for boot_i in log_files:
         actual_suspend_counts[boot_i] = len(log_files[boot_i])
         for suspend_i in log_files[boot_i]:
-            log_file_lines = log_files[boot_i][suspend_i].readlines()
-            log_files[boot_i][suspend_i].close()
+            with log_files[boot_i][suspend_i] as f:
+                log_file_lines = f.readlines()
 
             curr_meta: Meta | None = None
             for i, line in enumerate(log_file_lines):
@@ -531,7 +510,7 @@ def main():
                     end="\r",
                 )
                 write_suspend_output(
-                    args.write_dir,
+                    write_dir,
                     boot_i,
                     suspend_i,
                     curr_meta,
@@ -546,7 +525,7 @@ def main():
         print(
             C.ok("[ OK ]"),
             f"Found all {expected_num_results}",
-            "expected log files!",
+            f"expected log files in {filename}!",
         )
         if n_failed_runs == 0:
             print(
@@ -565,11 +544,45 @@ def main():
         for boot_i, suspend_indicies in missing_runs.items():
             print(f"- Reboot {boot_i}, suspend {str(suspend_indicies)}")
 
-    print(f"\n{C.gray(' Begin Parsed Output '.center(80, '-'))}\n")
+    print(f"\n{C.gray(' Begin Parsed Output '.center(80, '-'))}")
+    print(C.gray(f"In {filename}\n"))
 
     print_by_err(
         group_by_err(failed_runs), actual_suspend_counts, args.num_suspends
     )
+
+
+def main():
+    args = parse_args()
+    C.no_color = args.no_color
+
+    expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
+    print(
+        C.low("[ INFO ]"),
+        f"Expecting ({args.num_boots} boots * {args.num_suspends} suspends) = "
+        f"{expected_num_results} results",
+    )
+
+    if args.no_transform:
+        # idk why tox doesn't like this, this is super common
+        transform_err_msg: Callable[[str], str] = lambda msg: msg.strip()
+    else:
+        transform_err_msg = default_err_msg_transform
+
+    print(
+        C.medium("[ WARN ]"),
+        "The summary file might not match",
+        "the number of failures found by this script.",
+    )
+    print(
+        C.medium("[ WARN ]"),
+        "Please double check since the original test case",
+        "may consider some failures to be not worth reporting",
+    )
+    print()
+
+    for filename in args.filenames:
+        print_summary_for_1_submission(args, filename, transform_err_msg)
 
 
 if __name__ == "__main__":
