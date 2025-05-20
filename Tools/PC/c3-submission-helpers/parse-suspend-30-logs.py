@@ -512,7 +512,8 @@ def print_summary_for_1_submission(
                             error_msg_i += 1
 
                             if args.ignore_warnings and "Warning:" in msg:
-                                # literally how the original test case filters warnings
+                                # literally how the original test case
+                                # filters warnings
                                 continue
                             failed_runs[fail_type][boot_i][suspend_i].add(msg)
 
