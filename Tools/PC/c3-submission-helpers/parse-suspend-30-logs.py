@@ -38,6 +38,7 @@ class Input:
     no_meta: bool
     no_transform: bool
     no_color: bool
+    ignore_warnings: bool
 
 
 class Color:
@@ -187,6 +188,12 @@ def parse_args() -> Input:
         "--no-color",
         action="store_true",
         help="Disables all colors and styles",
+    )
+    p.add_argument(
+        "-iw",
+        "--ignore-warnings",
+        action="store_true",
+        help="Ignore warnings like checkbox's sleep_test_log_check.py",
     )
 
     out = p.parse_args()
@@ -501,8 +508,13 @@ def print_summary_for_1_submission(
                             msg = transform_err_msg(
                                 log_file_lines[error_msg_i]
                             )
-                            failed_runs[fail_type][boot_i][suspend_i].add(msg)
+                            # handler iter earlier to avoid ugly if condition
                             error_msg_i += 1
+
+                            if args.ignore_warnings and "Warning:" in msg:
+                                # literally how the original test case filters warnings
+                                continue
+                            failed_runs[fail_type][boot_i][suspend_i].add(msg)
 
             if args.write_individual_files:
                 print(
@@ -569,17 +581,19 @@ def main():
     else:
         transform_err_msg = default_err_msg_transform
 
-    print(
-        C.medium("[ WARN ]"),
-        "The summary file might not match",
-        "the number of failures found by this script.",
-    )
-    print(
-        C.medium("[ WARN ]"),
-        "Please double check since the original test case",
-        "may consider some failures to be not worth reporting",
-    )
-    print()
+    if not args.ignore_warnings:
+        print(
+            C.medium("[ WARN ]"),
+            "The test summary file might show less errors than this script.",
+        )
+        print(
+            C.medium("[ WARN ]"),
+            "Please double check since the original test case",
+            "has the --ignore-warning flag enabled.",
+        )
+        print()
+    else:
+        print(C.low("[ INFO ]"), "Ignoring fwts warnings")
 
     for filename in args.filenames:
         print_summary_for_1_submission(args, filename, transform_err_msg)
