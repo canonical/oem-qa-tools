@@ -105,7 +105,9 @@ FAIL_TYPES = ("Critical", "High", "Medium", "Low", "Other")
 
 
 def parse_args() -> Input:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     p.add_argument(
         "-s",
         "--no-summary",
@@ -124,7 +126,7 @@ def parse_args() -> Input:
     p.add_argument(
         "filenames",
         nargs="+",
-        help="The path to the suspend logs or the stress test submission .tar",
+        help="The path to the stress test submission .tar files",
     )
     p.add_argument(
         "-w",
@@ -139,13 +141,13 @@ def parse_args() -> Input:
         "-d",
         "--directory",
         dest="write_dir",
-        default="",
+        default=os.getcwd(),
         required=False,
         help=(
-            "Where to write the individual logs. "
-            "If not specified and the -w flag is true, "
-            "it will create a new local directory called "
-            "{your original file name}-split."
+            "The top level dir of where to write the individual logs. "
+            "Inside this directory, subdirectories called "
+            "{your original file name}-split will be created to contain the "
+            "individual .txt files of each run"
         ),
     )
     p.add_argument(
@@ -158,7 +160,7 @@ def parse_args() -> Input:
     p.add_argument(
         "-nb",
         "--num-boots",
-        help="Set the expected number of boots in the input file. Default=3.",
+        help="Set the expected number of boots in the input file.",
         dest="num_boots",
         default=3,
         required=False,
@@ -167,7 +169,7 @@ def parse_args() -> Input:
     p.add_argument(
         "-ns",
         "--num-suspends-per-boot",
-        help="Set the expected number of runs in the input file. Default=30.",
+        help="Set the expected number of runs in the input file.",
         dest="num_suspends",
         default=30,
         required=False,

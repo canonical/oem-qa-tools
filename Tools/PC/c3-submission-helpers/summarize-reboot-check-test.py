@@ -77,9 +77,6 @@ class Color:
         return f"\033[1m{s}\033[0m"
 
 
-C = Color()
-
-
 class Log:
     @staticmethod
     def ok(*args: str):
@@ -672,7 +669,8 @@ class RendererCheckPrinter(TestResultPrinter):
 def parse_args() -> Input:
     p = argparse.ArgumentParser(
         description="Parses the outputs of reboot_check_test.py "
-        "from a C3 submission tar file"
+        "from a C3 submission tar file",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument(
         "filenames",
@@ -711,9 +709,9 @@ def parse_args() -> Input:
         dest="expected_n_runs",
         help=(
             "Specify a value to show a warning when the number of boot files "
-            "!= the number of runs you expect. Default=30. "
+            "!= the number of runs you expect. "
             "Note that this number applies to both cold and warm boot "
-            "since checkbox doesn't use a different number for CB/WB either."
+            "since checkbox doesn't use a different number for CB/WB. "
         ),
         type=int,
         default=30,
@@ -729,7 +727,8 @@ def parse_args() -> Input:
 def main():
     args = parse_args()
 
-    C.no_color = args.no_color
+    global C
+    C = Color(no_color=args.no_color)
 
     for filename in args.filenames:
         reader = SubmissionTarReader(filename)
