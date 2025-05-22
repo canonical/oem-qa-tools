@@ -1,38 +1,89 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 
-import os
-from typing import Literal, TypedDict
-import re
 import argparse
-import tarfile
 import io
+import os
+import re
 import sys
+import tarfile
 import textwrap
+from collections import defaultdict
+from typing import Callable, Iterable, Literal, MutableMapping, TypedDict, cast
 
-space = "    "
-branch = "│   "
-tee = "├── "
-last = "└── "
+SPACE = "    "
+BRANCH = "│   "
+TEE = "├── "
+LAST = "└── "
+
+
+FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
+RunsGroupedByIndex = MutableMapping[
+    FailType, MutableMapping[int, MutableMapping[int, set[str]]]
+]
+RunsGroupedByError = MutableMapping[
+    FailType, MutableMapping[str, MutableMapping[int, list[int]]]
+]
+LogFilesByIndex = MutableMapping[int, MutableMapping[int, io.TextIOWrapper]]
 
 
 class Input:
-    filename: str
+    filenames: list[str]
     write_individual_files: bool
-    write_directory: str
+    write_dir: str
     verbose: bool
-    num_runs: int | None
-    inverse_find: bool
+    num_suspends: int
+    num_boots: int
+    # inverse_find: bool
     no_summary: bool
+    no_meta: bool
+    no_transform: bool
+    no_color: bool
+    ignore_warnings: bool
 
 
-class C:  # color
-    high = "\033[94m"
-    low = "\033[95m"
-    medium = "\033[93m"
-    critical = "\033[91m"
-    other = "\033[96m"
-    ok = "\033[92m"
-    end = "\033[0m"
+class Color:
+    def __init__(self, no_color=False) -> None:
+        self.no_color = no_color
+
+    def critical(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[91m{s}\033[0m"
+
+    def high(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[94m{s}\033[0m"
+
+    def medium(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[93m{s}\033[0m"
+
+    def low(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[95m{s}\033[0m"
+
+    def other(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[96m{s}\033[0m"
+
+    def ok(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[92m{s}\033[0m"
+
+    def gray(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[90m{s}\033[0m"
+
+    def bold(self, s: str):
+        if self.no_color:
+            return s
+        return f"\033[1m{s}\033[0m"
 
 
 class Meta(TypedDict):
@@ -45,16 +96,37 @@ class Meta(TypedDict):
     kernel: str
 
 
+C = Color()
+SUMMARY_FILE_PATTERN = (
+    r"test_output/com.canonical.certification__stress-tests"
+    r"_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-check"
+)
+FAIL_TYPES = ("Critical", "High", "Medium", "Low", "Other")
+
+
 def parse_args() -> Input:
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     p.add_argument(
+        "-s",
         "--no-summary",
         action="store_true",
         help="Don't print the summary file at the top",
     )
     p.add_argument(
-        "filename",
-        help="The path to the suspend logs or the stress test submission .tar",
+        "-m",
+        "--no-meta",
+        action="store_true",
+        help=(
+            "Don't write the metadata section when -w is specified. ("
+            f"The {'/'.join(Meta.__annotations__.keys())} section)"
+        ),
+    )
+    p.add_argument(
+        "filenames",
+        nargs="+",
+        help="The path to the stress test submission .tar files",
     )
     p.add_argument(
         "-w",
@@ -68,14 +140,14 @@ def parse_args() -> Input:
     p.add_argument(
         "-d",
         "--directory",
-        dest="write_directory",
-        default="",
+        dest="write_dir",
+        default=os.getcwd(),
         required=False,
         help=(
-            "Where to write the individual logs. "
-            "If not specified and the -w flag is true, "
-            "it will create a new local directory called "
-            "{your original file name}-split"
+            "The top level dir of where to write the individual logs. "
+            "Inside this directory, subdirectories called "
+            "{your original file name}-split will be created to contain the "
+            "individual .txt files of each run"
         ),
     )
     p.add_argument(
@@ -86,284 +158,448 @@ def parse_args() -> Input:
         action="store_true",
     )
     p.add_argument(
-        "-n",
-        "--num-runs",
-        help="Set the expected number of runs in the input file. Default=90.",
-        dest="num_runs",
+        "-nb",
+        "--num-boots",
+        help="Set the expected number of boots in the input file.",
+        dest="num_boots",
+        default=3,
         required=False,
         type=int,
     )
     p.add_argument(
-        "-i",
-        "--inverse",
-        dest="inverse_find",
+        "-ns",
+        "--num-suspends-per-boot",
+        help="Set the expected number of runs in the input file.",
+        dest="num_suspends",
+        default=30,
+        required=False,
+        type=int,
+    )
+    p.add_argument(
+        "-t",
+        "--no-transform",
         action="store_true",
-        default=False,
-        help=(
-            "Find runs that do NOT have a failure instead of the opposite."
-            "Useful if you encounter machines that fails almost every run."
-        ),
+        help="Disables any form of error message tranformation "
+        "except trimming whitespaces. "
+        "By default, this script will attempt to remove timestamps and "
+        "certain numbers to better group the error messages. "
+        "This option disables this behavior.",
+    )
+    p.add_argument(
+        "-c",
+        "--no-color",
+        action="store_true",
+        help="Disables all colors and styles",
+    )
+    p.add_argument(
+        "-iw",
+        "--ignore-warnings",
+        action="store_true",
+        help="Ignore warnings like checkbox's sleep_test_log_check.py",
     )
 
     out = p.parse_args()
-    out.write_directory = out.write_directory or f"{out.filename}-split"
-    return out  # type:ignore
+    # have to wait until out.filename is populated
+    # out.write_dir = out.write_dir or f"{out.filename}-split"
+    return cast(Input, out)
 
 
-FailType = Literal["Critical", "High", "Medium", "Low", "Other"]
-
-log_file_pattern = (
-    r"attachment_files/com.canonical.certification__"
-    r"stress-tests_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-attach"
-)
-summary_file_pattern = (
-    r"test_output/com.canonical.certification__stress-tests"
-    r"_suspend-[0-9]+-cycles-with-reboot-[0-9]+-log-check"
-)
+def line_is_summary_table(line: str) -> bool:
+    return line.replace(" ", "") == "Test|Pass|Fail|Abort|Warn|Skip|Info|"
 
 
-def open_log_file(
-    filename: str,
-) -> tuple[io.TextIOWrapper, io.TextIOWrapper | None]:
-    if not filename.endswith(".tar.xz"):
-        return (open(filename), None)
+def open_log_file(filename: str, num_boots: int, num_suspends: int) -> tuple[
+    LogFilesByIndex,
+    io.TextIOWrapper | None,
+    dict[int, list[int]],
+]:
+    """Collects all the file handles for each log file
 
-    summary_file_name = None
-    log_file_name = None
+    :param args: input
+    :raises TypeError: if the input file is not a tar file
+    :return: 3-tuple (
+            [boot_i][suspend_i] = file,
+            file object for the summary attachment,
+            [boot_i]=list of missing suspends
+        )
+    """
     try:
-        possible_log_files = [
-            m.name
-            for m in tarfile.open(filename).getmembers()
-            if re.match(log_file_pattern, m.name) is not None
-        ]
-        possible_summary_files = [
-            m.name
-            for m in tarfile.open(filename).getmembers()
-            if re.match(summary_file_pattern, m.name) is not None
-        ]
-
-        if len(possible_log_files) == 0:
-            print(
-                f"No log files match {C.critical}`{log_file_pattern}`{C.end}"
-                f"was found in {filename}, exiting."
-            )
-            exit(1)
-        if len(possible_summary_files) == 0:
-            print(
-                "No attachment files matching",
-                f"{C.medium}`{summary_file_pattern}`{C.end}",
-                f"was found in {filename}. Ignoring",
-            )
-
-        if len(possible_log_files) > 1:
-            print(
-                f"Multiple log files found in {filename},",
-                f"assuming {possible_log_files[0]}",
-            )
-
-        log_file_name = possible_log_files[0]
-        summary_file_name = (
-            possible_summary_files[0]
-            if len(possible_summary_files) > 0
-            else None
-        )
-        print("Parsing this file:", log_file_name)
-
-        tar = tarfile.open(filename)
-        extracted_log = tar.extractfile(log_file_name)
-
-        if extracted_log is None:
-            print(
-                f"Found {log_file_name} in {filename},",
-                "but it can't be extracted.",
-                file=sys.stderr,
-            )
-            exit(1)
-
-        summary_file = None
-        if summary_file_name:
-            print("Found this summary attachment:", summary_file_name)
-            summary_file = tar.extractfile(summary_file_name)
-            if summary_file is None:
-                print(
-                    f"Found {summary_file_name} in {filename},"
-                    "but it can't be extracted, Ignoring",
-                    file=sys.stderr,
-                )
-
-        log_file = io.TextIOWrapper(extracted_log)
-
-        return (
-            log_file,
-            io.TextIOWrapper(summary_file) if summary_file else None,
-        )
-    except KeyError:
-        print(
-            f'{C.critical}"{log_file_name}" doesn\'t exist in the tarball',
-            f'"{filename}"{C.end}',
-            file=sys.stderr,
-        )
-        print(
-            "If the log file is under a different name,",
-            f"try manually extracting {filename} and pass in",
-            "path/to/the/log/file with the -f flag.",
-        )
+        tarball = tarfile.open(filename)
+    except FileNotFoundError:
+        print(C.critical(f"{filename} not found!"))
+        exit(1)
+    except tarfile.ReadError as e:
+        print(C.critical(f"{filename} cannot be opened as a tar file!"))
+        print("Original error:", str(e))
         exit(1)
 
+    possible_summary_files = [
+        m.name
+        for m in tarball.getmembers()
+        if re.match(SUMMARY_FILE_PATTERN, m.name) is not None
+    ]
+    if len(possible_summary_files) == 0:
+        print(
+            "No attachment files matching",
+            C.medium(SUMMARY_FILE_PATTERN),
+            f"was found in {filename}. Ignoring",
+        )
+    summary_file_name = (
+        possible_summary_files[0] if len(possible_summary_files) > 0 else None
+    )
 
-def main():
-    SECTION_BEGIN = "= Test Results ="  # noqa: N806
+    summary_file = None
+    if summary_file_name:
+        try:
+            summary_file = tarball.extractfile(summary_file_name)
+        except KeyError as e:
+            summary_file = None
+            print(
+                f"Found {summary_file_name} in {filename},"
+                "but it can't be extracted, Ignoring.",
+                file=sys.stderr,
+            )
+            print("The original error is", e, file=sys.stderr)
 
-    args = parse_args()
-    EXPECTED_NUM_RESULTS = args.num_runs or 90  # noqa: N806
-    print(f"{C.ok}Expecting {EXPECTED_NUM_RESULTS} results{C.end}")
+    # 1 based indices
+    # [boot_i][suspend_i] = file object
+    log_files: LogFilesByIndex = defaultdict(defaultdict)
+    missing_runs: dict[int, list[int]] = defaultdict(list)
 
-    if args.write_individual_files:
-        print(f'Individual results will be in "{args.write_directory}"')
+    for boot_i in range(1, num_boots + 1):
+        for suspend_i in range(1, num_suspends + 1):
+            individual_file_name = (
+                "test_output/com.canonical.certification__stress-tests_"
+                + f"suspend_cycles_{suspend_i}_reboot{boot_i}"
+            )
 
-    log_file, summary_file = open_log_file(args.filename)
+            try:
+                extracted = tarball.extractfile(individual_file_name)
+                assert extracted, f"Failed to extract {individual_file_name}"
+                log_files[boot_i][suspend_i] = io.TextIOWrapper(extracted)
+            except KeyError:  # raised from extract when the file is missing
+                missing_runs[boot_i].append(suspend_i)
 
-    if args.filename.endswith(".tar.xz"):
-        if not args.no_summary:
-            if summary_file:
+    return (
+        log_files,
+        summary_file and io.TextIOWrapper(summary_file),
+        missing_runs,
+    )
 
-                print(f"\n{' Begin Summary Attachment ':-^80}\n")
-                for line in summary_file.readlines():
-                    clean_line = line.strip()
-                    if clean_line != "":
-                        print(clean_line)
-                summary_file.close()
 
-                print(f"\n{' End of Summary ':-^80}")
-            else:
-                print(
-                    "No suspend-30-cycles-with-reboot-3-log-check attachment",
-                    "was found in the tarball",
+def default_err_msg_transform(msg: str) -> str:
+    # some known error message transforms to help group them together
+    # this is disabled with --no-transform flag
+    kernel_msg_prefix_pattern = (
+        r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+    )
+    timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
+
+    msg = re.sub(timestamp_pattern, "", msg)
+    msg = re.sub(kernel_msg_prefix_pattern, "", msg)
+    msg = re.sub(" +", " ", msg)  # remove double spaces
+    msg = msg.strip()
+
+    known_prefixes = [
+        "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase",
+        (
+            "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec "
+            + "to increase"
+        ),
+        (
+            r"s3: Expected /sys/power/suspend_stats/last_hw_sleep "
+            + r"to be at least 70% of the last sleep cycle"
+        ),
+    ]
+    for prefix in known_prefixes:
+        if msg.startswith(prefix):
+            return prefix
+
+    known_patterns = {r"slept for (.*) seconds,": "slept"}
+    for pattern, replacement in known_patterns.items():
+        msg = re.sub(pattern, replacement, msg)
+
+    return msg
+
+
+def group_by_err(
+    failed_runs: RunsGroupedByIndex,
+) -> RunsGroupedByError:
+    """Converts RunsGroupedByIndex to RunsGroupedByError
+
+    :param failed_runs: [fail_type][boot_i][suspend_i][msg_i] = msg
+    :return: [fail_type][msg][boot_i] = suspend index array
+    """
+    out: RunsGroupedByError = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
+    )
+
+    for fail_type, runs in failed_runs.items():
+        for boot_i, suspends in runs.items():
+            for suspend_i, messages in suspends.items():
+                for msg in messages:
+                    out[fail_type][msg][boot_i].append(suspend_i)
+
+    return out
+
+
+def print_by_err(
+    failed_runs: RunsGroupedByError,
+    actual_suspend_counts: dict[int, int],
+    expected_n_suspends: int,
+) -> None:
+    """Pretty prints a RunsGroupedByError dict
+
+    :param failed_runs: the dict to print
+    :param actual_suspend_counts: [boot_i] = num suspends in this boot
+    :param expected_n_suspends: expected num suspends for all boots
+    """
+    for fail_type, msg_group in failed_runs.items():
+        print(getattr(C, fail_type.lower())(f"{fail_type} Failures"))
+        for msg in msg_group:
+            print(SPACE, C.bold(msg))
+            for pos, (boot_i, suspends) in enumerate(msg_group[msg].items()):
+                suspend_count = actual_suspend_counts[boot_i]
+                if suspend_count != expected_n_suspends:
+                    fail_rate_text = C.critical(
+                        f"{len(suspends)}/{suspend_count}"
+                    )
+                else:
+                    fail_rate_text = f"{len(suspends)}/{str(suspend_count)}"
+
+                branch_text = (
+                    LAST if pos == len(msg_group[msg]) - 1 else BRANCH
                 )
 
-    with log_file as file:
-        lines = file.readlines()
-        test_results: list[list[str]] = []
-        meta: list[Meta] = []
-        failed_runs_by_type: dict[FailType, list[int]] = {
-            "Critical": [],
-            "High": [],
-            "Medium": [],
-            "Low": [],
-            "Other": [],
-        }
+                wrapped_indices = textwrap.wrap(
+                    str(suspends),
+                    width=50,
+                )
+                line1 = (
+                    f"{SPACE} {SPACE} {TEE} "
+                    + f"Reboot {boot_i}: {wrapped_indices[0]}"
+                )
+                print(line1)
+                for line in wrapped_indices[1:]:
+                    print(
+                        f"{SPACE} {SPACE} {BRANCH}"
+                        + f"{' ' * len(f' Reboot {boot_i}: ')}",
+                        line,
+                    )
 
-        i = 0
-        while i < len(lines) and SECTION_BEGIN not in lines[i]:
-            i += 1  # scroll to the first section
+                print(
+                    SPACE,
+                    SPACE,
+                    branch_text,
+                    f"Fail rate: {fail_rate_text}",
+                )
+        print()  # new line between critical, high ...
 
-        while i < len(lines):
-            line = lines[i]
 
-            if SECTION_BEGIN not in line:
-                continue
+def write_suspend_output(
+    write_dir: str,
+    boot_i: int,
+    suspend_i: int,
+    meta: Meta | None,
+    lines: Iterable[str],
+):
+    """Write a singel fwts output to a file along with extracted metadata
 
-            i += 1
-            curr_result_lines: list[str] = []
-            curr_meta: Meta = {"date": "", "time": "", "kernel": ""}
+    :param write_dir: directory to write to
+    :param boot_i: index of boot, 1-based
+    :param suspend_i: index of suspend, 1-based
+    :param meta: metadata extracted from fwts output
+    :param lines: original lines found in the tar ball
+    """
+    with open(
+        f"{write_dir}/boot_{boot_i}_suspend_{suspend_i}.txt",
+        "w",
+    ) as f:
+        if meta:
+            f.write(f"{' BEGIN METADATA  ':*^80}\n\n")
+            f.writelines(f"{k}: {v}\n" for k, v in meta.items())
+            f.write(f"\n{' END OF META, BEGIN ORIGINAL FILE ':*^80}\n\n")
+        else:
+            print(
+                C.medium("[ WARN ]"),
+                "No meta data was found",
+                f"for boot {boot_i} suspend {suspend_i}",
+            )
 
-            while i < len(lines) and SECTION_BEGIN not in lines[i]:
-                curr_line = lines[i].strip().strip("\n")
+        f.writelines(lines)
 
-                if curr_line != "":
-                    curr_result_lines.append(curr_line)
 
-                if curr_line.startswith("This test run on"):
+def print_summary_for_1_submission(
+    args: Input, filename: str, transform_err_msg: Callable[[str], str]
+) -> None:
+    expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
+    write_dir = f"{args.write_dir}/{filename.replace('/', '-')}-split"
+
+    if args.write_individual_files:
+        print(
+            C.low("[ INFO ]"),
+            f'Individual results will be in "{write_dir}"',
+        )
+        if not os.path.exists(write_dir):
+            os.makedirs(write_dir, exist_ok=True)
+    log_files, summary_file, missing_runs = open_log_file(
+        filename, args.num_boots, args.num_suspends
+    )
+
+    if not args.no_summary:
+        if summary_file:
+            print(C.gray(" Begin Summary File ".center(80, "-")))
+            print(C.gray(f"In {filename}\n"))
+
+            for line in summary_file.readlines():
+                clean_line = line.strip()
+                if clean_line != "":
+                    print(clean_line)
+            summary_file.close()
+
+            print(f"\n{C.gray(' End of Summary '.center(80, '-'))}\n")
+        else:
+            print(
+                "No suspend-30-cycles-with-reboot-3-log-check attachment",
+                "was found in the tarball",
+            )
+
+    # failed_runs[fail_type][boot_i][suspend_i] = set of messages
+    failed_runs: RunsGroupedByIndex = {
+        ft: defaultdict(lambda: defaultdict(set)) for ft in FAIL_TYPES
+    }
+    # actual_suspend_counts[boot_i] = num files actually found
+    actual_suspend_counts: dict[int, int] = {}
+
+    for boot_i in log_files:
+        actual_suspend_counts[boot_i] = len(log_files[boot_i])
+        for suspend_i in log_files[boot_i]:
+            with log_files[boot_i][suspend_i] as f:
+                log_file_lines = f.readlines()
+
+            curr_meta: Meta | None = None
+            for i, line in enumerate(log_file_lines):
+                if line.startswith("This test run on"):
                     # Example:
                     # This test run on 13/08/24 at
                     # 01:10:22 on host Linux ubuntu 6.5.0-1027-oem
                     regex = r"This test run on (.*) at (.*) on host (.*)"
-                    match_output = re.match(regex, curr_line)
+                    match_output = re.match(regex, line)
                     if match_output:
-                        curr_meta["date"] = match_output.group(1)
-                        curr_meta["time"] = match_output.group(2)
-                        curr_meta["kernel"] = match_output.group(3)
-
-                for fail_type in "Critical", "High", "Medium", "Low", "Other":
-                    if curr_line.startswith(f"{fail_type} failures: "):
-                        fail_count = curr_line.split(": ")[1]
-                        if fail_count == "NONE":
-                            continue
-                        if args.verbose:
-                            t = fail_type.lower()
-                            print(
-                                f"Line {i}, run {len(test_results) + 1} has "
-                                f"{getattr(C, t)}{t}{C.end} "
-                                f"failures: {fail_count}"
-                            )
-
-                        failed_runs_by_type[fail_type].append(
-                            len(test_results) + 1
+                        curr_meta = Meta(
+                            date=match_output.group(1),
+                            time=match_output.group(2),
+                            kernel=match_output.group(3),
                         )
-                i += 1
+                    continue
+
+                for fail_type in FAIL_TYPES:
+                    if line.startswith(f"{fail_type} failures: "):
+                        fail_count_str = line.split(":")[1].strip()
+                        if fail_count_str == "NONE":
+                            continue
+
+                        error_msg_i = i + 1
+                        while error_msg_i < len(log_file_lines):
+                            raw_line = log_file_lines[error_msg_i].strip()
+                            if raw_line == "" or line_is_summary_table(
+                                raw_line
+                            ):
+                                break
+
+                            msg = transform_err_msg(
+                                log_file_lines[error_msg_i]
+                            )
+                            # handler iter earlier to avoid ugly if condition
+                            error_msg_i += 1
+
+                            if args.ignore_warnings and "Warning:" in msg:
+                                # literally how the original test case
+                                # filters warnings
+                                continue
+                            failed_runs[fail_type][boot_i][suspend_i].add(msg)
 
             if args.write_individual_files:
-                if not os.path.exists(args.write_directory):
-                    os.mkdir(args.write_directory)
-                with open(
-                    f"{args.write_directory}/{len(test_results) + 1}.txt", "w"
-                ) as f:
-                    f.write(f"{' BEGIN METADATA  ':*^80}\n\n")
-                    f.write(
-                        "\n".join(f"{k}: {v}" for k, v in curr_meta.items())
-                    )
-                    f.write(
-                        "\n\n"
-                        f"{' END OF METADATA, BEGIN ORIGINAL OUTPUT  ':*^80}"
-                        "\n\n"
-                    )
-                    f.write("\n".join(curr_result_lines))
-
-            test_results.append(curr_result_lines)
-            meta.append(curr_meta)
-
-        n_results = len(test_results)
-        print(
-            f"\nTotal results = {n_results}"
-            + (
-                f" {C.ok}COUNT OK!{C.end}"
-                if n_results == EXPECTED_NUM_RESULTS
-                else (
-                    f", {C.critical}but {EXPECTED_NUM_RESULTS} "
-                    f"was expected{C.end}"
+                print(
+                    f"Writing boot_{boot_i}_suspend_{suspend_i}.txt...",
+                    end="\r",
                 )
+                write_suspend_output(
+                    write_dir,
+                    boot_i,
+                    suspend_i,
+                    curr_meta,
+                    log_file_lines,
+                )
+
+    # done collecting, pretty print results
+    n_missing_runs = sum(map(len, missing_runs.values()))
+    n_failed_runs = sum(map(len, failed_runs.values()))
+
+    if n_missing_runs == 0:
+        print(
+            C.ok("[ OK ]"),
+            f"Found all {expected_num_results}",
+            f"expected log files in {filename}!",
+        )
+        if n_failed_runs == 0:
+            print(
+                C.ok("[ OK ]"),
+                f"No failures across {args.num_boots} boots",
+                f"and {args.num_suspends} suspends!",
+            )
+            return
+    else:
+        print(
+            C.critical(
+                "These log files are missing, "
+                + "DUT might have crashed during these jobs"
             )
         )
+        for boot_i, suspend_indicies in missing_runs.items():
+            print(f"- Reboot {boot_i}, suspend {str(suspend_indicies)}")
 
-        for fail_type, runs in failed_runs_by_type.items():
-            if len(runs) != 0:
-                if args.inverse_find:
-                    runs_without_failures = list(
-                        set(range(1, n_results + 1)).difference(runs)
-                    )
-                    print(
-                        f"Runs without {getattr(C, fail_type.lower())}"
-                        f"{fail_type}{C.end} failures:"
-                    )
-                    print(
-                        space
-                        + (f"\n{space}").join(
-                            textwrap.wrap(str(runs_without_failures))
-                        )
-                    )
-                    print(
-                        f"{space}- Success rate:",
-                        f"{len(runs_without_failures)}/{n_results}",
-                    )
-                else:
-                    print(
-                        f"Runs with {getattr(C, fail_type.lower())}"
-                        f"{fail_type}{C.end} failures:"
-                    )
-                    print(
-                        space + (f"\n{space}").join(textwrap.wrap(str(runs)))
-                    )
-                    print(f"{space}- Fail rate: {len(runs)}/{n_results}")
+    print(f"\n{C.gray(' Begin Parsed Output '.center(80, '-'))}")
+    print(C.gray(f"In {filename}\n"))
+
+    print_by_err(
+        group_by_err(failed_runs), actual_suspend_counts, args.num_suspends
+    )
+
+
+def main():
+    args = parse_args()
+    C.no_color = args.no_color
+
+    expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
+    print(
+        C.low("[ INFO ]"),
+        f"Expecting ({args.num_boots} boots * {args.num_suspends} suspends) = "
+        f"{expected_num_results} results",
+    )
+
+    if args.no_transform:
+        # idk why tox doesn't like this, this is super common
+        transform_err_msg: Callable[[str], str] = lambda msg: msg.strip()
+    else:
+        transform_err_msg = default_err_msg_transform
+
+    if not args.ignore_warnings:
+        print(
+            C.medium("[ WARN ]"),
+            "The test summary file might show less errors than this script.",
+        )
+        print(
+            C.medium("[ WARN ]"),
+            "Please double check since the original test case",
+            "has the --ignore-warning flag enabled.",
+        )
+        print()
+    else:
+        print(C.low("[ INFO ]"), "Ignoring fwts warnings")
+
+    for filename in args.filenames:
+        print_summary_for_1_submission(args, filename, transform_err_msg)
 
 
 if __name__ == "__main__":
