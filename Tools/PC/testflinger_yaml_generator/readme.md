@@ -156,12 +156,11 @@ python3 testflinger_yaml_generator.py \
   --provisionOnly
 ```
 
-## How do we test and provision cert lab's DUTs with this script
+## How to test and provision cert lab's DUTs with this script
 
 **Prepare these values:** CID, provision_image_name, manifest_json_file, test_plan_name.
 
-**Modify file:** `20_before_test` (if we want to add the staging ppa repo or
-something else), `99_end_test` (maybe copy some file in artifacts folder)
+**Modify these files if necessary:** `20_before_test` (for example if we want to add staging ppa repos), `99_end_test` (maybe copy some files into the artifacts folder)
 
 ```sh
 git clone --depth 1 --branch main git@github.com:canonical/ce-oem-dut-checkbox-configuration.git
@@ -186,7 +185,7 @@ TEST_STATUS=$(testflinger results $JOB_ID | jq -r .test_status)
 testflinger artifacts $JOB_ID
 ```
 
-## How do we test IOT devices with provision via this script
+## How to test IOT devices with provision via this script
 
 **Prepare these values**: manifest_json_file, checkbox_conf ,test_plan_name, checkbox_snap_install_script.
 
