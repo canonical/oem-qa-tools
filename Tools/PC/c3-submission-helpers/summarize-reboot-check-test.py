@@ -527,7 +527,7 @@ class FwtsPrinter(TestResultPrinter):
 
                             # remove the "(x 2)" counter
                             results[fail_type][run_index].append(
-                                re.sub(r"\(x \d+\)", "", msg).strip()
+                                re.sub(r"\(x \d+\)$", "", msg).strip()
                             )
 
 
