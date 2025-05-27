@@ -99,6 +99,7 @@ GroupedResultByIndex = dict[
 # value is index to actual message map
 BootType = Literal["warm", "cold"]
 TestType = Literal["fwts", "device comparison", "renderer", "service check"]
+StrFn = Callable[[str], str]
 
 
 class SubmissionTarReader:
@@ -232,14 +233,14 @@ class TestResultPrinter(abc.ABC):
     def _default_title_transform(self, fail_type: str) -> str:
         fail_type_lower = fail_type.lower().replace("_", " ")
         color = getattr(C, fail_type_lower, C.medium)
-        known_name_tranforms = {
+        known_name_transforms = {
             "pci": "PCI device difference",
             "usb": "USB device difference",
             "fwts": "FWTS",
         }
 
-        if fail_type_lower in known_name_tranforms:
-            capitalized = known_name_tranforms[fail_type_lower]
+        if fail_type_lower in known_name_transforms:
+            capitalized = known_name_transforms[fail_type_lower]
         else:
             capitalized = fail_type_lower.capitalize()
 
@@ -251,8 +252,8 @@ class TestResultPrinter(abc.ABC):
 
     def _default_print_by_err(
         self,
-        title_transform: Optional[Callable[[str], str]] = None,
-        err_msg_transform: Optional[Callable[[str], str]] = None,
+        title_transform: Optional[StrFn] = None,
+        err_msg_transform: Optional[StrFn] = None,
     ):
         """
         Prints the results from self.cold_results and self.warm_results
@@ -328,7 +329,7 @@ class TestResultPrinter(abc.ABC):
         Child classes should impl the main collection routine in this method
         - populate the self.cold_results and self.warm_results
         """
-        pass
+        raise NotImplementedError()
 
     def _group_by_err(
         self,
@@ -508,23 +509,26 @@ class FwtsPrinter(TestResultPrinter):
                         actual_messages = grouped_output[i + 1][1]
 
                         results[fail_type][run_index] = []
-                        for s in actual_messages:
-                            if s == "":
+                        for msg in actual_messages:
+                            if msg == "":
                                 continue
-                            if s == self.divider:
+                            if msg == self.divider:
                                 continue
                             if any(
-                                s.startswith(prefix)
+                                msg.startswith(prefix)
                                 for prefix in self.exclude_prefixes
                             ):
                                 continue
                             if any(
-                                s.endswith(suffix)
+                                msg.endswith(suffix)
                                 for suffix in self.exclude_suffixes
                             ):
                                 continue
 
-                            results[fail_type][run_index].append(s)
+                            # remove the "(x 2)" counter
+                            results[fail_type][run_index].append(
+                                re.sub(r"\(x \d+\)", "", msg).strip()
+                            )
 
 
 class DeviceComparisonPrinter(TestResultPrinter):
@@ -638,7 +642,7 @@ class RendererCheckPrinter(TestResultPrinter):
             "[ ERR ] systemd's graphical.target was not reached"
         )
         software_rendering_prefix = "[ ERR ] Software rendering detected"
-        # this generic prefix works becuase we immediately stop the test
+        # this generic prefix works because we immediately stop the test
         # once glmark2 errors out. If there're multiple glmark2 errors before
         # end of test, change this accordingly
         glmark2_err_prefix = "[ ERR ] glmark2"
@@ -695,7 +699,7 @@ def parse_args() -> Input:
         help="Only show the indices of the failed runs",
         dest="group_by_index",
         action="store_true",
-    )  # specify this to show only indicies
+    )  # specify this to show only indexes
     p.add_argument(
         "-v",
         "--verbose",
@@ -742,6 +746,8 @@ def main():
                 f"Expected {args.expected_n_runs} runs,",
                 f"but got {reader.boot_count}",
             )
+        else:
+            Log.ok(f"Found all {args.expected_n_runs} runs!")
 
         printer_classes: dict[TestType, type[TestResultPrinter]] = {
             klass.name: klass
