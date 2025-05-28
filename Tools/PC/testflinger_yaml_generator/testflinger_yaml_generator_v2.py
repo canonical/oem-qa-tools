@@ -641,7 +641,9 @@ if __name__ == "__main__":
     if os.path.splitext(args.output_file_name)[-1] in [".yaml", ".yml"]:
         TF_yaml_file_path = f"{args.output_folder}/{args.output_file_name}"
     else:
-        TF_yaml_file_path = f"{args.output_folder}/{args.output_file_name}.yaml"
+        TF_yaml_file_path = (
+            f"{args.output_folder}/{args.output_file_name}.yaml"
+        )
 
     builder = TFYamlBuilder(
         cid=args.CID,
