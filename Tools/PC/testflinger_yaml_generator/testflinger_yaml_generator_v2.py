@@ -431,6 +431,16 @@ class TFYamlBuilder:
         self.yaml_generator.yaml_update_field(setting_dict)
 
 
+def is_cid(raw: str) -> str:
+    pat = re.compile(r"\d{6}-\d{5}\b")
+    if not pat.fullmatch(raw):
+        # argparse looks for this exception
+        raise argparse.ArgumentTypeError(
+            "CID should look like 202408-12345 (6 digits, dash, 5 digits)"
+        )
+    return raw
+
+
 def parse_input_arg():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(
@@ -441,10 +451,12 @@ def parse_input_arg():
     req_args = parser.add_argument_group(
         "Required Parameters",
     )
-    req_args.add_argument("-c", "--CID", type=str, required=True, help="CID")
+    req_args.add_argument(
+        "-c", "--CID", type=is_cid, required=True, help="Canonical ID"
+    )
     req_args.add_argument(
         "-o",
-        "--outputFileName",
+        "--output-file-name",
         type=str,
         required=True,
         help="Set the output yaml file Name",
@@ -452,7 +464,7 @@ def parse_input_arg():
 
     opt_args = parser.add_argument_group("Optional Parameters")
     opt_args.add_argument(
-        "--outputFolder",
+        "--output-folder",
         type=str,
         default="./",
         help="Set the output folder path",
@@ -464,40 +476,40 @@ def parse_input_arg():
                           run checkbox test",
     )
     opt_args.add_argument(
-        "--testplan",
+        "--test-plan",
         type=str,
         default="",
         help="Set the checkbox test plan name. \
                           If didn't set this will not run checkbox test",
     )
     opt_args.add_argument(
-        "--excludeJobs",
+        "--exclude-jobs",
         type=str,
         default="",
         help='Set the exclude jobs pattern. \
                           ie".*memory/memory_stress_ng".',
     )
     opt_args.add_argument(
-        "--sessionDesc",
+        "--session-desc",
         type=str,
         default="CE-QA-PC_Test",
         help="Set the session description",
     )
     opt_args.add_argument(
-        "--checkboxType",
+        "--checkbox-type",
         choices=["deb", "snap"],
         default="deb",
         help="Set which checkbox type you need to \
                           install and test.",
     )
     opt_args.add_argument(
-        "--provisionType",
+        "--provision-type",
         choices=["distro", "url"],
         default="distro",
         help="Set the provision type",
     )
     opt_args.add_argument(
-        "--provisionImage",
+        "--provision-image",
         type=str,
         default="",
         help="The provision image. \
@@ -505,7 +517,7 @@ def parse_input_arg():
                           If didn't set this mean no provision",
     )
     opt_args.add_argument(
-        "--provisionToken",
+        "--provision-token",
         default="",
         type=str,
         help='Optional file with username and token \
@@ -516,7 +528,7 @@ def parse_input_arg():
                           token: $JENKINS_API_TOKEN"',
     )
     opt_args.add_argument(
-        "--provisionUserData",
+        "--provision-user-data",
         default="",
         type=str,
         help="user-data file for autoinstall and cloud-init \
@@ -525,27 +537,27 @@ def parse_input_arg():
                           (i.e. 24.04 image)",
     )
     opt_args.add_argument(
-        "--provisionAuthKeys",
+        "--provision-auth-keys",
         default="",
         type=str,
         help="ssh authorized_keys file to add in \
                           provisioned system",
     )
     opt_args.add_argument(
-        "--provisionOnly",
+        "--provision-only",
         action="store_true",
         help="Run only provisioning without tests. \
                           Removes test_data before generating the yaml.",
     )
     opt_args.add_argument(
-        "--globalTimeout",
+        "--global-timeout",
         type=int,
         default=43200,
         help="Set the testflinger's global timeout. \
                           Max:43200",
     )
     opt_args.add_argument(
-        "--outputTimeout",
+        "--output-timeout",
         type=int,
         default=9000,
         help="Set the output timeout if the DUT didn't \
@@ -556,48 +568,50 @@ def parse_input_arg():
 
     opt_launcher = parser.add_argument_group("Launcher section  options")
     opt_launcher.add_argument(
-        "--manifestJson",
+        "--manifest-json",
         type=str,
         default=f"{script_dir}/template/manifest.json",
         help="Set the manifest json file to build \
                               the launcher.",
     )
     opt_launcher.add_argument(
-        "--needManifest", action="store_true", help="Set if need the Manifest."
+        "--need-manifest",
+        action="store_true",
+        help="Set if need the Manifest.",
     )
     opt_launcher.add_argument(
-        "--no-needManifest", dest="needManifest", action="store_false"
+        "--no-need-manifest", dest="need_manifest", action="store_false"
     )
-    opt_launcher.set_defaults(needManifest=True)
+    opt_launcher.set_defaults(need_manifest=True)
     opt_launcher.add_argument(
-        "--checkboxConf",
+        "--checkbox-conf",
         type=str,
         default=f"{script_dir}/template/checkbox.conf",
         help="Set the checkbox configuration file to \
                               build the launcher.",
     )
     opt_launcher.add_argument(
-        "--LauncherTemplate",
+        "--launcher-template",
         type=str,
         default=(f"{script_dir}/template/launcher_config/"),
         help="Set the launcher template folder",
     )
     opt_tfyaml = parser.add_argument_group("Testflinger yaml options")
     opt_tfyaml.add_argument(
-        "--LpID",
+        "--launchpad-id",
         type=str,
         default="",
         help="If you want to reserve the DUT, please \
                             input your Launchpad ID",
     )
     opt_tfyaml.add_argument(
-        "--reserveTime",
+        "--reserve-time",
         type=int,
         default=1200,
         help="Set the timeout (sec) for reserve.",
     )
     opt_tfyaml.add_argument(
-        "--TFYamlTemplate",
+        "--tf-yaml-template",
         type=str,
         default=f"{script_dir}/template/template.yaml",
         help="Set the testflinger template yaml file",
@@ -605,7 +619,7 @@ def parse_input_arg():
 
     opt_shell = parser.add_argument_group("Test command in testflinger yaml")
     opt_shell.add_argument(
-        "--binFolder",
+        "--bin-folder",
         type=str,
         default=f"{script_dir}/template/shell_scripts/",
         help="Set the testflinger test command folder",
@@ -619,52 +633,54 @@ if __name__ == "__main__":
     args = parse_input_arg()
 
     # do a simple bool conversion instead of testing each condition + default
-    reserve = bool(args.LpID)
-    provision = bool(args.provisionImage)
-    runtest = bool(args.testplan)
-    dist_upgrade = bool(args.dist_upgrade)
+    is_reserve = bool(args.launchpad_id)
+    is_provision = bool(args.provision_image)
+    is_run_test = bool(args.test_plan)
+    is_dist_upgrade = bool(args.dist_upgrade)
 
-    if os.path.splitext(args.outputFileName)[-1] in [".yaml", ".yml"]:
-        TF_yaml_file_path = f"{args.outputFolder}/{args.outputFileName}"
+    if os.path.splitext(args.output_file_name)[-1] in [".yaml", ".yml"]:
+        TF_yaml_file_path = f"{args.output_folder}/{args.output_file_name}"
     else:
-        TF_yaml_file_path = f"{args.outputFolder}/{args.outputFileName}.yaml"
+        TF_yaml_file_path = f"{args.output_folder}/{args.output_file_name}.yaml"
 
     builder = TFYamlBuilder(
         cid=args.CID,
-        default_yaml_file_path=args.TFYamlTemplate,
-        global_timeout=args.globalTimeout,
-        output_timeout=args.outputTimeout,
-        template_bin_folder=args.binFolder,
-        launcher_temp_folder=args.LauncherTemplate,
-        is_run_test=runtest,
-        need_manifest=args.needManifest,
-        is_dist_upgrade=dist_upgrade,
+        default_yaml_file_path=args.tf_yaml_template,
+        global_timeout=args.global_timeout,
+        output_timeout=args.output_timeout,
+        template_bin_folder=args.bin_folder,
+        launcher_temp_folder=args.launcher_template,
+        is_run_test=is_run_test,
+        need_manifest=args.need_manifest,
+        is_dist_upgrade=is_dist_upgrade,
     )
 
     builder.provision_setting(
-        is_provision=provision,
-        image=args.provisionImage,
-        provision_type=args.provisionType,
-        provision_token=args.provisionToken,
-        provision_user_data=args.provisionUserData,
-        provision_auth_keys=args.provisionAuthKeys,
+        is_provision=is_provision,
+        image=args.provision_image,
+        provision_type=args.provision_type,
+        provision_token=args.provision_token,
+        provision_user_data=args.provision_user_data,
+        provision_auth_keys=args.provision_auth_keys,
     )
-    if args.provisionOnly:
+    if args.provision_only:
         # remove test and reserve stages that were added by default
         builder.yaml_generator.yaml_remove_field("test_data")
         builder.yaml_generator.yaml_remove_field("reserve_data")
     else:
         builder.reserve_setting(
-            is_reserve=reserve, lp_username=args.LpID, timeout=args.reserveTime
+            is_reserve=is_reserve,
+            lp_username=args.launchpad_id,
+            timeout=args.reserve_time,
         )
 
         builder.test_cmd_setting(
-            manifest_json_path=args.manifestJson,
-            checkbox_conf_path=args.checkboxConf,
-            test_plan_name=args.testplan,
-            exclude_job_pattern_str=args.excludeJobs,
-            checkbox_type=args.checkboxType,
-            session_desc=args.sessionDesc,
+            manifest_json_path=args.manifest_json,
+            checkbox_conf_path=args.checkbox_conf,
+            test_plan_name=args.test_plan,
+            exclude_job_pattern_str=args.exclude_jobs,
+            checkbox_type=args.checkbox_type,
+            session_desc=args.session_desc,
         )
 
     builder.yaml_generator.generate_yaml_file(file_path=TF_yaml_file_path)
