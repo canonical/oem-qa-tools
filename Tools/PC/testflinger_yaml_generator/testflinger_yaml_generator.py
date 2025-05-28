@@ -329,7 +329,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
         return test_cmd
 
 
-class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
+class TFYamlBuilder:
     def __init__(
         self,
         cid: str,
@@ -342,15 +342,19 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         need_manifest=True,
         is_dist_upgrade=False,
     ):
-        YamlGenerator.__init__(
-            self, default_yaml_file_path=default_yaml_file_path
+        self.yaml_generator = YamlGenerator(
+            default_yaml_file_path=default_yaml_file_path
         )
-        TestCommandGenerator.__init__(
-            self, template_bin_folder, launcher_temp_folder
+        self.test_command_generator = TestCommandGenerator(
+            template_bin_folder, launcher_temp_folder
         )
-        self.yaml_update_field({"global_timeout": global_timeout})
-        self.yaml_update_field({"output_timeout": output_timeout})
-        self.yaml_update_field({"job_queue": cid})
+        self.yaml_generator.yaml_update_field(
+            {"global_timeout": global_timeout}
+        )
+        self.yaml_generator.yaml_update_field(
+            {"output_timeout": output_timeout}
+        )
+        self.yaml_generator.yaml_update_field({"job_queue": cid})
         self.is_runtest = is_run_test
         self.need_manifest = need_manifest
         self.is_dist_upgrade = is_dist_upgrade
@@ -365,14 +369,14 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         provision_user_data="",
     ):
         if not is_provision:
-            self.yaml_remove_field("provision_data")
+            self.yaml_generator.yaml_remove_field("provision_data")
             return
         setting_dict: dict[str, dict[str, Any]] = {
             "provision_data": {provision_type: image}
         }
 
         # additional parameters if use oem_autoinstall connector
-        attachments = []
+        attachments: list[dict[str, str]] = []
         if provision_user_data:
             setting_dict["provision_data"]["user_data"] = provision_user_data
             attachments.append({"local": provision_user_data})
@@ -387,11 +391,11 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         if attachments:
             setting_dict["provision_data"]["attachments"] = attachments
 
-        self.yaml_update_field(setting_dict)
+        self.yaml_generator.yaml_update_field(setting_dict)
 
-    def reserve_setting(self, is_reserve, lp_username, timeout=120):
+    def reserve_setting(self, is_reserve: bool, lp_username: str, timeout=120):
         if not is_reserve:
-            self.yaml_remove_field("reserve_data")
+            self.yaml_generator.yaml_remove_field("reserve_data")
             return
 
         setting_dict = {
@@ -401,7 +405,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
             }
         }
 
-        self.yaml_update_field(setting_dict)
+        self.yaml_generator.yaml_update_field(setting_dict)
 
     def test_cmd_setting(
         self,
@@ -412,7 +416,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
         checkbox_type: Literal["deb", "snap"] = "deb",
         session_desc="CE-QA-PC_Test",
     ):
-        test_cmds_str = self.generate_test_cmd(
+        test_cmds_str = self.test_command_generator.generate_test_cmd(
             manifest_json_path,
             checkbox_conf_path,
             test_plan_name,
@@ -424,7 +428,7 @@ class TFYamlBuilder(YamlGenerator, TestCommandGenerator):
             session_desc,
         )
         setting_dict = {"test_data": {"test_cmds": test_cmds_str}}
-        self.yaml_update_field(setting_dict)
+        self.yaml_generator.yaml_update_field(setting_dict)
 
 
 def parse_input_arg():
@@ -647,8 +651,8 @@ if __name__ == "__main__":
     )
     if args.provisionOnly:
         # remove test and reserve stages that were added by default
-        builder.yaml_remove_field("test_data")
-        builder.yaml_remove_field("reserve_data")
+        builder.yaml_generator.yaml_remove_field("test_data")
+        builder.yaml_generator.yaml_remove_field("reserve_data")
     else:
         builder.reserve_setting(
             is_reserve=reserve, lp_username=args.LpID, timeout=args.reserveTime
@@ -663,4 +667,4 @@ if __name__ == "__main__":
             session_desc=args.sessionDesc,
         )
 
-    builder.generate_yaml_file(file_path=TF_yaml_file_path)
+    builder.yaml_generator.generate_yaml_file(file_path=TF_yaml_file_path)
