@@ -156,6 +156,36 @@ python3 testflinger_yaml_generator.py \
   --provisionOnly
 ```
 
+## Helper functions exposed by 00_initial
+
+The bash script `template/shell_scripts/00_initial` exposes these helper functions that you can use if you need to add commands:
+
+```
+_put(local_path, remote_path)
+```
+-  Uploads a local file to the DUT. Both arguments are plain paths. What "local" refers to will depend on where the scripts are eventually executed (e.g. on a Jenkins host)
+
+```
+_get(remote_path, local_path)
+```
+- The opposite of `_put`; downloads a file from the DUT to local
+
+```
+_run(command, ...args)
+```
+- Runs a command on the dut. The arguments are just normal shell syntax
+
+```
+_run_in_bg(command, ...args)
+```
+- Adds the `-f` flag to ssh. See `man ssh` for details.
+
+```
+wait_for_ssh()
+```
+- Keep trying to connect to the DUT for 40 times. Each attempt will wait 120 seconds for the DUT to respond. 
+
+
 ## How to test and provision cert lab's DUTs with this script
 
 **Prepare these values:** CID, provision_image_name, manifest_json_file, test_plan_name.
