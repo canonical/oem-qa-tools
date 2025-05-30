@@ -11,10 +11,13 @@ import yaml
 import subprocess as sp
 import warnings
 import shutil
+from pathlib import Path
 
 COMMAND_TIMEOUT = 5
 
-StrOrPath = str | os.PathLike[str]
+# for these literals, the 1st value is used as default in the arg parser
+CheckboxType = Literal["deb", "snap"]
+ProvisionType = Literal["distro", "url"]
 
 
 def shellcheck_for_cmd_str(cmd_str: str, shell_name="bash") -> bool:
@@ -64,7 +67,7 @@ class ConfigOperation:
 
     def merge_with_file(
         self,
-        file_path: StrOrPath,
+        file_path: Path,
         import_file_type="conf",
         json_conf_section_name="manifest",
     ):
@@ -115,13 +118,13 @@ class ConfigOperation:
 
     def generate_config_file(
         self,
-        file_path: StrOrPath = "./final_launcher",
-        execute_path="/usr/bin/env checkbox-cli",
+        file_path=Path("./final_launcher"),
+        checkbox_bin="/usr/bin/env checkbox-cli",
     ):
         if os.path.exists(file_path):
             os.remove(file_path)
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write(f"#!{execute_path}\n")
+            file.write(f"#!{checkbox_bin}\n")
             self.config_object.write(file)
         with open(file_path, "r+", encoding="utf-8") as file:
             file.seek(0, os.SEEK_END)
@@ -135,7 +138,9 @@ class ConfigOperation:
 
 
 class YamlGenerator:
-    def __init__(self, default_yaml_file_path="./template/template.yaml"):
+    def __init__(
+        self, default_yaml_file_path=Path("./template/template.yaml")
+    ):
         if os.path.exists(default_yaml_file_path):
             with open(default_yaml_file_path, "r", encoding="utf-8") as file:
                 self.yaml_dict = yaml.load(file, Loader=yaml.SafeLoader)
@@ -149,8 +154,8 @@ class YamlGenerator:
         if field_name in self.yaml_dict:
             self.yaml_dict.pop(field_name)
 
-    def generate_yaml_file(self, file_path="./final_testflinger.yaml"):
-        def str_presenter(
+    def generate_yaml_file(self, file_path=Path("./final_testflinger.yaml")):
+        def str_representer(
             dumper: yaml.representer.SafeRepresenter,
             data: str,
         ):
@@ -160,7 +165,7 @@ class YamlGenerator:
                 )
             return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
-        yaml.representer.SafeRepresenter.add_representer(str, str_presenter)
+        yaml.representer.SafeRepresenter.add_representer(str, str_representer)
         if os.path.exists(file_path):
             os.remove(file_path)
         with open(file_path, "w", encoding="utf-8") as file:
@@ -168,7 +173,7 @@ class YamlGenerator:
 
 
 class CheckboxLauncherBuilder(ConfigOperation):
-    def __init__(self, template_folder="./template/launcher_config"):
+    def __init__(self, template_folder=Path("./template/launcher_config")):
         super().__init__(delimiters=("=",), optionform=str)
         launcher_template_list = glob.glob(f"{template_folder}/*.conf")
 
@@ -179,7 +184,7 @@ class CheckboxLauncherBuilder(ConfigOperation):
             )
 
         for file in launcher_template_list:
-            self.merge_with_file(file, "conf")
+            self.merge_with_file(Path(file), "conf")
 
     def merge_manifest_json(self, json_file_path):
         if os.path.exists(json_file_path):
@@ -208,27 +213,26 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
 
     def __init__(
         self,
-        template_bin_folder="./template/shell_scripts/",
-        launcher_temp_folder="./template/launcher_config",
+        template_bin_folder=Path("./template/shell_scripts/"),
+        launcher_temp_folder=Path("./template/launcher_config"),
     ):
         super().__init__(template_folder=launcher_temp_folder)
 
         self.bin_folder = template_bin_folder
-        self.shell_file_list = [
-            f"{template_bin_folder}/{f}"
-            for f in os.listdir(f"{self.bin_folder}/")
+        self.shell_file_list = sorted(
+            Path(template_bin_folder) / f
+            for f in os.listdir(self.bin_folder)
             if re.search(r"^(\d{2}).*", f)  # starts with 2 digits
-        ]
-        self.shell_file_list.sort()
+        )
 
     def build_launcher(
         self,
-        manifest_json_path: StrOrPath,
-        checkbox_conf_path: StrOrPath,
+        manifest_json_path: Path,
+        checkbox_conf_path: Path,
         test_plan_name: str,
         exclude_job_pattern_str: str,  # this is for checkbox to consume
-        file_path="./final_launcher",
-        execute_path="/usr/bin/env checkbox-cli",
+        file_path=Path("./final_launcher"),
+        checkbox_bin="/usr/bin/env checkbox-cli",
         need_manifest=True,
     ):
         self.set_test_plan(test_plan_name)
@@ -239,25 +243,21 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
 
         self.merge_checkbox_conf(conf_path=checkbox_conf_path)
         self.generate_config_file(
-            file_path=file_path, execute_path=execute_path
+            file_path=file_path, checkbox_bin=checkbox_bin
         )
 
     def generate_test_cmd(
         self,
-        manifest_json_path: StrOrPath,
-        checkbox_conf_path: StrOrPath,
+        manifest_json_path: Path,
+        checkbox_conf_path: Path,
         test_plan_name: str,
         exclude_job_pattern_str: str,
         is_dist_upgrade=False,
-        checkbox_type: Literal["deb", "snap"] = "deb",
+        checkbox_type: CheckboxType = "deb",
         is_runtest=True,
         need_manifest=True,
         session_desc=default_session_desc,
     ):
-        if checkbox_type not in ("deb", "snap"):
-            raise ValueError(
-                f"Checkbox type is not valid. Expected one of: {checkbox_type}"
-            )
         # the lines in the final test_cmd field
         command_strings = []  # type: list[str]
         for shell_file in self.shell_file_list:
@@ -275,7 +275,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                 continue
 
             if basename == "90_start_test":
-                launcher_file_path = "final_launcher"
+                launcher_file_path = Path("./final_launcher")
                 self.build_launcher(
                     manifest_json_path,
                     checkbox_conf_path,
@@ -311,9 +311,9 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
                         )
 
                     for content_line in content.splitlines():
-                        clean = content_line.strip("\n")
-                        if clean:
-                            command_strings.append(clean)
+                        clean_line = content_line.strip("\n")
+                        if clean_line:
+                            command_strings.append(clean_line)
 
         # test_cmd field
         test_cmd = "\n".join(command_strings)
@@ -322,7 +322,7 @@ class TestCommandGenerator(CheckboxLauncherBuilder):
         if not shellcheck_ok:
             warnings.warn(
                 "Shellcheck failed after combining the files under "
-                + self.bin_folder,
+                + str(self.bin_folder),
                 Warning,
             )
 
@@ -333,11 +333,11 @@ class TFYamlBuilder:
     def __init__(
         self,
         cid: str,
-        default_yaml_file_path="./template/template.yaml",
+        default_yaml_file_path=Path("./template/template.yaml"),
         global_timeout=43200,  # seconds
         output_timeout=3600,  # seconds
-        template_bin_folder="./template/shell_scripts/",
-        launcher_temp_folder="./template/launcher_config/",
+        template_bin_folder=Path("./template/shell_scripts/"),
+        launcher_temp_folder=Path("./template/launcher_config/"),
         is_run_test=True,
         need_manifest=True,
         is_dist_upgrade=False,
@@ -398,22 +398,22 @@ class TFYamlBuilder:
             self.yaml_generator.yaml_remove_field("reserve_data")
             return
 
-        setting_dict = {
-            "reserve_data": {
-                "timeout": timeout,
-                "ssh_keys": [f"lp:{lp_username}"],
+        self.yaml_generator.yaml_update_field(
+            {
+                "reserve_data": {
+                    "timeout": timeout,
+                    "ssh_keys": [f"lp:{lp_username}"],
+                }
             }
-        }
-
-        self.yaml_generator.yaml_update_field(setting_dict)
+        )
 
     def test_cmd_setting(
         self,
-        manifest_json_path: StrOrPath = "./template/manifest.json",
-        checkbox_conf_path: StrOrPath = "./template/checkbox.conf",
+        manifest_json_path=Path("./template/manifest.json"),
+        checkbox_conf_path=Path("./template/checkbox.conf"),
         test_plan_name="client-cert-desktop-20-04-automated",
         exclude_job_pattern_str="",  # this is directly passed to checkbox
-        checkbox_type: Literal["deb", "snap"] = "deb",
+        checkbox_type: CheckboxType = "deb",
         session_desc="CE-QA-PC_Test",
     ):
         test_cmds_str = self.test_command_generator.generate_test_cmd(
@@ -427,8 +427,9 @@ class TFYamlBuilder:
             self.need_manifest,
             session_desc,
         )
-        setting_dict = {"test_data": {"test_cmds": test_cmds_str}}
-        self.yaml_generator.yaml_update_field(setting_dict)
+        self.yaml_generator.yaml_update_field(
+            {"test_data": {"test_cmds": test_cmds_str}}
+        )
 
 
 def is_cid(raw: str) -> str:
@@ -441,7 +442,35 @@ def is_cid(raw: str) -> str:
     return raw
 
 
-def parse_input_arg():
+def directory_exists(p: str, required_files: list[str] = []) -> str:
+    path = Path(p)
+    if not os.path.exists(path):
+        raise argparse.ArgumentTypeError(f"{p} is not a valid path")
+    for f in required_files:
+        if not os.path.exists(path / f):
+            raise argparse.ArgumentTypeError(
+                f"{path / f} is a required file but doesn't exist"
+            )
+    return str(path)
+
+
+def file_exists(p: str, null_ok=False) -> str:
+    """Checks if the file exists
+
+    :param p: path to the file
+    :param null_ok: whether to accept an empty string,
+        - specify True when the path is optional
+    :raises argparse.ArgumentTypeError: error for argparse to consume
+    :return: cleaned up path
+    """
+    if null_ok and p == "":
+        return p
+    if not os.path.isfile(p):
+        raise argparse.ArgumentTypeError(f"{p} is not a valid file")
+    return str(Path(p))
+
+
+def parse_args():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(
         description="Testflinger yaml file generator",
@@ -459,35 +488,34 @@ def parse_input_arg():
         "--output-file-name",
         type=str,
         required=True,
-        help="Set the output yaml file Name",
+        help="Name of the output file",
     )
 
     opt_args = parser.add_argument_group("Optional Parameters")
     opt_args.add_argument(
         "--output-folder",
-        type=str,
-        default="./",
+        type=directory_exists,
+        default=script_dir,
         help="Set the output folder path",
     )
     opt_args.add_argument(
         "--dist-upgrade",
         action="store_true",
-        help="Set to allow the dist-upgrade before \
-                          run checkbox test",
+        help="Run dist-upgrade before checkbox tests",
     )
     opt_args.add_argument(
         "--test-plan",
         type=str,
-        default="",
-        help="Set the checkbox test plan name. \
-                          If didn't set this will not run checkbox test",
+        help=(
+            "The checkbox test plan to run. "
+            "If unspecified, not checkbox tests will be run"
+        ),
     )
     opt_args.add_argument(
         "--exclude-jobs",
         type=str,
         default="",
-        help='Set the exclude jobs pattern. \
-                          ie".*memory/memory_stress_ng".',
+        help='Regex exclude jobs pattern like ".*memory/memory_stress_ng"',
     )
     opt_args.add_argument(
         "--session-desc",
@@ -497,29 +525,32 @@ def parse_input_arg():
     )
     opt_args.add_argument(
         "--checkbox-type",
-        choices=["deb", "snap"],
-        default="deb",
-        help="Set which checkbox type you need to \
-                          install and test.",
+        # __args__ is tuple of values between CheckboxType's brackets
+        # in this case ("deb", "snap")
+        choices=CheckboxType.__args__,
+        default=CheckboxType.__args__[0],
+        help="The type of checkbox you need to install",
     )
     opt_args.add_argument(
         "--provision-type",
-        choices=["distro", "url"],
-        default="distro",
+        choices=ProvisionType.__args__,
+        default=ProvisionType.__args__[0],
         help="Set the provision type",
     )
     opt_args.add_argument(
         "--provision-image",
         type=str,
         default="",
-        help="The provision image. \
-                          ie, desktop-22-04-2-uefi. \
-                          If didn't set this mean no provision",
+        help=(
+            'The provision image name/url like "desktop-22-04-2-uefi"'
+            "If unspecified, don't provision"
+        ),
     )
     opt_args.add_argument(
         "--provision-token",
         default="",
-        type=str,
+        required=False,
+        type=lambda x: file_exists(x, True),
         help='Optional file with username and token \
                           when image URL requires authentication \
                           (i.e Jenkins artifact). This file must be \
@@ -530,89 +561,93 @@ def parse_input_arg():
     opt_args.add_argument(
         "--provision-user-data",
         default="",
-        type=str,
-        help="user-data file for autoinstall and cloud-init \
-                          provisioning. This argument is a MUST required \
-                          if deploy the image using the autoinstall image \
-                          (i.e. 24.04 image)",
+        type=lambda x: file_exists(x, True),
+        help=(
+            "user-data file for autoinstall and cloud-init "
+            "provisioning. This argument is REQUIRED "
+            "if deploying an autoinstall image "
+            "(i.e. 24.04 image)"
+        ),
     )
     opt_args.add_argument(
         "--provision-auth-keys",
         default="",
-        type=str,
-        help="ssh authorized_keys file to add in \
-                          provisioned system",
+        type=lambda x: file_exists(x, True),
+        help="ssh authorized_keys file to add in provisioned system",
     )
     opt_args.add_argument(
         "--provision-only",
         action="store_true",
-        help="Run only provisioning without tests. \
-                          Removes test_data before generating the yaml.",
+        help=(
+            "Run only provisioning without tests. "
+            "Removes test_data before generating the yaml."
+        ),
     )
     opt_args.add_argument(
         "--global-timeout",
         type=int,
         default=43200,
-        help="Set the testflinger's global timeout. \
-                          Max:43200",
+        help="Testflinger's global timeout in seconds",
     )
     opt_args.add_argument(
         "--output-timeout",
         type=int,
         default=9000,
-        help="Set the output timeout if the DUT didn't \
-                          response to server, it will be forced closed \
-                          this job. It should be set under the global \
-                          timeout.",
+        help=(
+            "Testflinger's output timeout if the DUT didn't "
+            "respond to server, it will be forced closed "
+            "this job. It should be set under the global "
+            "timeout."
+        ),
     )
 
-    opt_launcher = parser.add_argument_group("Launcher section  options")
-    opt_launcher.add_argument(
+    opt_launcher = parser.add_argument_group("Launcher options")
+
+    manifest_group = opt_launcher.add_mutually_exclusive_group()
+    manifest_group.add_argument(
         "--manifest-json",
-        type=str,
+        type=file_exists,
         default=f"{script_dir}/template/manifest.json",
-        help="Set the manifest json file to build \
-                              the launcher.",
+        help="The manifest.json file to build the checkbox launcher",
     )
-    opt_launcher.add_argument(
-        "--need-manifest",
-        action="store_true",
-        help="Set if need the Manifest.",
-    )
-    opt_launcher.add_argument(
-        "--no-need-manifest", dest="need_manifest", action="store_false"
+    manifest_group.add_argument(
+        "--no-need-manifest",
+        dest="need_manifest",
+        action="store_false",
+        help=(
+            "Specify this flag if you are not using a manifest file. "
+            "Useful if your manifest values are merged with checkbox.conf"
+        ),
     )
     opt_launcher.set_defaults(need_manifest=True)
     opt_launcher.add_argument(
         "--checkbox-conf",
-        type=str,
+        type=file_exists,
         default=f"{script_dir}/template/checkbox.conf",
-        help="Set the checkbox configuration file to \
-                              build the launcher.",
+        help="Set the checkbox configuration file to build the launcher.",
     )
     opt_launcher.add_argument(
         "--launcher-template",
-        type=str,
-        default=(f"{script_dir}/template/launcher_config/"),
+        type=directory_exists,
+        default=f"{script_dir}/template/launcher_config/",
         help="Set the launcher template folder",
     )
-    opt_tfyaml = parser.add_argument_group("Testflinger yaml options")
-    opt_tfyaml.add_argument(
+    opt_tf_yaml = parser.add_argument_group("Testflinger yaml options")
+    opt_tf_yaml.add_argument(
         "--launchpad-id",
         type=str,
         default="",
-        help="If you want to reserve the DUT, please \
-                            input your Launchpad ID",
+        help="A launchpad ID is required for reserving the machine",
     )
-    opt_tfyaml.add_argument(
+    opt_tf_yaml.add_argument(
         "--reserve-time",
         type=int,
         default=1200,
-        help="Set the timeout (sec) for reserve.",
+        help="Number of seconds to reserve the machine",
     )
-    opt_tfyaml.add_argument(
+    opt_tf_yaml.add_argument(
         "--tf-yaml-template",
-        type=str,
+        type=file_exists,
         default=f"{script_dir}/template/template.yaml",
         help="Set the testflinger template yaml file",
     )
@@ -620,17 +655,16 @@ def parse_input_arg():
     opt_shell = parser.add_argument_group("Test command in testflinger yaml")
     opt_shell.add_argument(
         "--bin-folder",
-        type=str,
+        type=directory_exists,
         default=f"{script_dir}/template/shell_scripts/",
         help="Set the testflinger test command folder",
     )
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    args = parse_input_arg()
+    args = parse_args()
 
     # do a simple bool conversion instead of testing each condition + default
     is_reserve = bool(args.launchpad_id)
@@ -638,11 +672,13 @@ if __name__ == "__main__":
     is_run_test = bool(args.test_plan)
     is_dist_upgrade = bool(args.dist_upgrade)
 
-    if os.path.splitext(args.output_file_name)[-1] in [".yaml", ".yml"]:
-        TF_yaml_file_path = f"{args.output_folder}/{args.output_file_name}"
+    if os.path.splitext(args.output_file_name)[1] in (".yaml", ".yml"):
+        tf_yaml_file_path = Path(args.output_folder) / Path(
+            args.output_file_name
+        )
     else:
-        TF_yaml_file_path = (
-            f"{args.output_folder}/{args.output_file_name}.yaml"
+        tf_yaml_file_path = Path(args.output_folder) / Path(
+            f"{args.output_file_name}.yaml"
         )
 
     builder = TFYamlBuilder(
@@ -685,4 +721,4 @@ if __name__ == "__main__":
             session_desc=args.session_desc,
         )
 
-    builder.yaml_generator.generate_yaml_file(file_path=TF_yaml_file_path)
+    builder.yaml_generator.generate_yaml_file(file_path=tf_yaml_file_path)
