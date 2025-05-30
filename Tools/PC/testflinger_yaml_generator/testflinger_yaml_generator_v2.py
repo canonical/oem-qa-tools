@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
-from configparser import ConfigParser
-import os
-import re
+import argparse
 import glob
 import json
-import argparse
-from typing import Any, Literal
-import yaml
+import os
+import re
+import shutil
 import subprocess as sp
 import warnings
-import shutil
+from configparser import ConfigParser
 from pathlib import Path
+from typing import Any, Literal
+
+import yaml
 
 COMMAND_TIMEOUT = 5
 
