@@ -6,7 +6,10 @@ submission files more friendly for humans.
 ## `parse-suspend-30-logs.py`
 
 This file helps break down the `com.canonical.certification__
-stress-tests_suspend-30-cycles-with-reboot-3-log-attach` to a more human friendly format.
+stress-tests_suspend-30-cycles-with-reboot-3-log-attach`
+to a more human friendly format.
+
+<!-- markdownlint-disable MD013 -->
 
 ```plaintext
 usage: parse-suspend-30-logs.py [-h] [-s] [-m] [-w] [-d WRITE_DIR] [-v]
@@ -49,6 +52,8 @@ options:
 
 ```
 
+<!-- markdownlint-enable MD013 -->
+
 Examples:
 
 - ```bash
@@ -77,7 +82,8 @@ Examples:
        -d path/to/output/dir
   ```
 
-  Specify a top level output directory of where the individual files will be written to.
+  Specify a top level output directory of
+  where the individual files will be written to.
   If this directory doesn't exist, the script will try to create it.
 
 ## `summarize_reboot_check_test.py`
@@ -123,4 +129,6 @@ python3 summarize_reboot_check_test.py /path/to/stress/test/submission.tar.xz
 
 ## Multiple input files
 
-Both scripts accept multiple input files. For now they just loop through them as if the command was called for each individual file.
+Both scripts accept multiple input files.
+For now they just loop through them as if
+the command was called for each individual file.
