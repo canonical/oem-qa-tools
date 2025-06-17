@@ -32,16 +32,19 @@ if __name__ == "__main__":
     journal_config["Journal"]["SystemMaxFiles"] = "200"
     journal_config["Journal"]["SystemMaxUse"] = "10G"
 
-    ok = input(
-        "After this change, journalctl will save at most "
-        + journal_config["Journal"]["SystemMaxFiles"]
-        + " entries and use at most "
-        + journal_config["Journal"]["SystemMaxUse"]
-        + " of space. "
-        + "Continue? [y/n] "
+    ok = (
+        input(
+            "After this change, journalctl will save at most "
+            + journal_config["Journal"]["SystemMaxFiles"]
+            + " entries and use at most "
+            + journal_config["Journal"]["SystemMaxUse"]
+            + " of space. "
+            + "Continue? [y/n] "
+        )
+        == "y"
     )
 
-    if ok != "y":
+    if not ok:
         print("Exiting.")
         exit(1)
 
