@@ -302,6 +302,7 @@ def default_err_msg_transform(msg: str) -> str:
 
     known_prefixes = [
         "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase",
+        "s3: Unexpected: s2idle much longer than expected",
         (
             "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec "
             + "to increase"
