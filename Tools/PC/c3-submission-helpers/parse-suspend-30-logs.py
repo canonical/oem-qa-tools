@@ -302,6 +302,7 @@ def default_err_msg_transform(msg: str) -> str:
 
     known_prefixes = [
         "s3: Expected /sys/power/suspend_stats/total_hw_sleep to increase",
+        "s3: Unexpected: s2idle much longer than expected",
         (
             "s3: Expected /sys/kernel/debug/pmc_core/slp_s0_residency_usec "
             + "to increase"
@@ -580,7 +581,10 @@ def main():
 
     if args.no_transform:
         # idk why tox doesn't like this, this is super common
-        transform_err_msg: Callable[[str], str] = lambda msg: msg.strip()
+        # transform_err_msg: Callable[[str], str] = lambda msg: msg.strip()
+        def transform_err_msg(msg: str) -> str:
+            return msg.strip()
+
     else:
         transform_err_msg = default_err_msg_transform
 
