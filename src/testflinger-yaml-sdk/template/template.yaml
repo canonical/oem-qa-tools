@@ -1,0 +1,16 @@
+job_queue: CID
+global_timeout: 43200 
+output_timeout: 7500
+provision_data:
+  #no push data is noprovision status
+  #url: http://10.102.196.9/somerville/Platforms/jellyfish-quilladin/X73_A01/dell-bto-jammy-jellyfish-quilladin-X73-20230411-18_A01.iso
+  distro: desktop-22-04-2-uefi
+test_data:
+  test_cmds: |
+    ssh -t ubuntu@$DEVICE_IP "lsb_release -a"
+    ssh -t echo "12345"
+reserve_data:
+  timeout: 120
+  # def how long you want to reserve the DUT after the test_cmds finish
+  ssh_keys:
+    - lp:LP_username
