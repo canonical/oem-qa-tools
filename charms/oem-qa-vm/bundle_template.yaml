@@ -1,6 +1,0 @@
-applications:
-  app-name:
-    charm: ./oem-qa-vm_ubuntu-22.04-amd64.charm
-    num_units: 1
-    options:
-        launchpad-id: launchpad-id
