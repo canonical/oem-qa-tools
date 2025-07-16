@@ -1,3 +1,7 @@
+"""
+The top-level keys that appear in a testflinger job.yaml file
+"""
+
 from dataclasses import dataclass
 from typing import Literal, override
 
@@ -14,6 +18,7 @@ class SshKeyProvider:
 
     @override
     def __str__(self) -> str:
+        # lp:some-name
         return f"{self.provider_name}:{self.username}"
 
 

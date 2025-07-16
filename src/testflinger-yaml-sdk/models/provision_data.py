@@ -10,28 +10,37 @@ class Attachment:
 
 
 @dataclass
-class UrlProvisionData:
+class SimpleUrlProvisionData:
     url: Url
     attachments: list[Attachment] = []
 
 
 @dataclass
-class DistroProvisionData:
-    distro: str = "noble"
-    kernel: str | None = None
+class SimpleDistroProvisionData:
+    # https://canonical-testflinger.readthedocs-hosted.com/en/latest/reference/
+    # test-phases.html#provision
+    distro: str = "noble" # jammy seems to still work
+    kernel: str | None = None #  hwe-22.04
     attachments: list[Attachment] = []
 
 
 @dataclass
 class OEMAutoInstallProvisionData:
-    url: Url
-    # token_file must be specified if url requires auth
-    token_file: Path 
-    # user_data should contain directives for autoinstall and cloud-init
     # https://canonical-testflinger.readthedocs-hosted.com/en/latest/
     # reference/device-connector-types.html#oem-autoinstall
+    url: Url
+    # token_file must be specified if url requires auth
+    # the format is listed in the testflinger doc linked above
+    token_file: Path
+    # user_data file should contain info for autoinstall and cloud-init
     user_data: Path
-    # authorized keys file will literally be copied to the DUT
+    # authorized_keys file will literally be copied to the DUT
     authorized_keys: Path
 
-type ProvisionData = DistroProvisionData | DistroProvisionData | OEMAutoInstallProvisionData
+
+# add more here if needed
+type ProvisionData = (
+    SimpleDistroProvisionData
+    | SimpleUrlProvisionData
+    | OEMAutoInstallProvisionData
+)
