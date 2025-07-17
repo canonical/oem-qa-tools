@@ -2,8 +2,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from importlib.resources import read_text
 from pathlib import Path
+import re
+from tempfile import TemporaryFile
 from typing import Literal, final
 from configparser import ConfigParser
+import testflinger_yaml_sdk
 
 
 @dataclass
@@ -33,6 +36,8 @@ class BuiltInTestSteps(StrEnum):
 class TestCommandBuilder:
     # use importlib.resources to read this dir
     TEMPLATE_DIR = "template"
+    checkbox_type: Literal["snap", "deb"]
+    do_dist_upgrade: bool
 
     def __init__(
         self,
@@ -48,37 +53,93 @@ class TestCommandBuilder:
           number prefix)
 
         :param checkbox_type: debian or snap checkbox
-        :param do_dist_upgrade: do a dist upgrade immediately after t
+        :param do_dist_upgrade: do a dist upgrade immediately after basic setup
+          in 00_initial
         """
         # have to get checkbox_type from the constructor since only 1 of them
         # should be installed
-        assert checkbox_type in ("snap", "deb")
+        assert checkbox_type in (
+            "snap",
+            "deb",
+        ), f"Bad checkbox type: {checkbox_type}"
+
         self.checkbox_type = checkbox_type
         self.do_dist_upgrade = do_dist_upgrade
         self.checkbox_conf = ConfigParser()
         self.checkbox_conf.read_string(
             read_text(
-                "testflinger-yaml-sdk", f"{self.TEMPLATE_DIR}/checkbox.conf"
+                testflinger_yaml_sdk, f"{self.TEMPLATE_DIR}/checkbox.conf"
             )
         )
-        self.inserted_command_files: dict[int, Path] = {}
-    
+        self.inserted_command_files: dict[BuiltInTestSteps, list[Path]] = {}
+
     def set_test_plan(self, test_plan_name: str):
-        self.checkbox_conf
+        if "::" not in test_plan_name:
+            raise ValueError(
+                f"Namespace must be included, got: {test_plan_name}"
+            )
+        self.checkbox_conf["test plan"]["unit"] = test_plan_name
 
-    
+    def set_test_case_exclude(self, exclude_pattern: str):
+        re.compile(exclude_pattern)  # this will raise on invalid patterns
+        self.checkbox_conf["test selection"]["exclude"] = exclude_pattern
 
-    def insert_command_file(self, index: int, file_path: Path) -> None:
+    def insert_command_files(
+        self, step: BuiltInTestSteps, file_paths: list[Path]
+    ) -> None:
         """
-        Inserts the commands in file_path at the specified index
+        Inserts the commands in file_path BEFORE the specified `step`
         - Check the 00_initial file to see built-in functions like _run, _put
 
-        :param index: insert before this index
-        :param file_path: path to the shell file
-        :rases ValueError: when index is already taken
+        :param step: insert before this index
+        :param file_path: paths to the shell file
+        :rases FileNotFoundError: if any of the path in file_paths is not found
         """
-        if index in self.inserted_command_files:
-            raise ValueError(f"{index} is already taken")
-        self.inserted_command_files[index] = file_path
+        for file_path in file_paths:
+            if not file_path.exists():
+                raise FileNotFoundError(f"{file_path} not found")
+            if not file_path.is_file():
+                raise FileNotFoundError(f"{file_path} is not a file")
 
-    def finish_build(self) -> TestData: ...
+        self.inserted_command_files[step] = file_paths
+
+    def finish_build(self) -> TestData:
+        final_shell_scripts: list[str] = []
+        for step in BuiltInTestSteps:
+            if (
+                step == BuiltInTestSteps.DIST_UPGRADE
+                and not self.do_dist_upgrade
+            ):
+                continue
+            if (
+                step == BuiltInTestSteps.INSTALL_CHECKBOX_SNAP
+                and self.checkbox_type != "snap"
+            ):
+                continue
+            if (
+                step == BuiltInTestSteps.INSTALL_CHECKBOX_DEB
+                and self.checkbox_type != "deb"
+            ):
+                continue
+
+            if step in self.inserted_command_files:
+                for file_path in self.inserted_command_files[step]:
+                    with open(file_path) as f:
+                        final_shell_scripts.append(f.read())
+
+            final_shell_scripts.append(
+                read_text(
+                    testflinger_yaml_sdk,
+                    f"{self.TEMPLATE_DIR}/shell_scripts/{step}",
+                )
+            )
+
+        return TestData("\n".join(final_shell_scripts))
+
+
+if __name__ == "__main__":
+    builder = TestCommandBuilder()
+    builder.set_test_plan("bleh::bleh")
+
+    with open("bleh.sh", "w") as f:
+        f.write(str(builder.finish_build().test_cmds))

@@ -36,7 +36,7 @@ wait_for_ssh() {{
     done
 }}
 
-DCD=$(_run ubuntu-report show | grep \"DCD\": | awk '{print $2}')
+DCD=$(_run ubuntu-report show | jq -r '.["OEM"]["DCD"]')
 
 echo
 echo "====== TARGET DEVICE CONNECTION INFO ======"
