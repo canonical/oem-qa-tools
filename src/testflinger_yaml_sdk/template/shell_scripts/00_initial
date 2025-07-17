@@ -5,24 +5,24 @@ sudo apt-get install openssh-server -y
 TARGET_DEVICE_USERNAME=ubuntu
 # convenience functions
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-# shellcheck disable=SC1054,SC2086
-_put() {{
+
+_put() {
     scp $SSH_OPTS "$1" $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$2"
-}}
-# shellcheck disable=SC1054,SC2086
-_get() {{
+}
+
+_get() {
     scp $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$1" "$2"
-}}
-# shellcheck disable=SC1054,SC2086
-_run() {{
+}
+
+_run() {
     ssh -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
-}}
-# shellcheck disable=SC1054,SC2086
-_run_in_bg() {{
+}
+
+_run_in_bg() {
     ssh -f -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
-}}
-# shellcheck disable=SC1054,SC2086
-wait_for_ssh() {{
+}
+
+wait_for_ssh() {
     loopcnt=0
     until timeout 120 ssh $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" /bin/true
     do
@@ -34,7 +34,7 @@ wait_for_ssh() {{
         fi
         sleep 30
     done
-}}
+}
 
 DCD=$(_run ubuntu-report show | jq -r '.["OEM"]["DCD"]')
 
