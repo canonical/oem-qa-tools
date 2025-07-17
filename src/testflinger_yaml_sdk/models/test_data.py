@@ -3,8 +3,7 @@ from enum import StrEnum
 from importlib.resources import read_text
 from pathlib import Path
 import re
-from tempfile import TemporaryFile
-from typing import Literal, final
+from typing import Final, Literal, final
 from configparser import ConfigParser
 import testflinger_yaml_sdk
 
@@ -15,7 +14,6 @@ class TestData:
     test_cmds: list[str] | str
 
 
-@final
 class BuiltInTestSteps(StrEnum):
     # exports utility functions and variables, must be included
     INITIAL = "00_initial"
@@ -33,16 +31,18 @@ class BuiltInTestSteps(StrEnum):
     START_TEST = "90_start_test"
 
 
+@final
 class TestCommandBuilder:
     # use importlib.resources to read this dir
-    TEMPLATE_DIR = "template"
+    TEMPLATE_DIR: Final = "template"
+
     checkbox_type: Literal["snap", "deb"]
     do_dist_upgrade: bool
 
     def __init__(
         self,
         checkbox_type: Literal["snap", "deb"] = "deb",
-        do_dist_upgrade=False,
+        do_dist_upgrade: bool = False,
     ) -> None:
         """
         An OOP builder for the test_cmds section
@@ -81,7 +81,7 @@ class TestCommandBuilder:
         self.checkbox_conf["test plan"]["unit"] = test_plan_name
 
     def set_test_case_exclude(self, exclude_pattern: str):
-        re.compile(exclude_pattern)  # this will raise on invalid patterns
+        _ = re.compile(exclude_pattern)  # this will raise on invalid patterns
         self.checkbox_conf["test selection"]["exclude"] = exclude_pattern
 
     def insert_command_files(
@@ -135,11 +135,3 @@ class TestCommandBuilder:
             )
 
         return TestData("\n".join(final_shell_scripts))
-
-
-if __name__ == "__main__":
-    builder = TestCommandBuilder()
-    builder.set_test_plan("bleh::bleh")
-
-    with open("bleh.sh", "w") as f:
-        f.write(str(builder.finish_build().test_cmds))
