@@ -5,8 +5,8 @@ The top-level keys that appear in a testflinger job.yaml file
 from dataclasses import dataclass
 from typing import Literal, override
 
-from models.provision_data import ProvisionData
-from models.test_data import TestData
+from testflinger_yaml_sdk.models.provision_data import ProvisionData
+from testflinger_yaml_sdk.models.test_data import TestData
 
 
 @dataclass
