@@ -19,8 +19,8 @@ class SimpleUrlProvisionData:
 class SimpleDistroProvisionData:
     # https://canonical-testflinger.readthedocs-hosted.com/en/latest/reference/
     # test-phases.html#provision
-    distro: str = "noble" # jammy seems to still work
-    kernel: str | None = None #  hwe-22.04
+    distro: str = "noble"  # jammy seems to still work
+    kernel: str | None = None  #  hwe-22.04
     attachments: list[Attachment] = []
 
 
@@ -39,7 +39,7 @@ class OEMAutoInstallProvisionData:
 
 
 # add more here if needed
-type ProvisionData = (
+ProvisionData = (
     SimpleDistroProvisionData
     | SimpleUrlProvisionData
     | OEMAutoInstallProvisionData
