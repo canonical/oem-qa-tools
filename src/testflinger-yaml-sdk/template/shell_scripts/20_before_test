@@ -1,8 +1,8 @@
 echo
-echo "=====Before test setting start======"
+echo "===== Starting pre-test setup ======"
 _run sudo reboot
 sleep 120
 wait_for_ssh
-echo "=====Before test settng end======"
+echo "===== End of pre-test setup ======"
 echo
 
