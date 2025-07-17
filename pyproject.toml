@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{ include = "testflinger-yaml-sdk", from = 'src' }]
+packages = [{ include = "testflinger_yaml_sdk", from = 'src' }]
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.17.0"
