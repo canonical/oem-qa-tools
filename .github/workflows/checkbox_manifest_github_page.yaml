@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, x64, linux]
     permissions:
       contents: write # To push the generated index.html
       pages: write    # To deploy to GitHub Pages
