@@ -1,0 +1,150 @@
+name: Deploy Checkbox Manifest to GitHub Pages
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    # Runs every Sunday at 00:00 UTC
+    - cron: '0 0 * * SUN'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # To push the generated index.html
+      pages: write    # To deploy to GitHub Pages
+      id-token: write # To authenticate with GitHub Pages
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install canonical checkbox client
+        run: |
+          sudo add-apt-repository ppa:checkbox-dev/beta -y
+          sudo apt-get update -qq
+          sudo apt-get install canonical-certification-client checkbox-provider-gpgpu -qq -y
+
+      - name: Generate manifest.json
+        run: |
+          checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04 -f json > manifest.json
+
+      - name: Extract manifest entries and prepare for HTML generation
+        id: extract_entries
+        run: |
+          # Extract "manifest entry" values into a JSON array
+          jq -c '[.[] | select(.unit == "manifest entry") | {id}]' manifest.json  > manifest_entries.json
+          echo "Extracted manifest entries to manifest_entries.json"
+
+      - name: Generate GitHub Page (index.html)
+        run: |
+          # Read the raw JSON content for embedding in JavaScript
+          MANIFEST_ENTRIES_JSON=$(cat manifest_entries.json)
+
+          # Generate HTML table rows using jq
+          TABLE_ROWS=$(jq -r '.[] | .id |"                                  <tr class=\"hover:bg-gray-50\">\n                                      <td class=\"px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 rounded-bl-lg\">\(.)</td>\n                                      <td class=\"px-6 py-4 whitespace-nowrap text-center\">\n                                          <input type=\"checkbox\" class=\"h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 checkbox-item\" data-entry=\"\(.)\">\n                                      </td>\n                                  </tr>"' manifest_entries.json)
+
+          # Construct the full index.html file
+          cat << EOF > index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Checkbox Manifest Viewer</title>
+              <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+              <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+              <style>
+                  body {
+                      font-family: 'Inter', sans-serif;
+                  }
+              </style>
+          </head>
+          <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+              <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl">
+                  <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Checkbox Manifest Entries</h1>
+
+                  <div class="overflow-x-auto mb-6">
+                      <table id="manifestTable" class="min-w-full bg-white border border-gray-200 rounded-lg">
+                          <thead>
+                              <tr class="bg-gray-50 border-b border-gray-200">
+                                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Manifest Entry</th>
+                                  <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Checked</th>
+                              </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-200">
+          ${TABLE_ROWS}
+                          </tbody>
+                      </table>
+                  </div>
+
+                  <div class="flex justify-center">
+                      <button id="downloadButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                          Download as JSON
+                      </button>
+                  </div>
+
+                  <script id="manifest-data" type="application/json">
+                      ${MANIFEST_ENTRIES_JSON}
+                  </script>
+                  <script>
+                      // Initial manifest entries (from the embedded JSON script tag)
+                      const initialManifestEntries = JSON.parse(document.getElementById('manifest-data').textContent);
+                      const checkboxStates = {}; // To store the state of each checkbox
+
+                      // Initialize checkbox states (all false initially)
+                      initialManifestEntries.forEach(entry => {
+                          checkboxStates[entry.id] = false;
+                      });
+
+                      // Get all checkboxes and attach event listeners
+                      document.querySelectorAll('.checkbox-item').forEach(checkbox => {
+                          checkbox.addEventListener('change', (event) => {
+                              const entry = event.target.dataset.entry;
+                              checkboxStates[entry] = event.target.checked;
+                              console.log(\`Checkbox for "\${entry}" is now: \${checkboxStates[entry]}\`);
+                          });
+                      });
+
+                      // Download button logic
+                      document.getElementById('downloadButton').addEventListener('click', () => {
+                          const dataToDownload = {};
+                          // Populate dataToDownload with current states from checkboxStates
+                          for (const entry in checkboxStates) {
+                              dataToDownload[entry] = checkboxStates[entry];
+                          }
+
+                          const jsonString = JSON.stringify(dataToDownload, null, 2);
+                          const blob = new Blob([jsonString], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'manifest_checkbox_states.json';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                      });
+                  </script>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './' # Uploads the entire current directory, which contains index.html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
