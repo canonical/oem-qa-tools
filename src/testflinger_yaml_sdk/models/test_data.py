@@ -6,8 +6,7 @@ from enum import StrEnum
 from importlib.resources import read_text
 from io import StringIO
 from pathlib import Path
-from types import BuiltinFunctionType
-from typing import Any, Final, Literal, Self, final, overload
+from typing import Final, Literal, Self, final, overload
 
 import testflinger_yaml_sdk  # only here for read_text to consume
 
@@ -109,29 +108,29 @@ class TestCommandBuilder:
 
     @overload
     def insert_commands_before(
-        self, step: BuiltInTestSteps, file_paths: list[Path]
+        self, step: BuiltInTestSteps, commands: list[Path]
     ) -> Self: ...
 
     @overload
     def insert_commands_before(
-        self, step: BuiltInTestSteps, file_paths: list[str]
+        self, step: BuiltInTestSteps, commands: list[str]
     ) -> Self: ...
 
     def insert_commands_before(
-        self, step: BuiltInTestSteps, file_paths: list[Path] | list[str]
+        self, step: BuiltInTestSteps, commands: list[Path] | list[str]
     ) -> Self:
         """
         Inserts the commands in file_path BEFORE the specified `step`
         - Check the 00_initial file to see built-in functions like _run, _put
 
-        :param step: insert before this index
+        :param step: insert the commands before this step
         :param file_path: one of the following
             - list[Path] paths to the shell files
             - list[str] literal command strings to append
         :rases FileNotFoundError: if any of the path in file_paths is not found
         """
         self.inserted_command_strings[step] = ""
-        for file_paths_or_cmd_strs in file_paths:
+        for file_paths_or_cmd_strs in commands:
             if type(file_paths_or_cmd_strs) is str:
                 self.inserted_command_strings[step] += file_paths_or_cmd_strs
 
