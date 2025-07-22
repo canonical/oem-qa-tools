@@ -1,11 +1,15 @@
+import json
+import re
+from configparser import ConfigParser
 from dataclasses import dataclass
 from enum import StrEnum
 from importlib.resources import read_text
+from io import StringIO
 from pathlib import Path
-import re
-from typing import Final, Literal, final
-from configparser import ConfigParser
-import testflinger_yaml_sdk
+from types import BuiltinFunctionType
+from typing import Any, Final, Literal, Self, final, overload
+
+import testflinger_yaml_sdk  # only here for read_text to consume
 
 
 @dataclass
@@ -22,27 +26,43 @@ class BuiltInTestSteps(StrEnum):
     # install checkbox deb or snap, only one of them should be used
     INSTALL_CHECKBOX_DEB = "02_install_checkbox_deb"
     INSTALL_CHECKBOX_SNAP = "02_install_checkbox_snap"
-    # must be included to install checkbox control on the testflinger agent
+    # install checkbox control on the testflinger agent
     INSTALL_CHECKBOX_ON_TF_AGENT = "15_install_checkbox_on_agent"
     # by default this just reboots the DUT and waits for ssh to be ready
     BEFORE_TEST = "20_before_test"
-    # this will actually call `checkbox-cli control`
-    # it also submits the submission to c3
+    # this step actually runs `checkbox-cli control`
+    # and submits the tarball to c3
     START_TEST = "90_start_test"
 
 
 @final
 class TestCommandBuilder:
-    # use importlib.resources to read this dir
+    # use importlib.resources to read this dir, don't open() it directly
     TEMPLATE_DIR: Final = "template"
 
     checkbox_type: Literal["snap", "deb"]
     do_dist_upgrade: bool
+    manifest_override: dict[str, bool] | None
+
+    @classmethod
+    def build_run_command(cls, command: str):
+        """
+        Translate a plain command to one that can be sent by testflinger to
+        be run on the DUT
+
+        :param command: the "local" version of the command to run on the DUT
+        :return: the testflinger version of the command
+        """
+        return (
+            f'ssh -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" {command}'
+        )
 
     def __init__(
         self,
         checkbox_type: Literal["snap", "deb"] = "deb",
+        run_checkbox: bool = True,
         do_dist_upgrade: bool = False,
+        manifest_override: dict[str, bool] | None = None,
     ) -> None:
         """
         An OOP builder for the test_cmds section
@@ -65,73 +85,137 @@ class TestCommandBuilder:
 
         self.checkbox_type = checkbox_type
         self.do_dist_upgrade = do_dist_upgrade
+        self.manifest_override = manifest_override
         self.checkbox_conf = ConfigParser()
         self.checkbox_conf.read_string(
             read_text(
                 testflinger_yaml_sdk, f"{self.TEMPLATE_DIR}/checkbox.conf"
             )
         )
-        self.inserted_command_files: dict[BuiltInTestSteps, list[Path]] = {}
+        self.inserted_command_strings: dict[BuiltInTestSteps, str] = {}
 
-    def set_test_plan(self, test_plan_name: str):
+    def set_test_plan(self, test_plan_name: str) -> Self:
         if "::" not in test_plan_name:
             raise ValueError(
                 f"Namespace must be included, got: {test_plan_name}"
             )
         self.checkbox_conf["test plan"]["unit"] = test_plan_name
+        return self
 
-    def set_test_case_exclude(self, exclude_pattern: str):
+    def set_test_case_exclude(self, exclude_pattern: str) -> Self:
         _ = re.compile(exclude_pattern)  # this will raise on invalid patterns
         self.checkbox_conf["test selection"]["exclude"] = exclude_pattern
+        return self
 
-    def insert_command_files(
+    @overload
+    def insert_commands_before(
         self, step: BuiltInTestSteps, file_paths: list[Path]
-    ) -> None:
+    ) -> Self: ...
+
+    @overload
+    def insert_commands_before(
+        self, step: BuiltInTestSteps, file_paths: list[str]
+    ) -> Self: ...
+
+    def insert_commands_before(
+        self, step: BuiltInTestSteps, file_paths: list[Path] | list[str]
+    ) -> Self:
         """
         Inserts the commands in file_path BEFORE the specified `step`
         - Check the 00_initial file to see built-in functions like _run, _put
 
         :param step: insert before this index
-        :param file_path: paths to the shell file
+        :param file_path: one of the following
+            - list[Path] paths to the shell files
+            - list[str] literal command strings to append
         :rases FileNotFoundError: if any of the path in file_paths is not found
         """
-        for file_path in file_paths:
-            if not file_path.exists():
-                raise FileNotFoundError(f"{file_path} not found")
-            if not file_path.is_file():
-                raise FileNotFoundError(f"{file_path} is not a file")
+        self.inserted_command_strings[step] = ""
+        for file_paths_or_cmd_strs in file_paths:
+            if type(file_paths_or_cmd_strs) is str:
+                self.inserted_command_strings[step] += file_paths_or_cmd_strs
 
-        self.inserted_command_files[step] = file_paths
+            elif type(file_paths_or_cmd_strs) is Path:
+                if not file_paths_or_cmd_strs.exists():
+                    raise FileNotFoundError(
+                        f"{file_paths_or_cmd_strs} not found"
+                    )
+                if not file_paths_or_cmd_strs.is_file():
+                    raise FileNotFoundError(
+                        f"{file_paths_or_cmd_strs} is not a file"
+                    )
+
+                with open(file_paths_or_cmd_strs) as f:
+                    self.inserted_command_strings[step] += f.read()
+
+        return self
 
     def finish_build(self) -> TestData:
-        final_shell_scripts: list[str] = []
+        final_shell_commands: list[str] = []
+
         for step in BuiltInTestSteps:
-            if (
-                step == BuiltInTestSteps.DIST_UPGRADE
-                and not self.do_dist_upgrade
-            ):
-                continue
-            if (
-                step == BuiltInTestSteps.INSTALL_CHECKBOX_SNAP
-                and self.checkbox_type != "snap"
-            ):
-                continue
-            if (
-                step == BuiltInTestSteps.INSTALL_CHECKBOX_DEB
-                and self.checkbox_type != "deb"
-            ):
-                continue
+            # special handling steps
+            match step:
+                case BuiltInTestSteps.DIST_UPGRADE:
+                    if not self.do_dist_upgrade:
+                        continue
+                case BuiltInTestSteps.INSTALL_CHECKBOX_DEB:
+                    if not self.checkbox_type == "deb":
+                        continue
+                case BuiltInTestSteps.INSTALL_CHECKBOX_SNAP:
+                    if not self.checkbox_type == "snap":
+                        continue
+                case BuiltInTestSteps.INSTALL_CHECKBOX_ON_TF_AGENT:
+                    # write the new checkbox conf
+                    final_shell_commands.append(
+                        "cat << EOF > checkbox-launcher"
+                    )
+                    # add manifest to launcher
+                    self.checkbox_conf.add_section("manifest")
+                    if self.manifest_override is not None:
+                        manifest_json = self.manifest_override
+                    else:
+                        manifest_json: dict[str, bool] = json.loads(
+                            read_text(
+                                testflinger_yaml_sdk,
+                                f"{self.TEMPLATE_DIR}/manifest.json",
+                            )
+                        )
+                    assert isinstance(manifest_json, dict)
+                    for key, is_true in manifest_json.items():
+                        assert type(key) is str and type(is_true) is bool
+                        self.checkbox_conf["manifest"][key] = str(is_true)
 
-            if step in self.inserted_command_files:
-                for file_path in self.inserted_command_files[step]:
-                    with open(file_path) as f:
-                        final_shell_scripts.append(f.read())
+                    with StringIO() as s:
+                        self.checkbox_conf.write(s)
+                        final_shell_commands.append(s.getvalue().strip())
+                    final_shell_commands.append("EOF")
+                case _:
+                    # not all cases need to be handled
+                    pass
 
-            final_shell_scripts.append(
+            if step in self.inserted_command_strings:
+                final_shell_commands.append(
+                    self.inserted_command_strings[step]
+                )
+
+            final_shell_commands.append(
                 read_text(
                     testflinger_yaml_sdk,
                     f"{self.TEMPLATE_DIR}/shell_scripts/{step}",
                 )
             )
 
-        return TestData("\n".join(final_shell_scripts))
+        return TestData("\n".join(final_shell_commands))
+
+
+print(
+    TestCommandBuilder()
+    .insert_commands_before(BuiltInTestSteps.INITIAL, ["echo hi"])
+    .insert_commands_before(
+        BuiltInTestSteps.INSTALL_CHECKBOX_DEB,
+        [TestCommandBuilder.build_run_command("echo hei")],
+    )
+    .finish_build()
+    .test_cmds
+)
