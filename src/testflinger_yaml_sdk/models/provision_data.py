@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib3.util import Url
 
@@ -12,7 +12,7 @@ class Attachment:
 @dataclass
 class SimpleUrlProvisionData:
     url: Url
-    attachments: list[Attachment] = []
+    attachments: list[Attachment] = field(default_factory=list)
 
 
 @dataclass
@@ -21,7 +21,7 @@ class SimpleDistroProvisionData:
     # test-phases.html#provision
     distro: str = "noble"  # jammy seems to still work
     kernel: str | None = None  #  hwe-22.04
-    attachments: list[Attachment] = []
+    attachments: list[Attachment] = field(default_factory=list)
 
 
 @dataclass

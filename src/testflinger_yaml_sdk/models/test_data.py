@@ -182,7 +182,6 @@ class TestCommandBuilder:
                         )
                     assert isinstance(manifest_json, dict)
                     for key, is_true in manifest_json.items():
-                        assert type(key) is str and type(is_true) is bool
                         self.checkbox_conf["manifest"][key] = str(is_true)
 
                     with StringIO() as s:
@@ -208,13 +207,3 @@ class TestCommandBuilder:
         return TestData("\n".join(final_shell_commands))
 
 
-print(
-    TestCommandBuilder()
-    .insert_commands_before(BuiltInTestSteps.INITIAL, ["echo hi"])
-    .insert_commands_before(
-        BuiltInTestSteps.INSTALL_CHECKBOX_DEB,
-        [TestCommandBuilder.build_run_command("echo hei")],
-    )
-    .finish_build()
-    .test_cmds
-)
