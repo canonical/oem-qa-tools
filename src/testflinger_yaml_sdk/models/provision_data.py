@@ -3,19 +3,19 @@ from pathlib import Path
 from urllib3.util import Url
 
 
-@dataclass
+@dataclass(slots=True)
 class Attachment:
     local: Path  # verifiable, can check if the file exists, readable etc.
     agent: Path | None  # unverifiable, can only do basic checks
 
 
-@dataclass
+@dataclass(slots=True)
 class SimpleUrlProvisionData:
     url: Url
     attachments: list[Attachment] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(slots=True)
 class SimpleDistroProvisionData:
     # https://canonical-testflinger.readthedocs-hosted.com/en/latest/reference/
     # test-phases.html#provision
@@ -24,7 +24,7 @@ class SimpleDistroProvisionData:
     attachments: list[Attachment] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(slots=True)
 class OEMAutoInstallProvisionData:
     # https://canonical-testflinger.readthedocs-hosted.com/en/latest/
     # reference/device-connector-types.html#oem-autoinstall

@@ -13,7 +13,7 @@ from subprocess import check_call
 import testflinger_yaml_sdk  # only here for read_text to consume
 
 
-@dataclass
+@dataclass(slots=True)
 class TestData:
     # if using a plain string, each command needs to be newline separated
     test_cmds: list[str] | str
@@ -94,6 +94,7 @@ class TestCommandBuilder:
             )
         )
         self.inserted_command_strings: dict[BuiltInTestSteps, str] = {}
+        self.replaced_command_strings: dict[BuiltInTestSteps, str] = {}
 
     def set_test_plan(self, test_plan_name: str) -> Self:
         if "::" not in test_plan_name:
@@ -124,6 +125,9 @@ class TestCommandBuilder:
         """
         Inserts the commands in file_path BEFORE the specified `step`
         - Check the 00_initial file to see built-in functions like _run, _put
+        - This is useful if you want to keep the original steps but just add a
+          few more commands before it. If you need to completely rewrite a step
+          use self.replace_step()
 
         :param step: insert the commands before this step
         :param file_path: one of the following
@@ -132,6 +136,8 @@ class TestCommandBuilder:
         :rases FileNotFoundError: if any of the path in file_paths is not found
         """
         self.inserted_command_strings[step] = ""
+        self.replaced_command_strings[step] = ""
+
         for file_paths_or_cmd_strs in commands:
             if type(file_paths_or_cmd_strs) is str:
                 self.inserted_command_strings[step] += file_paths_or_cmd_strs
@@ -148,6 +154,31 @@ class TestCommandBuilder:
 
                 with open(file_paths_or_cmd_strs) as f:
                     self.inserted_command_strings[step] += f.read()
+
+        return self
+
+    def replace_step(
+        self, step: BuiltInTestSteps, commands: list[Path] | list[str]
+    ) -> Self:
+        self.inserted_command_strings[step] = ""
+        self.replaced_command_strings[step] = ""
+
+        for file_paths_or_cmd_strs in commands:
+            if type(file_paths_or_cmd_strs) is str:
+                self.replaced_command_strings[step] += file_paths_or_cmd_strs
+
+            elif type(file_paths_or_cmd_strs) is Path:
+                if not file_paths_or_cmd_strs.exists():
+                    raise FileNotFoundError(
+                        f"{file_paths_or_cmd_strs} not found"
+                    )
+                if not file_paths_or_cmd_strs.is_file():
+                    raise FileNotFoundError(
+                        f"{file_paths_or_cmd_strs} is not a file"
+                    )
+
+                with open(file_paths_or_cmd_strs) as f:
+                    self.replaced_command_strings[step] += f.read()
 
         return self
 
@@ -200,20 +231,26 @@ class TestCommandBuilder:
                     self.inserted_command_strings[step]
                 )
 
-            final_shell_commands.append(
-                read_text(
-                    testflinger_yaml_sdk,
-                    f"{self.TEMPLATE_DIR}/shell_scripts/{step}",
+            if step in self.replaced_command_strings:
+                final_shell_commands.append(
+                    self.inserted_command_strings[step]
                 )
-            )
+            else:
+                final_shell_commands.append(
+                    read_text(
+                        testflinger_yaml_sdk,
+                        f"{self.TEMPLATE_DIR}/shell_scripts/{step}",
+                    )
+                )
 
         if not skip_shellcheck and shutil.which("shellcheck") is None:
             print("Not doing shell check, it's not installed")
         else:
             with NamedTemporaryFile("w") as f:
-                f.write("#! /usr/bin/bash\n") 
+                f.write("#! /usr/bin/bash\n")
                 f.writelines(final_shell_commands)
                 f.seek(0)
                 check_call(["shellcheck", f.name])
                 print("Shellcheck OK!")
+
         return TestData("\n".join(final_shell_commands).strip())

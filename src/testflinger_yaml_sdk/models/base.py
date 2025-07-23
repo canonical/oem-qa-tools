@@ -4,14 +4,16 @@ The top-level keys that appear in a testflinger job.yaml file
 
 from collections.abc import MutableMapping
 from dataclasses import asdict, dataclass, field
-from typing import Literal, override
-from typing_extensions import Any
-from urllib3.util import Url
+from typing import Literal, TextIO, override
+
+import yaml
 from testflinger_yaml_sdk.models.provision_data import ProvisionData
 from testflinger_yaml_sdk.models.test_data import TestData
+from typing_extensions import Any
+from urllib3.util import Url
 
 
-@dataclass
+@dataclass(slots=True)
 class SshKeyProvider:
     # lp: launchpad
     # gh: github
@@ -24,20 +26,20 @@ class SshKeyProvider:
         return f"{self.provider_name}:{self.username}"
 
 
-@dataclass
+@dataclass(slots=True)
 class ReserveData:
     ssh_keys: list[SshKeyProvider]
     # how many seconds to reserve
     timeout: int
 
 
-@dataclass
+@dataclass(slots=True)
 class FirmwareUpdateData:
     ignore_failure: bool
     version: Literal["latest"] = "latest"
 
 
-@dataclass
+@dataclass(slots=True)
 class TestflingerJob:
     # basic info
     job_queue: str
@@ -62,7 +64,8 @@ class TestflingerJob:
 
     def to_dict(self) -> dict[str, Any]:
         def stringify_urls(d: MutableMapping[Any, Any]):
-            """Recursively change Url objects to string
+            """
+            Recursively change Url objects to string
 
             :param d: the dict to modify
             """
@@ -77,3 +80,22 @@ class TestflingerJob:
         d = asdict(self)
         stringify_urls(d)
         return d
+
+    def dump_yaml(self, file: TextIO) -> None:
+        def str_representer(
+            dumper: yaml.representer.SafeRepresenter,
+            s: str,
+        ) -> yaml.Node:
+            if "\n" in s:
+                clean_lines = "\n".join(
+                    [line.rstrip() for line in s.splitlines()]
+                )  # Remove any trailing spaces, then put it back together again
+                return dumper.represent_scalar(  # pyright: ignore[reportUnknownMemberType]
+                    "tag:yaml.org,2002:str", clean_lines, style="|"
+                )
+            return dumper.represent_scalar(  # pyright: ignore[reportUnknownMemberType]
+                "tag:yaml.org,2002:str", s
+            )
+
+        yaml.representer.SafeRepresenter.add_representer(str, str_representer)
+        yaml.safe_dump(self.to_dict(), file)
