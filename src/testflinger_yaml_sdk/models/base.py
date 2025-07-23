@@ -2,8 +2,10 @@
 The top-level keys that appear in a testflinger job.yaml file
 """
 
-from dataclasses import dataclass, field
+from collections.abc import MutableMapping
+from dataclasses import asdict, dataclass, field
 from typing import Literal, override
+from typing_extensions import Any
 from urllib3.util import Url
 from testflinger_yaml_sdk.models.provision_data import ProvisionData
 from testflinger_yaml_sdk.models.test_data import TestData
@@ -57,3 +59,21 @@ class TestflingerJob:
     # https://canonical-testflinger.readthedocs-hosted.com/latest/reference/
     # job-schema.html#test-job-schema
     job_priority: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        def stringify_urls(d: MutableMapping[Any, Any]):
+            """Recursively change Url objects to string
+
+            :param d: the dict to modify
+            """
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    stringify_urls(
+                        v  # pyright: ignore[reportUnknownArgumentType]
+                    )
+                if isinstance(v, Url):
+                    d[k] = v.url
+
+        d = asdict(self)
+        stringify_urls(d)
+        return d

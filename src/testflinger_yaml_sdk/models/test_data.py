@@ -6,8 +6,10 @@ from enum import StrEnum
 from importlib.resources import read_text
 from io import StringIO
 from pathlib import Path
+import shutil
+from tempfile import NamedTemporaryFile
 from typing import Final, Literal, Self, final, overload
-
+from subprocess import check_call
 import testflinger_yaml_sdk  # only here for read_text to consume
 
 
@@ -149,7 +151,7 @@ class TestCommandBuilder:
 
         return self
 
-    def finish_build(self) -> TestData:
+    def finish_build(self, skip_shellcheck: bool = False) -> TestData:
         final_shell_commands: list[str] = []
 
         for step in BuiltInTestSteps:
@@ -187,7 +189,8 @@ class TestCommandBuilder:
                     with StringIO() as s:
                         self.checkbox_conf.write(s)
                         final_shell_commands.append(s.getvalue().strip())
-                    final_shell_commands.append("EOF")
+                    # have to put newlines here
+                    final_shell_commands.append("\nEOF\n")
                 case _:
                     # not all cases need to be handled
                     pass
@@ -204,6 +207,13 @@ class TestCommandBuilder:
                 )
             )
 
-        return TestData("\n".join(final_shell_commands))
-
-
+        if not skip_shellcheck and shutil.which("shellcheck") is None:
+            print("Not doing shell check, it's not installed")
+        else:
+            with NamedTemporaryFile("w") as f:
+                f.write("#! /usr/bin/bash\n") 
+                f.writelines(final_shell_commands)
+                f.seek(0)
+                check_call(["shellcheck", f.name])
+                print("Shellcheck OK!")
+        return TestData("\n".join(final_shell_commands).strip())

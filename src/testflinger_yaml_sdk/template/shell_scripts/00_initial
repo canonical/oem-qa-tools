@@ -7,24 +7,24 @@ TARGET_DEVICE_USERNAME=ubuntu
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 _put() {
-    scp $SSH_OPTS "$1" $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$2"
+    scp "$SSH_OPTS" "$1" "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP":"$2"
 }
 
 _get() {
-    scp $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP":"$1" "$2"
+    scp "$SSH_OPTS" "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP":"$1" "$2"
 }
 
 _run() {
-    ssh -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
+    ssh -t "$SSH_OPTS" "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP" "$@"
 }
 
 _run_in_bg() {
-    ssh -f -t $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" "$@"
+    ssh -f -t "$SSH_OPTS" "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP" "$@"
 }
 
 wait_for_ssh() {
     loopcnt=0
-    until timeout 120 ssh $SSH_OPTS $TARGET_DEVICE_USERNAME@"$DEVICE_IP" /bin/true
+    until timeout 120 ssh "$SSH_OPTS" "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP" /bin/true
     do
         echo "Testing to see if system is back up"
         loopcnt=$((loopcnt+1))
@@ -41,7 +41,7 @@ DCD=$(_run ubuntu-report show | jq -r '.["OEM"]["DCD"]')
 echo
 echo "====== TARGET DEVICE CONNECTION INFO ======"
 echo
-echo DEVICE_IP: $TARGET_DEVICE_USERNAME@"$DEVICE_IP"
+echo DEVICE_IP: "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP"
 echo DCD: "$DCD"
 echo
 echo "==========================================="
