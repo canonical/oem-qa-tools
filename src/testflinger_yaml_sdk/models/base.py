@@ -51,7 +51,7 @@ class TestflingerJob:
     provision_data: ProvisionData | None = None
     firmware_update_data: FirmwareUpdateData | None = None
     test_data: TestData | None = None
-    # allocate_data = None
+    # allocate_data is skipped since
     reserve_data: ReserveData | None = None
 
     allocation_timeout: int = 7200
