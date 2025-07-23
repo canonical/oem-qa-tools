@@ -23,12 +23,12 @@ _run_in_bg() {
 }
 
 wait_for_ssh() {
-    loopcnt=0
+    loop_count=0
     until timeout 120 ssh "$SSH_OPTS" "$TARGET_DEVICE_USERNAME"@"$DEVICE_IP" /bin/true
     do
         echo "Testing to see if system is back up"
-        loopcnt=$((loopcnt+1))
-        if [ $loopcnt -gt 40 ]; then
+        loop_count=$((loop_count+1))
+        if [ $loop_count -gt 40 ]; then
             echo "ERROR: Timeout waiting for ssh!"
             exit 1
         fi
