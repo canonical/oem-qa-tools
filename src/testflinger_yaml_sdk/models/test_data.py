@@ -1,15 +1,16 @@
 import json
 import re
+import shutil
 from configparser import ConfigParser
 from dataclasses import dataclass
 from enum import StrEnum
 from importlib.resources import read_text
 from io import StringIO
 from pathlib import Path
-import shutil
+from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from typing import Final, Literal, Self, final, overload
-from subprocess import check_call
+
 import testflinger_yaml_sdk  # only here for read_text to consume
 
 

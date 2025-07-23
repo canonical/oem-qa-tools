@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=./template.yaml
 job_queue: CID
-global_timeout: 43200 
+global_timeout: 43200
 output_timeout: 7500
 provision_data:
   #no push data is noprovision status

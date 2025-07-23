@@ -5,4 +5,3 @@ sleep 120
 wait_for_ssh
 echo "===== End of pre-test setup ======"
 echo
-

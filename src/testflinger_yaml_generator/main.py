@@ -2,7 +2,7 @@ from testflinger_yaml_sdk.models.base import TestflingerJob
 
 
 def main():
-    j = TestflingerJob("askdashdkjsa")
+    TestflingerJob("askdashdkjsa")
 
 
 if __name__ == "__main__":

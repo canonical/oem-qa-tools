@@ -36,4 +36,3 @@ fi
 
 echo "Files in artifacts:"
 ls artifacts
-

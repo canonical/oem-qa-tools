@@ -73,4 +73,3 @@ _run gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-batter
 _run gsettings set org.gnome.desktop.session idle-delay 'uint32 0'
 _put ~/stop_auto_upgrades ~/20auto-upgrades
 _run sudo cp 20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades
-

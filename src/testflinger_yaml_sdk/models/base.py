@@ -4,12 +4,13 @@ The top-level keys that appear in a testflinger job.yaml file
 
 from collections.abc import MutableMapping
 from dataclasses import asdict, dataclass, field
-from typing import Literal, TextIO, override, Any
+from typing import Any, Literal, TextIO, override
 
 import yaml
+from urllib3.util import Url
+
 from testflinger_yaml_sdk.models.provision_data import ProvisionData
 from testflinger_yaml_sdk.models.test_data import TestData
-from urllib3.util import Url
 
 
 @dataclass(slots=True)
