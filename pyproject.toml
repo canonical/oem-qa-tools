@@ -2,18 +2,16 @@
 name = "testflinger-yaml-sdk"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Zhongning Li",email = "zhongning.li@canonical.com"}
-]
+authors = [{ name = "Zhongning Li", email = "zhongning.li@canonical.com" }]
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "pyyaml (>=6.0.2,<7.0.0)",
-    "urllib3 (>=2.5.0,<3.0.0)"
-]
+dependencies = ["pyyaml (>=6.0.2,<7.0.0)", "urllib3 (>=2.5.0,<3.0.0)"]
 
 [tool.poetry]
-packages = [{ include = "testflinger_yaml_sdk", from = 'src' }]
+packages = [
+    { include = "testflinger_yaml_sdk", from = 'src' },
+    { include = "testflinger_yaml_generator", from = 'src' },
+]
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.17.0"
