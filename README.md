@@ -1,4 +1,43 @@
-# An object-oriented library for building Testflinger Job YAML files
+# Testflinger Job YAML SDK
 
 This branch is a OOP library for building testflinger's job.yaml files
-that can be submitted with `testflinger submit`
+that can be submitted with `testflinger-cli submit`.
+
+
+## Installation
+
+This package has 2 parts:
+1. The python library itself that can be imported by other python programs
+2. A CLI tool
+
+Installation URL is the same, we just need to use different package managers.
+
+### Installing the Library
+
+With `pip`
+
+```
+pip install git+https://github.com/canonical/oem-qa-tools.git@testflinger-yaml-sdk
+```
+
+With `poetry`
+
+```sh
+poetry add git+https://github.com/canonical/oem-qa-tools.git@testflinger-yaml-sdk
+```
+
+### Installing the CLI Tool
+
+Note: The library does NOT need to be installed first. pipx will do that for us.
+
+With `pipx`
+
+```
+pipx install git+https://github.com/canonical/oem-qa-tools.git@testflinger-yaml-sdk
+```
+
+To get the latest commit, specify `--force`
+
+```
+pipx install git+https://github.com/canonical/oem-qa-tools.git@testflinger-yaml-sdk --force
+```

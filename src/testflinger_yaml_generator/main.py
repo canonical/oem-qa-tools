@@ -209,3 +209,12 @@ def parse_args() -> argparse.Namespace:  # noqa: D103
     )
 
     return parser.parse_args()
+
+
+def main() -> None:
+    """Runs main."""
+    parse_args()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,7 @@
 [project]
 name = "testflinger-yaml-sdk"
 version = "0.1.0"
-description = ""
+description = "An OOP library and CLI tool for building Testflinger's job.yaml files"
 authors = [{ name = "Zhongning Li", email = "zhongning.li@canonical.com" }]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,6 +22,7 @@ isort = "^6.0.1"
 
 [tool.ruff.lint]
 select = ["ALL"]
+ignore = ["D401"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
