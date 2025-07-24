@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-
-from urllib3.util import Url
+from urllib.parse import SplitResult
 
 
 @dataclass(slots=True)
@@ -12,7 +11,7 @@ class Attachment:
 
 @dataclass(slots=True)
 class SimpleUrlProvisionData:
-    url: Url
+    url: SplitResult
     attachments: list[Attachment] = field(default_factory=list)
 
 
@@ -29,7 +28,7 @@ class SimpleDistroProvisionData:
 class OEMAutoInstallProvisionData:
     # https://canonical-testflinger.readthedocs-hosted.com/en/latest/
     # reference/device-connector-types.html#oem-autoinstall
-    url: Url
+    url: SplitResult
     # token_file must be specified if url requires auth
     # the format is listed in the testflinger doc linked above
     token_file: Path

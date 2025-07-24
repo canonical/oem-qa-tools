@@ -5,12 +5,26 @@ The top-level keys that appear in a testflinger job.yaml file
 from collections.abc import MutableMapping
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, TextIO, override
+from urllib.parse import SplitResult
 
 import yaml
-from urllib3.util import Url
 
 from testflinger_yaml_sdk.models.provision_data import ProvisionData
 from testflinger_yaml_sdk.models.test_data import TestData
+
+
+def _stringify_urls(d: MutableMapping[Any, Any]):
+    """
+    Recursively change SplitResult objects to string. Private to this module.
+    !! This mutates @param d !!
+
+    :param d: the dict to modify
+    """
+    for k, v in d.items():
+        if isinstance(v, dict):
+            _stringify_urls(v)  # pyright: ignore[reportUnknownArgumentType]
+        if isinstance(v, SplitResult):
+            d[k] = v.geturl()
 
 
 @dataclass(slots=True)
@@ -55,33 +69,38 @@ class TestflingerJob:
     reserve_data: ReserveData | None = None
 
     allocation_timeout: int = 7200
-    # this needs to be a valid Url
-    job_status_webhook: Url | None = None
+    # the SplitResult type is from urlsplit()
+    job_status_webhook: SplitResult | None = None
     # Needs auth to set job priority
     # https://canonical-testflinger.readthedocs-hosted.com/latest/reference/
     # job-schema.html#test-job-schema
     job_priority: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        def stringify_urls(d: MutableMapping[Any, Any]):
-            """
-            Recursively change Url objects to string
-
-            :param d: the dict to modify
-            """
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    stringify_urls(
-                        v  # pyright: ignore[reportUnknownArgumentType]
-                    )
-                if isinstance(v, Url):
-                    d[k] = v.url
+        """
+        Converts the job object to a plain dict.
+        - The return value should be treated as "frozen"
+          i.e. modifying the returned value is discouraged.
+        - Modify the TestflingerJob object first, then
+          call this method to export
+        """
 
         d = asdict(self)
-        stringify_urls(d)
+        _stringify_urls(d)
         return d
 
     def dump_yaml(self, file: TextIO) -> None:
+        """Dump the job's current state to a file handle
+
+        :param file:
+            The file to write to. The caller is responsible for
+            opening and closing the file. For example:
+            ```
+            with open("job.yaml", "w") as f:
+                job.dump_yaml(f)
+            ```
+        """
+
         def str_representer(
             dumper: yaml.representer.SafeRepresenter,
             s: str,
