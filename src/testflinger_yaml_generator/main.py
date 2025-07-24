@@ -35,6 +35,8 @@ def parse_args() -> argparse.Namespace:  # noqa: D103
         help="Name of the output YAML file",
     )
 
+    # optional args section
+
     opt_args = parser.add_argument_group("General Options")
     opt_args.add_argument(
         "-d",
@@ -166,6 +168,8 @@ def parse_args() -> argparse.Namespace:  # noqa: D103
         ),
     )
 
+    # checkbox options
+
     opt_launcher = parser.add_argument_group("Checkbox options")
     opt_launcher.add_argument(
         "--manifest-json",
@@ -185,6 +189,9 @@ def parse_args() -> argparse.Namespace:  # noqa: D103
             "If not specified, the default conf from here is used"
         ),
     )
+
+    # yaml options
+
     opt_tf_yaml = parser.add_argument_group("Testflinger yaml options")
     opt_tf_yaml.add_argument(
         "--launchpad-id",

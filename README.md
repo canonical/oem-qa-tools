@@ -41,3 +41,60 @@ To get the latest commit, specify `--force`
 ```
 pipx install git+https://github.com/canonical/oem-qa-tools.git@testflinger-yaml-sdk --force
 ```
+
+## Development
+
+Requires python3.10+
+
+### Install tools
+(Requires ubuntu 22.04+ if you are installing pipx from apt)
+
+Install pipx and poetry:
+
+```sh
+sudo apt update && sudo apt install -y pipx
+pipx install poetry
+```
+
+If pipx is being installed on the system for the 1st time, add this line to .bashrc or .zshrc
+
+```sh
+export PATH=$HOME/.local/bin:$PATH
+```
+
+`pipx` will prompt about this too so don't worry about memorizing this.
+
+After installation, the `poetry` command will be available in $PATH:
+
+```
+$ poetry -V
+Poetry (version 2.1.3)
+```
+
+Note: don't install poetry from apt. It's way too old.
+
+### Environment setup
+
+For a fresh setup:
+```sh
+git clone https://github.com/canonical/oem-qa-tools.git
+cd oem-qa-tools
+git checkout testflinger-yaml-sdk
+eval $(poetry env activate)
+poetry install
+```
+A new virtual environment has been setup and all dependencies are installed.
+
+To leave the environment:
+
+```sh
+$ deactivate
+```
+
+To re-enter this environment, run `eval $(poetry env activate)` in the project directory
+
+```sh
+cd oem-qa-tools
+git checkout testflinger-yaml-sdk
+eval $(poetry env activate)
+```
