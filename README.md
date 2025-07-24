@@ -28,7 +28,8 @@ poetry add git+https://github.com/canonical/oem-qa-tools.git@testflinger-yaml-sd
 
 ### Installing the CLI Tool
 
-Note: The library does NOT need to be installed first. pipx will do that for us.
+> [!Note]  
+> The sdk library does **NOT** need to be installed first. pipx will do that for us.
 
 With `pipx`
 
@@ -56,6 +57,10 @@ sudo apt update && sudo apt install -y pipx
 pipx install poetry
 ```
 
+> [!WARNING]  
+> Do not install python3-poetry from apt. It's way too old
+
+
 If pipx is being installed on the system for the 1st time, add this line to .bashrc or .zshrc
 
 ```sh
@@ -70,8 +75,6 @@ After installation, the `poetry` command will be available in $PATH:
 $ poetry -V
 Poetry (version 2.1.3)
 ```
-
-Note: don't install poetry from apt. It's way too old.
 
 ### Environment setup
 
