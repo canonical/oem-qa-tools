@@ -1,0 +1,39 @@
+from dataclasses import dataclass, field
+from typing import Any, Literal, TextIO
+from urllib.parse import SplitResult
+
+from testflinger_yaml_sdk.models.provision_data import (
+    ProvisionData as ProvisionData,
+)
+from testflinger_yaml_sdk.models.test_data import TestData as TestData
+
+@dataclass(slots=True)
+class SshKeyProvider:
+    provider_name: Literal["lp", "gh"]
+    username: str
+
+@dataclass(slots=True)
+class ReserveData:
+    ssh_keys: list[SshKeyProvider]
+    timeout: int
+
+@dataclass(slots=True)
+class FirmwareUpdateData:
+    ignore_failure: bool
+    version: Literal["latest"] = ...
+
+@dataclass(slots=True)
+class TestflingerJob:
+    job_queue: str
+    tags: list[str] = field(default_factory=list)
+    global_timeout: int = ...
+    output_timeout: int = ...
+    provision_data: ProvisionData | None = ...
+    firmware_update_data: FirmwareUpdateData | None = ...
+    test_data: TestData | None = ...
+    reserve_data: ReserveData | None = ...
+    allocation_timeout: int = ...
+    job_status_webhook: SplitResult | None = ...
+    job_priority: int = ...
+    def to_dict(self) -> dict[str, Any]: ...
+    def dump_yaml(self, file: TextIO) -> None: ...
