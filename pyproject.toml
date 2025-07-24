@@ -20,6 +20,9 @@ pre-commit = "^4.2.0"
 black = "^25.1.0"
 isort = "^6.0.1"
 
+[tool.ruff.lint]
+select = ["ALL"]
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
