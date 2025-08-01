@@ -7,9 +7,13 @@ sudo apt update
 sudo DEBIAN_FRONTEND=noninteractive apt install -yqq checkbox-ng python3-venv sshpass jq pipx
 
 echo "Installing checkbox in agent container"
-CHECKBOX_VERSION=$(_run $CHECKBOX_CLI_CMD --version)
 git clone --depth=1 https://github.com/canonical/hwcert-jenkins-tools.git > /dev/null
 git clone --filter=tree:0 https://github.com/canonical/checkbox.git > /dev/null
+
+# checkout commit to match the required version
+CHECKBOX_VERSION=$(_run $CHECKBOX_CLI_CMD --version)
 hwcert-jenkins-tools/version-published/checkout_to_version.py ~/checkbox "$CHECKBOX_VERSION"
-pipx install --spec checkbox/checkbox-ng checkbox-ng
+
+CHECKBOX_SOURCE_INSTALL_GROUP=${CHECKBOX_SOURCE_INSTALL_GROUP:-$(lsb_release -cs)_prod}
+pipx install checkbox/checkbox-ng["$CHECKBOX_SOURCE_INSTALL_GROUP"]
 sudo rm -rf checkbox
