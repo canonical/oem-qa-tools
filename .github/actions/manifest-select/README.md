@@ -1,14 +1,19 @@
 # Purpose
-This action simply convert the checkbox expend json output to a webpage manifest selector.
+
+This action simply convert the checkbox expend json output to a
+webpage manifest selector.
 
 # Usage
-The input checkbox_expend is the output of command and store one index.html at current folder.
+
+The input checkbox_expend is the output of command and
+store one index.html at current folder.
 
 ```bash
 checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04 -f json > manifest.json
 ```
 
 # Example caller workflow
+
 ```yaml
 name: Deploy Checkbox Manifest to GitHub Pages
 
@@ -63,4 +68,3 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 ```
-
