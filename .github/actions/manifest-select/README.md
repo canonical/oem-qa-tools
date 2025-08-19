@@ -1,4 +1,5 @@
 # Checkbox Manifest Selector Action
+
 ## Purpose
 
 This action simply convert the checkbox expend json output to a
