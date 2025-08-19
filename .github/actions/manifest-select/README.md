@@ -1,18 +1,20 @@
-# Purpose
+## Purpose
 
 This action simply convert the checkbox expend json output to a
 webpage manifest selector.
 
-# Usage
+## Usage
 
 The input checkbox_expend is the output of command and
 store one index.html at current folder.
 
 ```bash
-checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04 -f json > manifest.json
+checkbox-cli expand \
+com.canonical.certification::client-cert-desktop-24-04 -f json \
+> manifest.json
 ```
 
-# Example caller workflow
+## Example caller workflow
 
 ```yaml
 name: Deploy Checkbox Manifest to GitHub Pages
@@ -43,11 +45,15 @@ jobs:
         run: |
           sudo add-apt-repository ppa:checkbox-dev/beta -y
           sudo apt-get update -qq
-          sudo apt-get install canonical-certification-client checkbox-provider-gpgpu -qq -y
+          sudo apt-get install \
+               canonical-certification-client \
+               checkbox-provider-gpgpu -qq -y
 
       - name: Generate manifest.json
         run: |
-          checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04 -f json > manifest.json
+          checkbox-cli expand \
+          com.canonical.certification::client-cert-desktop-24-04 -f json \
+          > manifest.json
 
       - name: Generate GitHub Page (index.html)
         uses: canonical/oem-qa-tools/.github/actions/manifest-select@main
