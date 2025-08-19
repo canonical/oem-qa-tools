@@ -1,0 +1,24 @@
+name: Generate the manifest select webpage index.html
+
+description: 'Generate the manifest select webpage index.html'
+inputs:
+  checkbox_expend:
+    description: 'The checkbox expend json file'
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+      - name: Extract manifest entries and prepare for HTML generation
+        id: extract_entries
+        shell: bash
+        run: |
+          # Extract "manifest entry" values into a JSON array
+          jq -c '[.[] | select(.unit == "manifest entry") | {id, _name, _prompt}]' ${{ inputs.checkbox_expend }}  > manifest_entries.json
+          echo "Extracted manifest entries to manifest_entries.json"
+
+      - name: generate the html
+        shell: bash
+        run: |
+            jq -r -f ${{ github.action_path }}/manifest_jq_filter.jq manifest_entries.json > index.html
