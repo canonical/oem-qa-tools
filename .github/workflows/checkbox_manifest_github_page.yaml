@@ -32,10 +32,99 @@ jobs:
         run: |
           checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04 -f json > manifest.json
 
-      - name: Generate GitHub Page (index.html)
+      - name: Generate GitHub Page (pc-full.html)
         uses: canonical/oem-qa-tools/.github/actions/manifest-select@main
         with:
-          checkbox_expend: manifest.json
+          checkbox_expand: full_manifest.json
+          output_file_name: pc-full.html
+
+      - name: Generate GitHub Page (pc-auto.html)
+        uses: canonical/oem-qa-tools/.github/actions/manifest-select@main
+        with:
+          checkbox_expand: auto_manifest.json
+          output_file_name: pc-auto.html
+
+      - name: Create index.html for multiple page
+        run: |
+          cat << EOF > index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Client Certification</title>
+              <link href="https://assets.ubuntu.com/v1/vanilla-framework-version-3.13.0.min.css" rel="stylesheet" />
+              <style>
+                  body {
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      min-height: 100vh;
+                      margin: 0;
+                      background-color: #f7f7f7;
+                      font-family: 'Inter', sans-serif;
+                  }
+                  .button-container {
+                      display: flex;
+                      gap: 20px;
+                      flex-wrap: wrap;
+                      justify-content: center;
+                  }
+                  .p-button {
+                      padding: 1rem 2rem;
+                      font-size: 1.1rem;
+                      border-radius: 8px;
+                      transition: all 0.3s ease;
+                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                  }
+                  .p-button:hover {
+                      transform: translateY(-2px);
+                      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+                  }
+                  .btn-left {
+                      background-color: #007bff;
+                      color: white;
+                      border: 1px solid #007bff;
+                  }
+                  .btn-left:hover {
+                      background-color: #0056b3;
+                      border-color: #0056b3;
+                  }
+                  .btn-right {
+                      background-color: #28a745;
+                      color: white;
+                      border: 1px solid #28a745;
+                  }
+                  .btn-right:hover {
+                      background-color: #218838;
+                      border-color: #218838;
+                  }
+
+                  @media (max-width: 600px) {
+                      .button-container {
+                          flex-direction: column;
+                          align-items: center;
+                      }
+                      .p-button {
+                          width: 80%;
+                          max-width: 300px;
+                      }
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="button-container">
+                  <button class="p-button btn-left" onclick="window.open('pc-full.html', '_blank');">
+                      client-cert-desktop-24-04
+                  </button>
+
+                  <button class="p-button btn-right" onclick="window.open('pc-auto.html', '_blank');">
+                      client-cert-desktop-24-04-automated
+                  </button>
+              </div>
+          </body>
+          </html>
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

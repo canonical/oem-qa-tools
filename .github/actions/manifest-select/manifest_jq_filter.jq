@@ -4,7 +4,7 @@ def escapehtml:
 
 # Create checkbox input element string with unique id and data-id for json export
 def toCheckboxInput(item):
-  "<input type=\"checkbox\" id=\"" + (item.id|escapehtml) + "\" data-id=\"" + (item.id|escapehtml) + "\" + checked>";
+  "<input type=\"checkbox\" class=\"big-checkbox\" id=\"" + (item.id|escapehtml) + "\" data-id=\"" + (item.id|escapehtml) + "\" + checked>";
 
 # Create a table row with _name and checkbox columns
 def toTableRow(item):
@@ -84,6 +84,10 @@ def jsScript:
         display: flex;
         justify-content: center;
         margin-top: var(--p-spacing-x-large);
+      }
+     .big-checkbox {
+        transform: scale(2);
+        margin: 15px;
       }
   </style>
 </head>

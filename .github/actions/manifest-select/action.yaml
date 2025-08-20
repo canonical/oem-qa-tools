@@ -2,8 +2,12 @@ name: Generate the manifest select webpage index.html
 
 description: 'Generate the manifest select webpage index.html'
 inputs:
-  checkbox_expend:
+  checkbox_expand:
     description: 'The checkbox expend json file'
+    type: string
+    required: true
+  output_file_name:
+    description: 'The output html file name'
     type: string
     required: true
 
@@ -15,10 +19,10 @@ runs:
         shell: bash
         run: |
           # Extract "manifest entry" values into a JSON array
-          jq -c '[.[] | select(.unit == "manifest entry") | {id, _name, _prompt}]' ${{ inputs.checkbox_expend }}  > manifest_entries.json
+          jq -c '[.[] | select(.unit == "manifest entry") | {id, _name, _prompt}]' ${{ inputs.checkbox_expand }}  > manifest_entries.json
           echo "Extracted manifest entries to manifest_entries.json"
 
       - name: generate the html
         shell: bash
         run: |
-            jq -r -f ${{ github.action_path }}/manifest_jq_filter.jq manifest_entries.json > index.html
+            jq -r -f ${{ github.action_path }}/manifest_jq_filter.jq manifest_entries.json > ${{ inputs.output_file_name }}
