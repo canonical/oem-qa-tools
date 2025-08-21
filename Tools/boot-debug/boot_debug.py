@@ -2,7 +2,7 @@
 
 # This script is AI prompt generated.
 # If you would like to create your own logic,
-# the prompt utilied by this script is:
+# the prompt utilized by this script is:
 # A python script
 # 1. Create a systemd service
 # 2. Could define the service is using one of command
