@@ -1,15 +1,9 @@
-# This script automates the process of cloning the WebGL repository
-# and configuring Nginx to serve the test files.
-
 import subprocess
 import os
 
-# Define constants for the repository and paths
 REPO_URL = "https://github.com/KhronosGroup/WebGL.git"
 REPO_NAME = "WebGL"
 
-# The issue was that the script was using the current working directory, which can change.
-# We will now use a fixed, well-known path for the web server root.
 WEBGL_TESTS_PATH = "/var/www/webgl_tests"
 CLONE_PATH = os.path.join(WEBGL_TESTS_PATH, "sdk", "tests")
 
@@ -29,8 +23,6 @@ def run_command(command, message):
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Command failed with exit code {e.returncode}.")
         print(f"       Command: {command}")
-        # The 'output' attribute is only available if `capture_output=True`
-        # We can still print if it's there
         if e.output:
             print(f"       Output: {e.output}")
         exit(1)
@@ -42,7 +34,6 @@ def configure_firewall():
     """
     print("\n[INFO] Checking firewall status...")
     try:
-        # Check if ufw is active
         ufw_status = subprocess.run(
             "ufw status | grep 'Status: active'",
             shell=True,
@@ -52,7 +43,8 @@ def configure_firewall():
         )
         if ufw_status.returncode == 0:
             print(
-                "[INFO] UFW is active. Configuring firewall to allow Nginx Full profile."
+                "[INFO] UFW is active. Configuring firewall"
+                " to allow Nginx Full profile."
             )
             run_command(
                 "ufw allow 'Nginx Full'",
@@ -60,7 +52,8 @@ def configure_firewall():
             )
         else:
             print(
-                "[INFO] UFW is not active or is not installed. Skipping firewall configuration."
+                "[INFO] UFW is not active or is not installed."
+                "Skipping firewall configuration."
             )
     except Exception as e:
         print(f"[ERROR] An error occurred while checking firewall status: {e}")
@@ -85,7 +78,12 @@ def main():
         )
         # copy and patch for local testing
         run_command(
-            f"cp {WEBGL_TESTS_PATH}/sdk/tests/webgl-conformance-tests.html {WEBGL_TESTS_PATH}/sdk/tests/local-tests.html",
+            "cp {}{}webgl-conformance-tests.html {}{}local-tests.html".format(
+                WEBGL_TESTS_PATH,
+                "/sdk/tests/",
+                WEBGL_TESTS_PATH,
+                "/sdk/tests/",
+            ),
             "Copy webgl-conformance-tests.html to local-tests.html...",
         )
         run_command(
@@ -99,15 +97,12 @@ def main():
         )
     else:
         print(
-            f"\n[INFO] Directory '{WEBGL_TESTS_PATH}' already exists. Skipping clone."
+            "\n[INFO] Directory '{}' already exists. Skipping clone.".format(
+                WEBGL_TESTS_PATH
+            )
         )
 
     # Step 2: Install and configure Nginx
-    print(
-        "\n[WARNING] This script will use 'sudo' to install and configure Nginx."
-    )
-    print("          You may be prompted for your password.")
-
     # Update package lists
     run_command("apt-get update", "Updating package lists...")
 
@@ -149,7 +144,9 @@ server {{
 
     # Create symbolic link to enable the new site
     run_command(
-        f"ln -s {NGINX_SITES_AVAILABLE}{NGINX_CONFIG_FILE} {NGINX_SITES_ENABLED}",
+        "ln -s {}{} {}".format(
+            NGINX_SITES_AVAILABLE, NGINX_CONFIG_FILE, NGINX_SITES_ENABLED
+        ),
         "Creating symbolic link to enable the new site...",
     )
 
@@ -160,7 +157,6 @@ server {{
     run_command("systemctl restart nginx", "Restarting Nginx service...")
 
     print("\n[SUCCESS] WebGL server setup complete!")
-    print(f"You can now view the WebGL tests at http://localhost")
 
 
 if __name__ == "__main__":
