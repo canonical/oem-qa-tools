@@ -28,7 +28,7 @@
 +      // Create a temporary anchor element for download
 +      const a = document.createElement('a');
 +      a.href = URL.createObjectURL(blob);
-+      a.download = 'webgl-test-results.txt';
++      a.download = 'webgl-test-results.json';
 +
 +      // Append to the body, trigger click, and remove
 +      document.body.appendChild(a);
