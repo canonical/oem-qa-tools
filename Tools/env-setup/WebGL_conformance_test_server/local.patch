@@ -1,0 +1,43 @@
+--- webgl-conformance-tests.html	2025-09-11 10:24:26.769794696 +0800
++++ local-tests.html	2025-09-11 10:17:14.953980684 +0800
+@@ -995,6 +995,40 @@
+ 
+       tx += lines.join('\n');
+ 
++      const tmpFailureLines = [];
++      const tmpTimeoutLines = [];
++
++      for (var url in this.pagesByURL) {
++        var page = this.pagesByURL[url];
++        if (page.totalFailed) {
++          tmpFailureLines.push({[url]: page.toJSON()});
++        }
++        if (page.totalTimeouts) {
++          tmpTimeoutLines.push({[url]: page.toJSON()});
++        }
++      }
++
++      const obj = {
++        failures: tmpFailureLines,
++        timeouts: tmpTimeoutLines,
++      };
++
++      // Create a Blob with the test results text
++      const blob = new Blob([JSON.stringify(obj)], { type: 'text/plain' });
++
++      // Create a temporary anchor element for download
++      const a = document.createElement('a');
++      a.href = URL.createObjectURL(blob);
++      a.download = 'webgl-test-results.txt';
++
++      // Append to the body, trigger click, and remove
++      document.body.appendChild(a);
++      a.click();
++      document.body.removeChild(a);
++
++      // Release the object URL after download
++      URL.revokeObjectURL(a.href);
++
+       var r = document.getElementById("testResultsAsText");
+       while (r.firstChild) r.removeChild(r.firstChild);
+       r.appendChild(document.createTextNode(tx));
