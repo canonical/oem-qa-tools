@@ -1,12 +1,22 @@
---- webgl-conformance-tests.html	2025-09-11 10:24:26.769794696 +0800
-+++ local-tests.html	2025-09-11 10:17:14.953980684 +0800
-@@ -995,6 +995,40 @@
+--- webgl-conformance-tests.html	2025-09-11 13:03:41.298568454 +0800
++++ local-tests.html	2025-09-12 09:40:15.760064456 +0800
+@@ -995,6 +995,51 @@
  
        tx += lines.join('\n');
  
++      const tmpDataLines = [];
 +      const tmpFailureLines = [];
 +      const tmpTimeoutLines = [];
 +
++      const testinfo = {
++        "User Agent": (navigator.userAgent ? navigator.userAgent : "(navigator.userAgent is null)"),
++        "WebGL VENDOR": this.contextInfo["VENDOR"],
++        "WebGL VERSION": this.contextInfo["VERSION"],
++        "WebGL RENDERER": this.contextInfo["RENDERER"],
++        "Unmasked VENDOR": this.contextInfo["UNMASKED_VENDOR"],
++        "Unmasked RENDERER": this.contextInfo["UNMASKED_RENDERER"],
++        "WebGL R/G/B/A/Depth/Stencil bits (default config)": this.contextInfo["RED_BITS"] + "/" + this.contextInfo["GREEN_BITS"] + "/" + this.contextInfo["BLUE_BITS"] + "/" + this.contextInfo["ALPHA_BITS"] + "/" + this.contextInfo["DEPTH_BITS"] + "/" + this.contextInfo["STENCIL_BITS"],
++      };
 +      for (var url in this.pagesByURL) {
 +        var page = this.pagesByURL[url];
 +        if (page.totalFailed) {
@@ -18,6 +28,7 @@
 +      }
 +
 +      const obj = {
++        testinfo: testinfo,
 +        failures: tmpFailureLines,
 +        timeouts: tmpTimeoutLines,
 +      };
