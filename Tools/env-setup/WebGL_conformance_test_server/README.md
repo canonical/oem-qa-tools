@@ -1,7 +1,7 @@
 
 # WebGL Conformance Test Server setup
 
-## Nitoce
+## Notice
 
 This script is utilized to setup the test server for
 [checkbox](https://github.com/canonical/checkbox) could test it automatically.
