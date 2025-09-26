@@ -1,5 +1,6 @@
 # **Automated System Management Script**
 
+<!-- markdownlint-disable MD013 -->
 This Python script, boot\_debug.py, creates and manages a systemd service for automated, cyclical system reboots or wake-up cycles. It's designed to be a robust debugging tool for scenarios where a system needs to perform a specific action (like a reboot cycle) a set number of times.  
 The service is configured to execute a main command after a specified delay and can be set to run an optional pre-execution script.
 
