@@ -160,8 +160,8 @@ LOG_TAG="reboot_manager_script" # Tag for syslog messages
 
 # --- Functions ---
 log_message() {{
-    # Send message to syslog via systemd-cat for structured logging
-    systemd-cat -t "$LOG_TAG" "$1"
+    # Send message to syslog via logger for structured logging
+    logger -t "$LOG_TAG" "$1"
 }}
 
 stop_and_disable_service() {{
@@ -419,7 +419,8 @@ Usage examples:
         "--delay",
         type=int,
         default=60,
-        help="Delay in seconds before executing the command. " "Default: 60.",
+        help="Delay in seconds before executing the cb/wb command. "
+        "Default: 60.",
     )
     parser.add_argument(
         "--max-cycles",
