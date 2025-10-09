@@ -36,7 +36,7 @@ wait_for_ssh() {{
     done
 }}
 
-DCD=$(_run ubuntu-report show | grep \"DCD\": | awk '{print $2}')
+DCD=$(_run ubuntu-report show | grep \"DCD\": | awk '{print $2}' | tr -d '"\r')
 
 echo
 echo "====== TARGET DEVICE CONNECTION INFO ======"
@@ -48,7 +48,9 @@ echo "==========================================="
 echo
 
 mkdir -p artifacts
-echo "$DCD" > artifacts/dcd.info
+MACHINE_INFO_FILE="artifacts/machine-info.json"
+_run curl https://api.tel.certification.canonical.com/api/v2/machines/"$CID"/ > tmp.json
+jq --arg new_string "$DCD" '.DCD = $new_string' "tmp.json" > "$MACHINE_INFO_FILE"
 echo "Files in artifacts:"
 ls artifacts
 
