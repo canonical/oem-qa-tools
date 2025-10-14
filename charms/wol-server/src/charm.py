@@ -13,7 +13,11 @@ from ops.model import (
 )
 
 logger = logging.getLogger(__name__)
-default_wol_server_download_url = "https://raw.githubusercontent.com/canonical/oem-qa-tools/refs/heads/main/Tools/env-setup/wol_server.py"
+file_path = "refs/heads/main/Tools/env-setup/wol_server.py"
+repo = "canonical/oem-qa-tools/"
+default_wol_server_download_url = (
+    "https://raw.githubusercontent.com/{}{}".format(repo, file_path)
+)
 wol_install_destination = "/usr/bin/"
 
 
@@ -78,13 +82,16 @@ class WolCharm(ops.CharmBase):
 
     def start_wol_server(self, port: int):
         """Start default WoL server"""
+        cmd = "uvicorn --app-dir {} wol_server:app --host {} --port {}".format(
+            wol_install_destination, "0.0.0.0", port
+        )
         service_content = f"""
         [Unit]
         Description=Wake-on-Lan server
         After=network.target
 
         [Service]
-        ExecStart=uvicorn --app-dir {wol_install_destination} wol_server:app --host 0.0.0.0 --port {port}
+        ExecStart={cmd}
         Restart=on-failure
 
         [Install]
@@ -104,4 +111,4 @@ class WolCharm(ops.CharmBase):
 
 
 if __name__ == "__main__":  # pragma: nocover
-    ops.main(OemQaVmCharm)
+    ops.main(WolCharm)
