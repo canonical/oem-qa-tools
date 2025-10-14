@@ -2,7 +2,7 @@
 
 """Charm the application."""
 
-from charms.operator_libs_linux.v0 import apt
+from charmlibs import apt
 import subprocess
 from subprocess import CalledProcessError
 import urllib.request

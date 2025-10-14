@@ -7,12 +7,6 @@ Used to set up a Wake-up on LAN server
 Please note you should have an environment for juju machine charm to deploy,
 such as lxd
 
-### Download libraries for this charm
-
-```bash
-charmcraft fetch-lib
-```
-
 ### Build this charm
 
 ```bash
