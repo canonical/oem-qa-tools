@@ -47,7 +47,7 @@ class WolCharm(ops.CharmBase):
         self.start_wol_server(self.config.get("port"))
         self.unit.status = ops.ActiveStatus("Ready")
 
-    def _on_update(self, event: ops.UpgradeEvent):
+    def _on_update(self, event: ops.UpgradeCharmEvent):
         """Handle install event."""
         self.unit.status = ops.MaintenanceStatus("Updating the wol server")
         self.download_default_wol_server_code()
