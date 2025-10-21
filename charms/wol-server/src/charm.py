@@ -13,11 +13,7 @@ from ops.model import (
 )
 
 logger = logging.getLogger(__name__)
-file_path = "refs/heads/main/Tools/env-setup/wol_server.py"
-repo = "canonical/oem-qa-tools/"
-default_wol_server_download_url = (
-    "https://raw.githubusercontent.com/{}{}".format(repo, file_path)
-)
+
 wol_install_destination = "/usr/bin/"
 
 
@@ -72,7 +68,7 @@ class WolCharm(ops.CharmBase):
         """Download default WoL server script"""
         try:
             urllib.request.urlretrieve(
-                default_wol_server_download_url,
+                self.config.get("wol_server_script"),
                 f"{wol_install_destination}wol_server.py",
             )
             logger.info(f"Downloaded file to {wol_install_destination}")
