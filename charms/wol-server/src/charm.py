@@ -28,7 +28,9 @@ class WolCharm(ops.CharmBase):
 
     def _on_start(self, event: ops.StartEvent):
         """Handle start event."""
-        if not isinstance(self.unit.status, (BlockedStatus, MaintenanceStatus)):
+        if not isinstance(
+            self.unit.status, (BlockedStatus, MaintenanceStatus)
+        ):
             self.unit.status = ActiveStatus()
 
     def _on_install(self, event: ops.InstallEvent):
@@ -44,7 +46,9 @@ class WolCharm(ops.CharmBase):
             return
         self.setup_wol_server()
 
-    def _on_config_or_upgrade(self, event: ops.ConfigChangedEvent | ops.UpgradeCharmEvent):
+    def _on_config_or_upgrade(
+        self, event: ops.ConfigChangedEvent | ops.UpgradeCharmEvent
+    ):
         """Handle config-changed or upgrade-charm event."""
         self.setup_wol_server()
 
@@ -58,7 +62,9 @@ class WolCharm(ops.CharmBase):
             return
 
         if not wol_script_url:
-            self.unit.status = BlockedStatus("Missing required config: wol_server_script")
+            self.unit.status = BlockedStatus(
+                "Missing required config: wol_server_script"
+            )
             return
 
         self.unit.status = MaintenanceStatus("Setting up WoL server")
@@ -78,7 +84,9 @@ class WolCharm(ops.CharmBase):
             apt.add_package(packages)
             return True
         except apt.PackageNotFoundError:
-            logger.error("a specified package not found in package cache or on system")
+            logger.error(
+                "a specified package not found in package cache or on system"
+            )
             self.unit.status = BlockedStatus("Failed to install packages")
             return False
         except apt.PackageError:
@@ -97,7 +105,9 @@ class WolCharm(ops.CharmBase):
             return True
         except Exception as e:
             logger.error(f"Failed to download file: {repr(e)}")
-            self.unit.status = BlockedStatus("Failed to download WoL server script")
+            self.unit.status = BlockedStatus(
+                "Failed to download WoL server script"
+            )
             return False
 
     def start_wol_server(self, port: int) -> bool:
