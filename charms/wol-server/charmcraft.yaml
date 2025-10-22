@@ -55,3 +55,6 @@ config:
     port:
       description: The port that WoL server is listened
       type: int
+    wol_server_script:
+      description: The Download link of the wake up on lan server script
+      type: string
