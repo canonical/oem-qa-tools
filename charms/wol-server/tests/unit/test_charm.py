@@ -5,12 +5,12 @@
 
 from ops import testing
 
-from charm import OemQaVmCharm
+from charm import WolCharm
 
 
 def test_start():
     # Arrange:
-    ctx = testing.Context(OemQaVmCharm)
+    ctx = testing.Context(WolCharm)
     # Act:
     state_out = ctx.run(ctx.on.start(), testing.State())
     # Assert:
