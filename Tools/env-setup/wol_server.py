@@ -32,7 +32,7 @@ def send_wol_command(wol_info: dict):
     wake_type = wol_info["wake_type"]
 
     command_dict = {
-        "g": "wakeonlan {}".format(dut_mac),
+        "g": "wakeonlan -i {} {}".format(dut_ip, dut_mac),
         "a": "ping {}".format(dut_ip),
     }
     try:
