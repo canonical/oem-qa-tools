@@ -616,7 +616,7 @@ class ServiceCheckPrinter(TestResultPrinter):
                 if not file_i:
                     continue
                 with file_i:
-                    msg_prefix = "These services failed: "
+                    msg_prefix = "These services failed:"
                     searching_services = False
 
                     for line in file_i:
