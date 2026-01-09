@@ -56,17 +56,17 @@ class ObexReceiver:
     dbus = """
     <node>
         <interface name="org.bluez.obex.Agent1">
-            <method name="AuthorizePush">
+            <method name="authorize_push">
                 <arg type="o" name="transfer" direction="in"/>
                 <arg type="s" name="path" direction="out"/>
             </method>
-            <method name="Cancel"></method>
-            <method name="Release"></method>
+            <method name="cancel"></method>
+            <method name="release"></method>
         </interface>
     </node>
     """
 
-    def AuthorizePush(self, transfer_path):
+    def authorize_push(self, transfer_path):
         print(f"[*] Incoming connection on D-Bus path: {transfer_path}")
 
         bus = SessionBus()
@@ -90,10 +90,10 @@ class ObexReceiver:
             # Fallback path if property lookup fails
             return os.path.join(SAVE_PATH, "incoming_file")
 
-    def Cancel(self):
+    def cancel(self):
         print("[-] Transfer cancelled.")
 
-    def Release(self):
+    def release(self):
         print("[!] Agent released.")
 
 

@@ -38,3 +38,5 @@ EOF
 systemctl --user -M "$SUDO_USER@" daemon-reload
 systemctl --user -M "$SUDO_USER@" enable bt_obex_test_server.service
 systemctl --user -M "$SUDO_USER@" start bt_obex_test_server.service
+
+echo "Please reboot the system"
