@@ -6,11 +6,18 @@ printf " \033[1;35m Install Obex server  \033[0m\n"
 USER_HOME=$(eval echo ~"${SUDO_USER}")
 
 apt install python3-pydbus python3-gi -y
+
 mkdir -p "${USER_HOME}/obex"
 chown "${SUDO_USER}":"${SUDO_USER}" "${USER_HOME}/obex"
+
+# config obexd to auto accept and disable Nokia obex suit
 sed -i.bak "s#ExecStart.*#ExecStart=/usr/libexec/bluetooth/obexd -a -r ${USER_HOME}/obex -P pcsuite#g" /usr/lib/systemd/user/obex.service
 systemctl daemon-reload
 systemctl restart bluetooth.service
+
+# disable use device suspend
+sed -i.bak 's#GRUB_CMDLINE_LINUX_DEFAULT.*#GRUB_CMDLINE_LINUX_DEFAULT="usbcore.autosuspend=-1"#g' /etc/default/grub
+update-grub
 cp bt_obex_test_server.py "${USER_HOME}/"
 
 #Create service
