@@ -1,9 +1,11 @@
-import gi
+#!/usr/bin/env python3
+
 from pydbus import SessionBus, SystemBus
 from gi.repository import GLib
 import os
 
 SAVE_PATH = os.path.expanduser("~/Downloads")
+
 
 class BluetoothAutoTruster:
     def __init__(self):
@@ -15,7 +17,7 @@ class BluetoothAutoTruster:
         # The Object Manager allows us to see all devices
         self.manager = self.bus.get("org.bluez", "/")
         self.manager.onInterfacesAdded = self.on_interfaces_added
-        
+
         print("[*] Monitoring for new devices to Auto-Trust...")
         self.check_existing_devices()
 
@@ -49,6 +51,7 @@ class BluetoothAutoTruster:
             if "org.bluez.Device1" in interfaces:
                 self.trust_device(path)
 
+
 class ObexReceiver:
     dbus = """
     <node>
@@ -65,21 +68,22 @@ class ObexReceiver:
 
     def AuthorizePush(self, transfer_path):
         print(f"[*] Incoming connection on D-Bus path: {transfer_path}")
-        
+
         bus = SessionBus()
         try:
             # Get the transfer object properties
             transfer = bus.get("org.bluez.obex", transfer_path)
-            # The property is usually 'Name', not 'Filename' in the Transfer1 interface
+            # The property is usually 'Name',
+            # not 'Filename' in the Transfer1 interface
             props = transfer["org.bluez.obex.Transfer1"]
             filename = props.get("Name", "received_file")
-            
+
             print(f"[+] Accepting file: {filename}")
             full_path = os.path.join(SAVE_PATH, filename)
-            
+
             # Create directory if it doesn't exist
             os.makedirs(SAVE_PATH, exist_ok=True)
-            
+
             return full_path
         except Exception as e:
             print(f"[!] Authorization error: {e}")
@@ -92,16 +96,17 @@ class ObexReceiver:
     def Release(self):
         print("[!] Agent released.")
 
+
 def main():
     # Auto Trust all connection
     BluetoothAutoTruster()
 
     bus = SessionBus()
-    
+
     # 1. Publish the agent
     agent_path = "/test/obex/agent"
     bus.publish("org.bluez.obex.Agent1", ObexReceiver())
-    
+
     # 2. Register the agent with the Manager
     try:
         manager = bus.get("org.bluez.obex", "/org/bluez/obex")
@@ -117,6 +122,7 @@ def main():
         loop.run()
     except KeyboardInterrupt:
         loop.quit()
+
 
 if __name__ == "__main__":
     main()
