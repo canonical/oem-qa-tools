@@ -19,6 +19,7 @@ systemctl restart bluetooth.service
 sed -i.bak 's#GRUB_CMDLINE_LINUX_DEFAULT.*#GRUB_CMDLINE_LINUX_DEFAULT="usbcore.autosuspend=-1"#g' /etc/default/grub
 update-grub
 cp bt_obex_test_server.py "${USER_HOME}/"
+cp clean_up_trusted_bt_device.py "${USER_HOME}/"
 
 #Create service
 cat <<EOF > "${USER_HOME}/.config/systemd/user/bt_obex_test_server.service"
@@ -38,5 +39,7 @@ EOF
 systemctl --user -M "$SUDO_USER@" daemon-reload
 systemctl --user -M "$SUDO_USER@" enable bt_obex_test_server.service
 systemctl --user -M "$SUDO_USER@" start bt_obex_test_server.service
+
+(crontab -l 2>/dev/null | grep -v -F "${USER_HOME}/clean_up_trusted_bt_device.py"; echo "0 11 * * 0 ${USER_HOME}/clean_up_trusted_bt_device.py") | crontab -u "${SUDO_USER}" -
 
 echo "Please reboot the system"
