@@ -23,6 +23,7 @@ class BluetoothAutoTruster:
 
     def config_device(self, device: str):
         adapter = self.bus.get("org.bluez", f"/org/bluez/{device}")
+        adapter.DiscoverableTimeout = 0
         adapter.Discoverable = True
         print("[*] Discoverable:", adapter.Discoverable)
 
