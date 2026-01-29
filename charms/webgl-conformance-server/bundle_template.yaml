@@ -1,0 +1,7 @@
+applications:
+  app-name:
+    charm: ./wol_all.charm
+    num_units: 1
+    options:
+        port: 8090
+        wol_server_script: "https://raw.githubusercontent.com/canonical/oem-qa-tools/refs/heads/main/Tools/env-setup/wol_server.py"

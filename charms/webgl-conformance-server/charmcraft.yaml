@@ -1,0 +1,60 @@
+# This file configures Charmcraft.
+# See https://juju.is/docs/sdk/charmcraft-config for guidance.
+
+# (Required)
+name: wol
+
+
+# (Required)
+type: charm
+
+
+# (Recommended)
+title: WoL server
+
+
+# (Required)
+summary: A Default WoL server for Daily OEM-QA Tasks.
+
+
+# (Required)
+description: |
+  A Default WoL server for Daily OEM-QA Tasks.
+  https://github.com/hanhsuan/oem-qa-tools/blob/main/Tools/env-setup/wol_server.py
+
+base: ubuntu@24.04
+build-base: ubuntu@devel
+
+parts:
+  wol:
+    plugin: charm
+    source: .
+    charm-entrypoint: src/charm.py
+    charm-binary-python-packages: []
+    charm-python-packages: []
+    charm-requirements: [requirements.txt]
+    charm-strict-dependencies: false
+
+platforms:
+  all:
+    build-on:
+      - amd64
+    build-for:
+      - amd64
+
+config:
+  options:
+    # An example config option to customise the log level of the workload
+    log-level:
+      description: |
+        Configures the log level of gunicorn.
+
+        Acceptable values are: "info", "debug", "warning", "error" and "critical"
+      default: "info"
+      type: string
+    port:
+      description: The port that WoL server is listened
+      type: int
+    wol_server_script:
+      description: The Download link of the wake up on lan server script
+      type: string
