@@ -2,7 +2,7 @@
 # See https://juju.is/docs/sdk/charmcraft-config for guidance.
 
 # (Required)
-name: WebGL conformance Test Server
+name: webgl-conformance-test-server
 
 
 # (Required)
@@ -22,10 +22,10 @@ description: |
   A Default WebGL conformance Test Server for Daily OEM-QA Tasks.
 
 base: ubuntu@24.04
-build-base: ubuntu@devel
+build-base: ubuntu@24.04
 
 parts:
-  wol:
+  webgl-conformance-test-server:
     plugin: charm
     source: .
     charm-entrypoint: src/charm.py
