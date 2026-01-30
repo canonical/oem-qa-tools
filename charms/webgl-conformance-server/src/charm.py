@@ -132,8 +132,9 @@ class WebGLCharm(ops.CharmBase):
                 ),
                 "Copy webgl-conformance-tests.html to local-tests.html...",
             )
+            # the patch file is installed by hook
             self.run_command(
-                f"patch {CLONE_PATH}local-tests.html local.patch",
+                f"patch {CLONE_PATH}local-tests.html /tmp/webgl/local.patch",
                 "Patch local-tests.html to download result automatically...",
             )
             # Ensure the user has ownership of the directory

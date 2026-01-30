@@ -1,0 +1,54 @@
+--- webgl-conformance-tests.html	2025-09-11 13:03:41.298568454 +0800
++++ local-tests.html	2025-09-12 09:40:15.760064456 +0800
+@@ -995,6 +995,51 @@
+ 
+       tx += lines.join('\n');
+ 
++      const tmpDataLines = [];
++      const tmpFailureLines = [];
++      const tmpTimeoutLines = [];
++
++      const testinfo = {
++        "User Agent": (navigator.userAgent ? navigator.userAgent : "(navigator.userAgent is null)"),
++        "WebGL VENDOR": this.contextInfo["VENDOR"],
++        "WebGL VERSION": this.contextInfo["VERSION"],
++        "WebGL RENDERER": this.contextInfo["RENDERER"],
++        "Unmasked VENDOR": this.contextInfo["UNMASKED_VENDOR"],
++        "Unmasked RENDERER": this.contextInfo["UNMASKED_RENDERER"],
++        "WebGL R/G/B/A/Depth/Stencil bits (default config)": this.contextInfo["RED_BITS"] + "/" + this.contextInfo["GREEN_BITS"] + "/" + this.contextInfo["BLUE_BITS"] + "/" + this.contextInfo["ALPHA_BITS"] + "/" + this.contextInfo["DEPTH_BITS"] + "/" + this.contextInfo["STENCIL_BITS"],
++      };
++      for (var url in this.pagesByURL) {
++        var page = this.pagesByURL[url];
++        if (page.totalFailed) {
++          tmpFailureLines.push({[url]: page.toJSON()});
++        }
++        if (page.totalTimeouts) {
++          tmpTimeoutLines.push({[url]: page.toJSON()});
++        }
++      }
++
++      const obj = {
++        testinfo: testinfo,
++        failures: tmpFailureLines,
++        timeouts: tmpTimeoutLines,
++      };
++
++      // Create a Blob with the test results text
++      const blob = new Blob([JSON.stringify(obj)], { type: 'text/plain' });
++
++      // Create a temporary anchor element for download
++      const a = document.createElement('a');
++      a.href = URL.createObjectURL(blob);
++      a.download = 'webgl-test-results.json';
++
++      // Append to the body, trigger click, and remove
++      document.body.appendChild(a);
++      a.click();
++      document.body.removeChild(a);
++
++      // Release the object URL after download
++      URL.revokeObjectURL(a.href);
++
+       var r = document.getElementById("testResultsAsText");
+       while (r.firstChild) r.removeChild(r.firstChild);
+       r.appendChild(document.createTextNode(tx));
