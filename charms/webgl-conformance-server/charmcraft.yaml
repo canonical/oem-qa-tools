@@ -2,7 +2,7 @@
 # See https://juju.is/docs/sdk/charmcraft-config for guidance.
 
 # (Required)
-name: wol
+name: WebGL conformance Test Server
 
 
 # (Required)
@@ -10,17 +10,16 @@ type: charm
 
 
 # (Recommended)
-title: WoL server
+title: WebGL conformance Test Server
 
 
 # (Required)
-summary: A Default WoL server for Daily OEM-QA Tasks.
+summary: A Default WebGL conformance Test Server for Daily OEM-QA Tasks.
 
 
 # (Required)
 description: |
-  A Default WoL server for Daily OEM-QA Tasks.
-  https://github.com/hanhsuan/oem-qa-tools/blob/main/Tools/env-setup/wol_server.py
+  A Default WebGL conformance Test Server for Daily OEM-QA Tasks.
 
 base: ubuntu@24.04
 build-base: ubuntu@devel
@@ -51,10 +50,4 @@ config:
 
         Acceptable values are: "info", "debug", "warning", "error" and "critical"
       default: "info"
-      type: string
-    port:
-      description: The port that WoL server is listened
-      type: int
-    wol_server_script:
-      description: The Download link of the wake up on lan server script
       type: string

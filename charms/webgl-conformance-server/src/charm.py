@@ -2,9 +2,9 @@
 
 """Charm the application."""
 
+import os
 import logging
 import subprocess
-import urllib.request
 from subprocess import CalledProcessError
 
 import ops
@@ -58,25 +58,25 @@ class WebGLCharm(ops.CharmBase):
         """Handle config-changed or upgrade-charm event."""
         self.setup_webgl_server()
 
-    def run_command(command, message):
+    def run_command(self, command, message):
         """
         Executes a shell command and provides feedback.
         """
-        logger.info(f"\n[INFO] {message}")
+        logger.info("%s", message)
         try:
             subprocess.run(command, check=True, shell=True)
             logger.info("[SUCCESS] Command executed successfully.")
         except subprocess.CalledProcessError as e:
-            logger.error(f"Command failed with exit code {e.returncode}.")
-            logger.error(f"       Command: {command}")
+            logger.error("Command failed with exit code %s.", e.returncode)
+            logger.error("       Command: %s", command)
             if e.output:
-                logger.error(f"       Output: {e.output}")
-    
-    def configure_firewall():
+                logger.error("       Output: %s", e.output)
+
+    def configure_firewall(self):
         """
         Checks and configures the UFW firewall to allow Nginx.
         """
-        logger.info("\nChecking firewall status...")
+        logger.info("Checking firewall status...")
         try:
             ufw_status = subprocess.run(
                 "ufw status | grep 'Status: active'",
@@ -100,21 +100,20 @@ class WebGLCharm(ops.CharmBase):
                     "Skipping firewall configuration."
                 )
         except Exception as e:
-            logger.error(f"An error occurred while checking firewall status: {e}")
+            logger.error(
+                "An error occurred while checking firewall status: %s", e
+            )
 
     def setup_webgl_server(self):
         """Set up WebGL conformance test server with config validation."""
-        port = self.config.get("port")
 
-        if not port:
-            self.unit.status = BlockedStatus("Missing required config: port")
-            return
-
-        self.unit.status = MaintenanceStatus("Setting up WebGL conformance test server")
+        self.unit.status = MaintenanceStatus(
+            "Setting up WebGL conformance test server"
+        )
 
         logger.info("Starting WebGL Nginx Server Setup...")
 
-        # Step 1: Clone the WebGL repository
+        # Clone the WebGL repository
         if not os.path.exists(WEBGL_TESTS_PATH):
             # Create the directory if it doesn't exist
             self.run_command(
@@ -127,29 +126,76 @@ class WebGLCharm(ops.CharmBase):
             )
             # copy and patch for local testing
             self.run_command(
-                "cp {}{}webgl-conformance-tests.html {}{}local-tests.html".format(
-                    WEBGL_TESTS_PATH,
-                    "/sdk/tests/",
-                    WEBGL_TESTS_PATH,
-                    "/sdk/tests/",
+                "cp {}webgl-conformance-tests.html {}local-tests.html".format(
+                    CLONE_PATH,
+                    CLONE_PATH,
                 ),
                 "Copy webgl-conformance-tests.html to local-tests.html...",
             )
             self.run_command(
-                f"patch {WEBGL_TESTS_PATH}/sdk/tests/local-tests.html local.patch",
+                f"patch {CLONE_PATH}local-tests.html local.patch",
                 "Patch local-tests.html to download result automatically...",
             )
-            # Ensure the user has ownership of the directory for future permissions
+            # Ensure the user has ownership of the directory
             self.un_command(
                 f"chown -R $USER:$USER {WEBGL_TESTS_PATH}",
                 "Setting correct file permissions...",
             )
         else:
             logger.info(
-                "\nDirectory '{}' already exists. Skipping clone.".format(
-                    WEBGL_TESTS_PATH
-                )
+                "Directory '%s' already exists. Skipping clone.",
+                WEBGL_TESTS_PATH,
             )
+            self.run_command(
+                f"git -C {WEBGL_TESTS_PATH} pull",
+                f"Updating {REPO_URL}...",
+            )
+
+        # Create Nginx configuration file for WebGL tests
+        nginx_conf_content = f"""
+server {{
+    listen 80;
+    server_name localhost;
+
+    root {CLONE_PATH};
+    index index.html;
+
+    location / {{
+        # First attempt to serve request as file, then as directory
+        try_files $uri $uri/ =404;
+    }}
+}}
+"""
+        local_conf_path = NGINX_CONFIG_FILE
+        with open(local_conf_path, "w") as f:
+            f.write(nginx_conf_content)
+
+        logger.info("Created Nginx configuration file: %s", local_conf_path)
+
+        # Move configuration to sites-available and link to sites-enabled
+        self.run_command(
+            f"mv {local_conf_path} {NGINX_SITES_AVAILABLE}",
+            "Moving configuration to Nginx's sites-available directory...",
+        )
+
+        # Remove default site configuration
+        self.run_command(
+            f"rm -f {NGINX_SITES_ENABLED}default",
+            "Removing default Nginx configuration link...",
+        )
+
+        # Create symbolic link to enable the new site
+        self.run_command(
+            "ln -s {}{} {}".format(
+                NGINX_SITES_AVAILABLE, NGINX_CONFIG_FILE, NGINX_SITES_ENABLED
+            ),
+            "Creating symbolic link to enable the new site...",
+        )
+
+        # Configure firewall
+        self.configure_firewall()
+        self.start_webgl_server()
+        logger.info("[SUCCESS] WebGL server setup complete!")
 
         self.unit.status = ActiveStatus("Ready")
 
@@ -170,50 +216,15 @@ class WebGLCharm(ops.CharmBase):
             self.unit.status = BlockedStatus("Failed to install packages")
             return False
 
-    def download_default_webgl_server_code(self) -> bool:
-        """Download default WoL server script."""
-        try:
-            urllib.request.urlretrieve(
-                self.config.get("webgl_server_script"),
-                f"{webgl_install_destination}webgl_server.py",
-            )
-            logger.info(f"Downloaded file to {webgl_install_destination}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to download file: {repr(e)}")
-            self.unit.status = BlockedStatus(
-                "Failed to download WoL server script"
-            )
-            return False
-
     def start_webgl_server(self, port: int) -> bool:
-        """Start default WoL server."""
-        cmd = "uvicorn --app-dir {} webgl_server:app --host {} --port {}".format(
-            webgl_install_destination, "0.0.0.0", port
-        )
-        service_content = f"""
-        [Unit]
-        Description=Wake-on-Lan server
-        After=network.target
-
-        [Service]
-        ExecStart={cmd}
-        Restart=on-failure
-
-        [Install]
-        WantedBy=multi-user.target
-        """
-        service_file = "/etc/systemd/system/webgl.service"
-        with open(service_file, "w") as f:
-            f.write(service_content)
+        """Start default WebGL Conformance Test Server."""
 
         try:
             subprocess.check_call(["systemctl", "daemon-reload"])
-            subprocess.check_call(["systemctl", "enable", "webgl"])
-            subprocess.check_call(["systemctl", "restart", "webgl"])
+            subprocess.check_call(["systemctl", "restart", "nginx"])
             return True
         except CalledProcessError as e:
-            logger.error(f"Failed to start webgl server: {repr(e)}")
+            logger.error("Failed to start webgl server: %s", e)
             self.unit.status = BlockedStatus("Failed to setup service")
             return False
 
