@@ -3,6 +3,7 @@
 """Charm the application."""
 
 import os
+import shutil
 import logging
 import subprocess
 from subprocess import CalledProcessError
@@ -50,6 +51,14 @@ class WebGLCharm(ops.CharmBase):
             ]
         ):
             return
+        charm_dir = self.model.charm_dir
+        src_file = os.path.join(charm_dir, "patches", "local.patch")
+        dst_file = os.path.join("tmp", "webgl", "local.patch")
+        if os.path.exists(src_file):
+            shutil.copy2(src_file, dst_file)
+            self.unit.status = ops.MaintenanceStatus("Copied patch file")
+        else:
+            self.unit.status = ops.BlockedStatus("patch file missing")
         self.setup_webgl_server()
 
     def _on_config_or_upgrade(

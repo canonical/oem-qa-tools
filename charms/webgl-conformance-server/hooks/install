@@ -1,4 +1,0 @@
-#/bin/bash
-
-mkdir -p /tmp/webgl
-cp "$CHARM_DIR/patches/local.patch" /tmp/webgl/local.patch
