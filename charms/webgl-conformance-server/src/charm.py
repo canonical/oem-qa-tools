@@ -51,10 +51,11 @@ class WebGLCharm(ops.CharmBase):
             ]
         ):
             return
-        charm_dir = self.model.charm_dir
+        charm_dir = self.framework.charm_dir
         src_file = os.path.join(charm_dir, "patches", "local.patch")
-        dst_file = os.path.join("tmp", "webgl", "local.patch")
+        dst_file = os.path.join("/tmp", "webgl", "local.patch")
         if os.path.exists(src_file):
+            os.makedirs("/tmp/webgl", exist_ok=True)
             shutil.copy2(src_file, dst_file)
             self.unit.status = ops.MaintenanceStatus("Copied patch file")
         else:
@@ -125,29 +126,26 @@ class WebGLCharm(ops.CharmBase):
         # Clone the WebGL repository
         if not os.path.exists(WEBGL_TESTS_PATH):
             # Create the directory if it doesn't exist
-            self.run_command(
-                f"mkdir -p {WEBGL_TESTS_PATH}",
-                "Creating web server root directory...",
-            )
+            logger.info("Creating web server root directory...")
+            os.makedirs(WEBGL_TESTS_PATH, exist_ok=True)
             self.run_command(
                 f"git clone {REPO_URL} {WEBGL_TESTS_PATH}",
                 "Cloning WebGL repository to fixed location...",
             )
             # copy and patch for local testing
-            self.run_command(
-                "cp {}webgl-conformance-tests.html {}local-tests.html".format(
-                    CLONE_PATH,
-                    CLONE_PATH,
-                ),
-                "Copy webgl-conformance-tests.html to local-tests.html...",
+            src_file = os.path.join(CLONE_PATH, "webgl-conformance-tests.html")
+            dst_file = os.path.join(CLONE_PATH, "local-tests.html")
+            logger.info(
+                "Copy webgl-conformance-tests.html to local-tests.html..."
             )
+            shutil.copy2(src_file, dst_file)
             # the patch file is installed by hook
             self.run_command(
-                f"patch {CLONE_PATH}local-tests.html /tmp/webgl/local.patch",
+                f"patch {CLONE_PATH}/local-tests.html /tmp/webgl/local.patch",
                 "Patch local-tests.html to download result automatically...",
             )
             # Ensure the user has ownership of the directory
-            self.un_command(
+            self.run_command(
                 f"chown -R $USER:$USER {WEBGL_TESTS_PATH}",
                 "Setting correct file permissions...",
             )
@@ -196,7 +194,7 @@ server {{
 
         # Create symbolic link to enable the new site
         self.run_command(
-            "ln -s {}{} {}".format(
+            "ln -s -f {}{} {}".format(
                 NGINX_SITES_AVAILABLE, NGINX_CONFIG_FILE, NGINX_SITES_ENABLED
             ),
             "Creating symbolic link to enable the new site...",
@@ -226,7 +224,7 @@ server {{
             self.unit.status = BlockedStatus("Failed to install packages")
             return False
 
-    def start_webgl_server(self, port: int) -> bool:
+    def start_webgl_server(self) -> bool:
         """Start default WebGL Conformance Test Server."""
 
         try:

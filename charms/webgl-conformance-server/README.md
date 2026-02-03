@@ -1,6 +1,8 @@
-# WoL
+# WebGL Conformance Test Server setup
 
-Used to set up a Wake-up on LAN server
+This script sets up the test server for Checkbox, enabling it to test automatically.
+It uses local.patch to patch webgl-conformance-tests.html,
+making it download the test results immediately after testing finishes.
 
 ## prerequestment
 
@@ -15,9 +17,8 @@ charmcraft pack
 
 ## How to deploy
 
-juju deploy -m [juju model name] ./bundle.yaml --debug --verbose
+juju deploy -m [juju model name] webgl.charm --debug --verbose
 
-## How to use the default wake up on lan server
+## How to use the default WebGL Conformance Test Server
 
-<!-- markdownlint-disable MD013 -->
-The usage can be found [here](https://github.com/canonical/checkbox/blob/main/providers/base/units/ethernet/wake-on-LAN-automatic-tests.md)
+Simply open http://{IP}/local-tests.html in the browser
