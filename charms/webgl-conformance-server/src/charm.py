@@ -114,6 +114,51 @@ class WebGLCharm(ops.CharmBase):
                 "An error occurred while checking firewall status: %s", e
             )
 
+    def configue_nginx(self):
+        """
+        Checks and configures the Nginx.
+        """
+        # Create Nginx configuration file for WebGL tests
+        nginx_conf_content = f"""
+server {{
+    listen 80;
+    server_name localhost;
+
+    root {CLONE_PATH};
+    index index.html;
+
+    location / {{
+        # First attempt to serve request as file, then as directory
+        try_files $uri $uri/ =404;
+    }}
+}}
+"""
+        local_conf_path = NGINX_CONFIG_FILE
+        with open(local_conf_path, "w") as f:
+            f.write(nginx_conf_content)
+
+        logger.info("Created Nginx configuration file: %s", local_conf_path)
+
+        # Move configuration to sites-available and link to sites-enabled
+        self.run_command(
+            f"mv {local_conf_path} {NGINX_SITES_AVAILABLE}",
+            "Moving configuration to Nginx's sites-available directory...",
+        )
+
+        # Remove default site configuration
+        self.run_command(
+            f"rm -f {NGINX_SITES_ENABLED}default",
+            "Removing default Nginx configuration link...",
+        )
+
+        # Create symbolic link to enable the new site
+        self.run_command(
+            "ln -s -f {}{} {}".format(
+                NGINX_SITES_AVAILABLE, NGINX_CONFIG_FILE, NGINX_SITES_ENABLED
+            ),
+            "Creating symbolic link to enable the new site...",
+        )
+
     def setup_webgl_server(self):
         """Set up WebGL conformance test server with config validation."""
 
@@ -159,47 +204,8 @@ class WebGLCharm(ops.CharmBase):
                 f"Updating {REPO_URL}...",
             )
 
-        # Create Nginx configuration file for WebGL tests
-        nginx_conf_content = f"""
-server {{
-    listen 80;
-    server_name localhost;
-
-    root {CLONE_PATH};
-    index index.html;
-
-    location / {{
-        # First attempt to serve request as file, then as directory
-        try_files $uri $uri/ =404;
-    }}
-}}
-"""
-        local_conf_path = NGINX_CONFIG_FILE
-        with open(local_conf_path, "w") as f:
-            f.write(nginx_conf_content)
-
-        logger.info("Created Nginx configuration file: %s", local_conf_path)
-
-        # Move configuration to sites-available and link to sites-enabled
-        self.run_command(
-            f"mv {local_conf_path} {NGINX_SITES_AVAILABLE}",
-            "Moving configuration to Nginx's sites-available directory...",
-        )
-
-        # Remove default site configuration
-        self.run_command(
-            f"rm -f {NGINX_SITES_ENABLED}default",
-            "Removing default Nginx configuration link...",
-        )
-
-        # Create symbolic link to enable the new site
-        self.run_command(
-            "ln -s -f {}{} {}".format(
-                NGINX_SITES_AVAILABLE, NGINX_CONFIG_FILE, NGINX_SITES_ENABLED
-            ),
-            "Creating symbolic link to enable the new site...",
-        )
-
+        # Configure Nginx
+        self.configue_nginx()
         # Configure firewall
         self.configure_firewall()
         self.start_webgl_server()
