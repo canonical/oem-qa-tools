@@ -208,10 +208,9 @@ server {{
         self.configue_nginx()
         # Configure firewall
         self.configure_firewall()
-        self.start_webgl_server()
-        logger.info("[SUCCESS] WebGL server setup complete!")
-
-        self.unit.status = ActiveStatus("Ready")
+        if self.start_webgl_server():
+            logger.info("[SUCCESS] WebGL server setup complete!")
+            self.unit.status = ActiveStatus("Ready")
 
     def install_apt_packages(self, packages: list) -> bool:
         """Install apt packages using apt-get."""
