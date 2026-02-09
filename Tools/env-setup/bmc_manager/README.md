@@ -106,5 +106,6 @@ The service supports the following environment variables (see
 - `BMC_MAX_TASKS`: Max tasks to retain (0 = no cap; default: 0)
 - `BMC_TASK_RETENTION_DAYS`: Task retention in days (default: 7)
 - `BMC_REDFISH_REQUEST_TIMEOUT`: Redfish HTTP timeout in seconds (default: 5)
-- `BMC_POWER_STATE_POLL_INTERVAL`: Power-state poll interval in seconds (default: 1.5)
+- `BMC_POWER_STATE_POLL_INTERVAL`: Power-state poll interval in seconds
+  (default: 1.5)
 - `BMC_MAX_WAIT_FOR_STATE_SECONDS`: Max wait_for_state_seconds (default: 300)
