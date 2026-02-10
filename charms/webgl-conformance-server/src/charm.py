@@ -177,23 +177,6 @@ server {{
                 f"git clone {REPO_URL} {WEBGL_TESTS_PATH}",
                 "Cloning WebGL repository to fixed location...",
             )
-            # copy and patch for local testing
-            src_file = os.path.join(CLONE_PATH, "webgl-conformance-tests.html")
-            dst_file = os.path.join(CLONE_PATH, "local-tests.html")
-            logger.info(
-                "Copy webgl-conformance-tests.html to local-tests.html..."
-            )
-            shutil.copy2(src_file, dst_file)
-            # the patch file is installed by hook
-            self.run_command(
-                f"patch {CLONE_PATH}/local-tests.html /tmp/webgl/local.patch",
-                "Patch local-tests.html to download result automatically...",
-            )
-            # Ensure the user has ownership of the directory
-            self.run_command(
-                f"chown -R $USER:$USER {WEBGL_TESTS_PATH}",
-                "Setting correct file permissions...",
-            )
         else:
             logger.info(
                 "Directory '%s' already exists. Skipping clone.",
@@ -203,6 +186,21 @@ server {{
                 f"git -C {WEBGL_TESTS_PATH} pull",
                 f"Updating {REPO_URL}...",
             )
+        # copy and patch for local testing
+        src_file = os.path.join(CLONE_PATH, "webgl-conformance-tests.html")
+        dst_file = os.path.join(CLONE_PATH, "local-tests.html")
+        logger.info("Copy webgl-conformance-tests.html to local-tests.html...")
+        shutil.copy2(src_file, dst_file)
+        # the patch file is installed by hook
+        self.run_command(
+            f"patch {CLONE_PATH}/local-tests.html /tmp/webgl/local.patch",
+            "Patch local-tests.html to download result automatically...",
+        )
+        # Ensure the user has ownership of the directory
+        self.run_command(
+            f"chown -R $USER:$USER {WEBGL_TESTS_PATH}",
+            "Setting correct file permissions...",
+        )
 
         # Configure Nginx
         self.configue_nginx()
