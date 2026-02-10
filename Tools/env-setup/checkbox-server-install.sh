@@ -30,32 +30,35 @@ EOF
 
 setup_obex()
 {
-    echo " "
-    printf " \033[1;35m Install Obex server  \033[0m\n"
-    sudo apt install obexftp -y
-    sudo add-apt-repository ppa:lihow731/ppa -y
-    sudo apt-get update
-    sudo apt purge bluez-obexd bluez-cups -y
-    sudo apt install obex-data-server -y
-    sudo mkdir /home/s/obexftp
-    sudo sed -i.bak 's#ExecStart.*#ExecStart=/usr/lib/bluetooth/bluetoothd --compat#g' /usr/lib/systemd/system/bluetooth.service
-    sudo sed -i.bak 's#ExecStart.*#ExecStart=/usr/lib/bluetooth/bluetoothd --compat#g' /etc/systemd/system/dbus-org.bluez.service
-    sudo systemctl daemon-reload
-    sudo systemctl restart bluetooth.service
-    sudo rm -rf /var/lib/bluetooth/*
-    echo "s" |sudo -S -k gnome-terminal -- obexftpd -c /home/s/.obexftp -b
+    codename=$(grep '^DISTRIB_CODENAME=' /etc/*release 2>/dev/null | cut -d'=' -f2 | tr -d '"' | head -n1)
+    if [ "$codename" = "focal" ]; then
+        echo "DISTRIB_CODENAME is focal (Ubuntu 20.04)."
+        echo " "
+        printf " \033[1;35m Install Obex server  \033[0m\n"
+        sudo apt install obexftp -y
+        sudo add-apt-repository ppa:lihow731/ppa -y
+        sudo apt-get update
+        sudo apt purge bluez-obexd bluez-cups -y
+        sudo apt install obex-data-server -y
+        sudo mkdir /home/s/obexftp
+        sudo sed -i.bak 's#ExecStart.*#ExecStart=/usr/lib/bluetooth/bluetoothd --compat#g' /usr/lib/systemd/system/bluetooth.service
+        sudo sed -i.bak 's#ExecStart.*#ExecStart=/usr/lib/bluetooth/bluetoothd --compat#g' /etc/systemd/system/dbus-org.bluez.service
+        sudo systemctl daemon-reload
+        sudo systemctl restart bluetooth.service
+        sudo rm -rf /var/lib/bluetooth/*
+        echo "s" |sudo -S -k gnome-terminal -- obexftpd -c /home/s/.obexftp -b
 
-    #Create obex.sh
-    printf " \033[1;35m Setup Obex  \033[0m\n"
-    echo 's' | sudo -S bash -c 'echo "#!/bin/bash
+        #Create obex.sh
+        printf " \033[1;35m Setup Obex  \033[0m\n"
+        echo 's' | sudo -S bash -c 'echo "#!/bin/bash
 sudo chmod 777 /var/run/sdp
 sudo rm -rf /var/lib/bluetooth/*
 sudo hciconfig hci0 piscan
 sudo obexftpd -c /home/s/.obexftp -b" > /usr/bin/obex.sh'
-    sudo chmod 755 /usr/bin/obex.sh
+        sudo chmod 755 /usr/bin/obex.sh
 
-    #Add obex.desktop
-    echo 's' | sudo -S bash -c 'echo "[Desktop Entry]
+        #Add obex.desktop
+        echo 's' | sudo -S bash -c 'echo "[Desktop Entry]
 Type=Application
 Exec=gnome-terminal -- bash -c \"/usr/bin/obex.sh;bash\"
 Hidden=false
@@ -66,6 +69,14 @@ Name[en_US]=Starup script_obex
 Name=Starup script_obex
 Comment[en_US]=#
 Comment=#" > /etc/xdg/autostart/obex.desktop'
+    else
+        echo "DISTRIB_CODENAME is not focal. Found: '$codename'"
+        # Use a ( subshell ) to avoid having to cd back.
+        (
+        cd ./bt_obex_test_server || exit
+        sudo ./install.sh
+        )
+    fi
 }
 
 setup_eddystone()
