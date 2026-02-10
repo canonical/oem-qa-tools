@@ -71,7 +71,9 @@ Comment[en_US]=#
 Comment=#" > /etc/xdg/autostart/obex.desktop'
     else
         echo "DISTRIB_CODENAME is not focal. Found: '$codename'"
-	../bt_obex_test_server/install.sh
+	cd ./bt_obex_test_server
+	sudo ./install.sh
+	cd -
     fi
 }
 

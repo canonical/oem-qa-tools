@@ -22,7 +22,9 @@ cp bt_obex_test_server.py "${USER_HOME}/"
 cp clean_up_trusted_bt_device.py "${USER_HOME}/"
 
 #Create service
-cat <<EOF > "${USER_HOME}/.config/systemd/user/bt_obex_test_server.service"
+SERVICE_PATH="${USER_HOME}/.config/systemd/user/"
+mkdir -p "${SERVICE_PATH}"
+cat <<EOF > "${SERVICE_PATH}/bt_obex_test_server.service"
 [Unit]
 Description=Bluetooth Obex Test Server
 After=graphical-session.target
@@ -35,6 +37,8 @@ Restart=on-failure
 [Install]
 WantedBy=default.target
 EOF
+
+chown -R "${SUDO_USER}":"${SUDO_USER}" "${SERVICE_PATH}"
 
 systemctl --user -M "$SUDO_USER@" daemon-reload
 systemctl --user -M "$SUDO_USER@" enable bt_obex_test_server.service
