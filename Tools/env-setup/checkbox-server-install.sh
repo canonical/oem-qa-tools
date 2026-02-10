@@ -51,10 +51,10 @@ setup_obex()
         #Create obex.sh
         printf " \033[1;35m Setup Obex  \033[0m\n"
         echo 's' | sudo -S bash -c 'echo "#!/bin/bash
-sudochmod 777 /var/run/sdp
-sudorm -rf /var/lib/bluetooth/*
-sudohciconfig hci0 piscan
-sudoobexftpd -c /home/s/.obexftp -b" > /usr/bin/obex.sh'
+sudo chmod 777 /var/run/sdp
+sudo rm -rf /var/lib/bluetooth/*
+sudo hciconfig hci0 piscan
+sudo obexftpd -c /home/s/.obexftp -b" > /usr/bin/obex.sh'
         sudo chmod 755 /usr/bin/obex.sh
 
         #Add obex.desktop
