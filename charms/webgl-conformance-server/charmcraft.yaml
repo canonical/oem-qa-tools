@@ -1,0 +1,53 @@
+# This file configures Charmcraft.
+# See https://juju.is/docs/sdk/charmcraft-config for guidance.
+
+# (Required)
+name: webgl-conformance-test-server
+
+
+# (Required)
+type: charm
+
+
+# (Recommended)
+title: WebGL conformance Test Server
+
+
+# (Required)
+summary: A Default WebGL conformance Test Server for Daily OEM-QA Tasks.
+
+
+# (Required)
+description: |
+  A Default WebGL conformance Test Server for Daily OEM-QA Tasks.
+
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+
+parts:
+  webgl-conformance-test-server:
+    plugin: charm
+    source: .
+    charm-entrypoint: src/charm.py
+    charm-binary-python-packages: []
+    charm-python-packages: []
+    charm-requirements: [requirements.txt]
+    charm-strict-dependencies: false
+
+platforms:
+  all:
+    build-on:
+      - amd64
+    build-for:
+      - amd64
+
+config:
+  options:
+    # An example config option to customise the log level of the workload
+    log-level:
+      description: |
+        Configures the log level of gunicorn.
+
+        Acceptable values are: "info", "debug", "warning", "error" and "critical"
+      default: "info"
+      type: string
