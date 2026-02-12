@@ -447,6 +447,8 @@ class FwtsPrinter(TestResultPrinter):
         "Finished reboot checks",
         "Found GL_RENDERER",
         "Checking hardware renderer",
+        "Waiting for boot to finish...",
+        "Final 'systemctl is-system-running' return value:"
     ]
 
     exclude_suffixes = [
