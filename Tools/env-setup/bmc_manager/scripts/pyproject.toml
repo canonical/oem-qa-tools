@@ -1,0 +1,12 @@
+[project]
+name = "bmc-manager-script"
+version = "1.0.0"
+description = "Standalone BMC management script"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+]
+
+[tool.black]
+line-length = 79
