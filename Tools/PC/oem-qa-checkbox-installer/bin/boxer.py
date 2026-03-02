@@ -81,6 +81,7 @@ def main():
     # We remove any existing PPA before adding the new ones
     setup_public_ppa(repository, username, ppa_password, remove=True)
     setup_public_ppa(repository, username, ppa_password)
+    setup_stress_ng_ppa("ppa:colin-king/stress-ng")
     setup_oem_ppa(username, ppa_password)
     install(provider)
 
@@ -130,6 +131,32 @@ def create_config():
           "make sure your boxer.conf is located in the same directory!")
     print()
     time.sleep(3)
+
+
+def setup_stress_ng_ppa(ppa, remove=False):
+    """
+    Setup required stress-ng PPAs to install Checkbox OEM stack.
+    By default, it adds the PPAs. If `remove` is set, the PPAs are removed.
+    """
+    print("Setting up the stress-ng PPAs...")
+    if remove:
+        print("Removing PPA {}...".format(ppa))
+        command = f"sudo add-apt-repository -y -r {ppa}"
+    else:
+        print("Adding PPA {}...".format(ppa))
+        command = f"sudo add-apt-repository -y {ppa}"
+    run_command(command)
+
+    # disable the stress-ng in the checkbox-dev PPA
+    pin_content="""
+Package: stress-ng
+Pin: release o=LP-PPA-checkbox-dev-beta
+Pin-Priority: -1
+"""
+    pin_file="/etc/apt/preferences.d/no-stress-ng-from-checkbox-dev"
+    command = f"echo {pin_content} | sudo tee {pin_file}"
+    run_command(command)
+    run_command("sudo apt update")
 
 
 def setup_public_ppa(repo, username, password, remove=False):
