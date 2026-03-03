@@ -180,8 +180,11 @@ Package: stress-ng
 Pin: release o=LP-PPA-checkbox-dev-beta
 Pin-Priority: -1
 """
+    with open("/tmp/no-stress-ng-from-checkbox-dev", "w") as f:
+        f.write(pin_content)
+
     pin_file = "/etc/apt/preferences.d/no-stress-ng-from-checkbox-dev"
-    command = f"echo {pin_content} | sudo tee {pin_file}"
+    command = f"sudo cp /tmp/no-stress-ng-from-checkbox-dev {pin_file}"
     run_command(command)
     run_command("sudo apt update")
 
