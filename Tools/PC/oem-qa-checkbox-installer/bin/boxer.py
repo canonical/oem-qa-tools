@@ -160,18 +160,16 @@ def create_config():
     time.sleep(3)
 
 
-def setup_stress_ng_ppa(ppa, remove=False):
+def setup_stress_ng_ppa(ppa):
     """
     Setup required stress-ng PPAs to install Checkbox OEM stack.
     By default, it adds the PPAs. If `remove` is set, the PPAs are removed.
     """
     print("Setting up the stress-ng PPAs...")
-    if remove:
-        print("Removing PPA {}...".format(ppa))
-        command = f"sudo add-apt-repository -y -r {ppa}"
-    else:
-        print("Adding PPA {}...".format(ppa))
-        command = f"sudo add-apt-repository -y {ppa}"
+    print("Removing installed stress-ng ...")
+    run_command("sudo apt remove stress-ng -y")
+    print(f"Adding PPA {ppa}...")
+    command = f"sudo add-apt-repository -y {ppa}"
     run_command(command)
 
     # disable the stress-ng in the checkbox-dev PPA
