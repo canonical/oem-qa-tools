@@ -175,6 +175,10 @@ def setup_stress_ng_ppa(ppa):
     # disable the stress-ng in the checkbox-dev PPA
     pin_content = """
 Package: stress-ng
+Pin: release o=LP-PPA-colin-king-stress-ng
+Pin-Priority: 1001
+
+Package: stress-ng
 Pin: release o=LP-PPA-checkbox-dev-beta
 Pin-Priority: -1
 """
