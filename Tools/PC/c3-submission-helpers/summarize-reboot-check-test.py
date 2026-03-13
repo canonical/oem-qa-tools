@@ -194,7 +194,7 @@ class SubmissionTarReader:
                 "Is the submission broken?",
             )
             self.warned_about_boot_count = True
-        # return the min
+        # return the max to attempt to summarize broken reports
         # if the submission isn't broken, this returns the actual count
         return max(len(self.cold_stdout_files), len(self.warm_stdout_files))
 
