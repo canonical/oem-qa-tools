@@ -119,12 +119,8 @@ class SubmissionTarReader:
         self.raw_tar = tarfile.open(filepath)
 
         slash_dot = r"\."
-        warm_prefix = (
-            "test_output/com.canonical.certification__warm-boot-loop-test"  # noqa: E501
-        )
-        cold_prefix = (
-            "test_output/com.canonical.certification__cold-boot-loop-test"  # noqa: E501
-        )
+        warm_prefix = "test_output/com.canonical.certification__warm-boot-loop-test"  # noqa: E501
+        cold_prefix = "test_output/com.canonical.certification__cold-boot-loop-test"  # noqa: E501
         # it's always the prefix followed by a multi-digit number
         # NOTE: stderr outputs are in files that end with ".err"
         warm_boot_stdout_pattern = f"{warm_prefix}[0-9]+$"
@@ -171,7 +167,8 @@ class SubmissionTarReader:
         boot_type: BootType,
     ) -> io.TextIOWrapper | None:
         prefix = (
-            "test_output/com.canonical.certification__" + f"{boot_type}-boot-loop-test"
+            "test_output/com.canonical.certification__"
+            + f"{boot_type}-boot-loop-test"
         )
         if channel == "stderr":
             suffix = ".stderr"
@@ -189,9 +186,9 @@ class SubmissionTarReader:
 
     @property
     def boot_count(self) -> int:
-        if not self.warned_about_boot_count and len(self.warm_stdout_files) != len(
-            self.cold_stdout_files
-        ):
+        if not self.warned_about_boot_count and len(
+            self.warm_stdout_files
+        ) != len(self.cold_stdout_files):
             Log.warn(
                 "num warm boots != num cold boots.",
                 "Is the submission broken?",
@@ -212,8 +209,12 @@ class TestResultPrinter(abc.ABC):
         reader: SubmissionTarReader,
         expected_n_runs: int = 30,
     ) -> None:
-        self.warm_results: GroupedResultByIndex = defaultdict(lambda: defaultdict(list))
-        self.cold_results: GroupedResultByIndex = defaultdict(lambda: defaultdict(list))
+        self.warm_results: GroupedResultByIndex = defaultdict(
+            lambda: defaultdict(list)
+        )
+        self.cold_results: GroupedResultByIndex = defaultdict(
+            lambda: defaultdict(list)
+        )
         self.reader = reader
         self.expected_n_runs = expected_n_runs
         self._group_by_index()
@@ -274,7 +275,9 @@ class TestResultPrinter(abc.ABC):
         fail_types = max(self.cold_results, self.warm_results, key=len).keys()
 
         for fail_type in fail_types:
-            print((title_transform or self._default_title_transform)(fail_type))
+            print(
+                (title_transform or self._default_title_transform)(fail_type)
+            )
             regrouped_cold = self._group_by_err(
                 self.cold_results.get(fail_type, {}), err_msg_transform
             )
@@ -282,7 +285,9 @@ class TestResultPrinter(abc.ABC):
                 self.warm_results.get(fail_type, {}), err_msg_transform
             )
 
-            all_err_msg = set(regrouped_cold.keys()).union(set(regrouped_warm.keys()))
+            all_err_msg = set(regrouped_cold.keys()).union(
+                set(regrouped_warm.keys())
+            )
 
             for err_msg in all_err_msg:
                 print(SPACE, C.bold(err_msg))
@@ -384,9 +389,13 @@ class TestResultPrinter(abc.ABC):
 
                 for m_i, message in enumerate(messages):
                     if m_i == len(messages) - 1:
-                        print(SPACE, SPACE if is_last else BRANCH, LAST, message)
+                        print(
+                            SPACE, SPACE if is_last else BRANCH, LAST, message
+                        )
                     else:
-                        print(SPACE, SPACE if is_last else BRANCH, TEE, message)
+                        print(
+                            SPACE, SPACE if is_last else BRANCH, TEE, message
+                        )
             if expected_n_runs != 0:
                 print(
                     SPACE,
@@ -465,10 +474,14 @@ class FwtsPrinter(TestResultPrinter):
     @override
     def print_by_err(self) -> None:
         def title_transform(fail_type: str) -> str:
-            return f"{getattr(C, fail_type.lower())(f'FWTS {fail_type} errors:')}"
+            return (
+                f"{getattr(C, fail_type.lower())(f'FWTS {fail_type} errors:')}"
+            )
 
         def err_msg_transform(msg: str) -> str:
-            prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+            prefix_pattern = (
+                r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+            )
             timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"  # example [   3.415050]
             return re.sub(
                 prefix_pattern, "", re.sub(timestamp_pattern, "", msg)
@@ -493,7 +506,9 @@ class FwtsPrinter(TestResultPrinter):
                         (a, list(s.strip() for s in iter(b)))
                         for a, b in itertools.groupby(
                             file_i,
-                            key=lambda line: line.strip().endswith("failures:"),
+                            key=lambda line: line.strip().endswith(
+                                "failures:"
+                            ),
                         )
                     ]
 
@@ -522,7 +537,8 @@ class FwtsPrinter(TestResultPrinter):
                             ):
                                 continue
                             if any(
-                                msg.endswith(suffix) for suffix in self.exclude_suffixes
+                                msg.endswith(suffix)
+                                for suffix in self.exclude_suffixes
                             ):
                                 continue
 
@@ -550,7 +566,9 @@ class DeviceComparisonPrinter(TestResultPrinter):
                     continue
 
                 with file_i:
-                    regex = re.compile(r"\[ ERR \] The output of (.*) differs!")
+                    regex = re.compile(
+                        r"\[ ERR \] The output of (.*) differs!"
+                    )
 
                     lines = file_i.readlines()
                     i = 0
@@ -589,13 +607,17 @@ class DeviceComparisonPrinter(TestResultPrinter):
 
                         actual_diff = max(diff, reverse_diff, key=len)
                         diff_name = (
-                            "Extra" if len(diff) > len(reverse_diff) else "Missing"
+                            "Extra"
+                            if len(diff) > len(reverse_diff)
+                            else "Missing"
                         )
 
                         if run_i not in results[device_type]:
                             results[device_type][run_i] = []
                         for msg in actual_diff:
-                            results[device_type][run_i].append(f'{diff_name}: "{msg}"')
+                            results[device_type][run_i].append(
+                                f'{diff_name}: "{msg}"'
+                            )
 
                         i += 1
 
@@ -607,7 +629,9 @@ class ServiceCheckPrinter(TestResultPrinter):
     @override
     def _group_by_index(self) -> None:
         for boot_type in ("cold", "warm"):
-            res = self.cold_results if boot_type == "cold" else self.warm_results
+            res = (
+                self.cold_results if boot_type == "cold" else self.warm_results
+            )
             for run_i in range(1, self.reader.boot_count + 1):
                 file_i = self.reader.get_file(run_i, "stderr", boot_type)
                 if not file_i:
@@ -647,7 +671,9 @@ class RendererCheckPrinter(TestResultPrinter):
         glmark2_err_prefix = "[ ERR ] glmark2"
 
         for boot_type in ("cold", "warm"):
-            res = self.cold_results if boot_type == "cold" else self.warm_results
+            res = (
+                self.cold_results if boot_type == "cold" else self.warm_results
+            )
             for run_index in range(1, self.reader.boot_count + 1):
                 f = self.reader.get_file(run_index, "stderr", boot_type)
                 if not f:
@@ -658,7 +684,9 @@ class RendererCheckPrinter(TestResultPrinter):
                         if line.startswith(unity_fail_prefix):
                             res["Unity support"][run_index] = [line]
                         elif line.startswith(graphical_target_fail_prefix):
-                            res["Graphical target not reached"][run_index] = [line]
+                            res["Graphical target not reached"][run_index] = [
+                                line
+                            ]
                         elif line.startswith(software_rendering_prefix):
                             res["Found software rendering"][run_index] = [line]
                         elif line.startswith(glmark2_err_prefix):
