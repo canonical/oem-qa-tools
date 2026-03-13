@@ -36,8 +36,9 @@ class Input:
     no_color: bool
 
 
+@final
 class Color:
-    def __init__(self, no_color=False) -> None:
+    def __init__(self, no_color: bool = False) -> None:
         self.no_color = no_color
 
     def critical(self, s: str):
@@ -666,15 +667,19 @@ class RendererCheckPrinter(TestResultPrinter):
 
 def parse_args() -> Input:
     p = argparse.ArgumentParser(
-        description="Parses the outputs of reboot_check_test.py "
-        "from a C3 submission tar file",
+        description=(
+            "Parses the outputs of reboot_check_test.py "
+            "from a C3 submission tar file"
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument(
         "filenames",
-        help="Path to the stress test tarball. "
-        "If multiple paths are specified, "
-        "run the script for each of them",
+        help=(
+            "Path to the stress test tarball. "
+            "If multiple paths are specified, "
+            "run the script for each of them"
+        ),
         nargs="+",  # at least 1
     )
     p.add_argument(
@@ -709,7 +714,7 @@ def parse_args() -> Input:
         help="Removes all colors and styles",
         action="store_true",
     )
-    return Input(**vars(p.parse_args()))
+    return Input(**vars(p.parse_args()))  # pyright: ignore[reportAny]
 
 
 def main():
