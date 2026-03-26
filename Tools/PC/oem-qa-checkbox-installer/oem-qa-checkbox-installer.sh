@@ -40,12 +40,11 @@ printf "\nCopying checkbox.conf to ~/.conf and /etc/xdg ...\n"
 sudo cp ./conf/plainbox.conf "$HOME"/.config/checkbox.conf
 sudo cp ./conf/plainbox.conf /etc/xdg/checkbox.conf
 
-
 # Block SSH password login
 ssh-import-id ceqa && echo "Imported 'ceqa' SSH key for QA login"
 ssh-import-id ce-certification-qa
-./bin/block-ssh-pswd-login.py && \
-echo -e "[ OK ] SSH password login has been blocked. \e[31mUse 'ssh-import-id' to import your own SSH keys.\e[0m"
+./bin/block-ssh-pswd-login.py &&
+	echo -e "[ OK ] SSH password login has been blocked. \e[31mUse 'ssh-import-id' to import your own SSH keys.\e[0m"
 
 while true; do
 	read -r -p "Press 'r' to reboot or 'e' to exit: " rse
