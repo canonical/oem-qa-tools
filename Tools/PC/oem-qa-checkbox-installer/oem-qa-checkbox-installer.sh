@@ -2,8 +2,8 @@
 
 # make sure to use this scrpit by rootless
 if [ "$(whoami)" = "root" ]; then
-    echo "Please don't use root to run this scrpit"
-    exit 1
+	echo "Please don't run this script as root"
+	exit 1
 fi
 
 # make all files in bin/ executable
@@ -24,6 +24,11 @@ chmod +x ./bin/*
 # Get hardware info
 ./bin/get-hw-info.sh
 
+# Block SSH password login
+./bin/block-ssh-pswd-login.py
+ssh-import-id ceqa && echo "Imported 'ceqa' SSH key for QA login"
+ssh-import-id ce-certification-qa
+
 # Print out hardware info
 cat ./hardware_info.txt
 
@@ -41,10 +46,10 @@ sudo cp ./conf/plainbox.conf "$HOME"/.config/checkbox.conf
 sudo cp ./conf/plainbox.conf /etc/xdg/checkbox.conf
 
 while true; do
-    read -r -p "Press 'r' to reboot or 'e' to exit: " rse
-    case $rse in
-        [Rr]* ) reboot;;
-        [Ee]* ) exit;;
-        * ) echo "Please answer 'r' or 'e'.";;
-    esac
+	read -r -p "Press 'r' to reboot or 'e' to exit: " rse
+	case $rse in
+	[Rr]*) reboot ;;
+	[Ee]*) exit ;;
+	*) echo "Please answer 'r' or 'e'." ;;
+	esac
 done
