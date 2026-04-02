@@ -323,7 +323,7 @@ def default_err_msg_transform(msg: str) -> str:
         r"slept for (.*) seconds,": "slept",
         r"Needed type \[(.*)\], found \[(.*)\] (.*) (.*)": lambda match: f"Needed type [{match.group(1)}], found [{match.group(2)}] {match.group(4)}",
     }
-    # a = re.Match()
+
     for pattern, replacement in known_patterns.items():
         msg = re.sub(pattern, replacement, msg)
 
