@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+from dataclasses import dataclass
 import io
 import os
 import re
@@ -8,7 +9,8 @@ import sys
 import tarfile
 import textwrap
 from collections import defaultdict
-from typing import Callable, Iterable, Literal, MutableMapping, TypedDict, cast
+from collections.abc import MutableMapping, Iterable
+from typing import Callable, Literal, TypedDict
 
 SPACE = "    "
 BRANCH = "│   "
@@ -26,6 +28,7 @@ RunsGroupedByError = MutableMapping[
 LogFilesByIndex = MutableMapping[int, MutableMapping[int, io.TextIOWrapper]]
 
 
+@dataclass(slots=True)
 class Input:
     filenames: list[str]
     write_individual_files: bool
@@ -42,7 +45,7 @@ class Input:
 
 
 class Color:
-    def __init__(self, no_color=False) -> None:
+    def __init__(self, no_color: bool = False) -> None:
         self.no_color = no_color
 
     def critical(self, s: str):
@@ -105,9 +108,7 @@ FAIL_TYPES = ("Critical", "High", "Medium", "Low", "Other")
 
 
 def parse_args() -> Input:
-    p = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument(
         "-s",
         "--no-summary",
@@ -179,11 +180,13 @@ def parse_args() -> Input:
         "-t",
         "--no-transform",
         action="store_true",
-        help="Disables any form of error message tranformation "
-        "except trimming whitespaces. "
-        "By default, this script will attempt to remove timestamps and "
-        "certain numbers to better group the error messages. "
-        "This option disables this behavior.",
+        help=(
+            "Disables any form of error message transformation "
+            "except trimming whitespaces. "
+            "By default, this script will attempt to remove timestamps and "
+            "certain numbers to better group the error messages. "
+            "This option disables this behavior."
+        ),
     )
     p.add_argument(
         "-c",
@@ -201,7 +204,7 @@ def parse_args() -> Input:
     out = p.parse_args()
     # have to wait until out.filename is populated
     # out.write_dir = out.write_dir or f"{out.filename}-split"
-    return cast(Input, out)
+    return Input(**vars(out))
 
 
 def line_is_summary_table(line: str) -> bool:
@@ -255,7 +258,7 @@ def open_log_file(filename: str, num_boots: int, num_suspends: int) -> tuple[
         except KeyError as e:
             summary_file = None
             print(
-                f"Found {summary_file_name} in {filename},"
+                f"Found {summary_file_name} in {filename},",
                 "but it can't be extracted, Ignoring.",
                 file=sys.stderr,
             )
@@ -290,9 +293,7 @@ def open_log_file(filename: str, num_boots: int, num_suspends: int) -> tuple[
 def default_err_msg_transform(msg: str) -> str:
     # some known error message transforms to help group them together
     # this is disabled with --no-transform flag
-    kernel_msg_prefix_pattern = (
-        r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
-    )
+    kernel_msg_prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
     timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
 
     msg = re.sub(timestamp_pattern, "", msg)
@@ -316,7 +317,13 @@ def default_err_msg_transform(msg: str) -> str:
         if msg.startswith(prefix):
             return prefix
 
-    known_patterns = {r"slept for (.*) seconds,": "slept"}
+    known_patterns: dict[
+        str | re.Pattern[str], str | Callable[[re.Match[str]], str]
+    ] = {
+        r"slept for (.*) seconds,": "slept",
+        r"Needed type \[(.*)\], found \[(.*)\] (.*) (.*)": lambda match: f"Needed type [{match.group(1)}], found [{match.group(2)}] {match.group(4)}",
+    }
+
     for pattern, replacement in known_patterns.items():
         msg = re.sub(pattern, replacement, msg)
 
@@ -362,23 +369,18 @@ def print_by_err(
             for pos, (boot_i, suspends) in enumerate(msg_group[msg].items()):
                 suspend_count = actual_suspend_counts[boot_i]
                 if suspend_count != expected_n_suspends:
-                    fail_rate_text = C.critical(
-                        f"{len(suspends)}/{suspend_count}"
-                    )
+                    fail_rate_text = C.critical(f"{len(suspends)}/{suspend_count}")
                 else:
                     fail_rate_text = f"{len(suspends)}/{str(suspend_count)}"
 
-                branch_text = (
-                    LAST if pos == len(msg_group[msg]) - 1 else BRANCH
-                )
+                branch_text = LAST if pos == len(msg_group[msg]) - 1 else BRANCH
 
                 wrapped_indices = textwrap.wrap(
                     str(suspends),
                     width=50,
                 )
                 line1 = (
-                    f"{SPACE} {SPACE} {TEE} "
-                    + f"Reboot {boot_i}: {wrapped_indices[0]}"
+                    f"{SPACE} {SPACE} {TEE} " + f"Reboot {boot_i}: {wrapped_indices[0]}"
                 )
                 print(line1)
                 for line in wrapped_indices[1:]:
@@ -503,14 +505,10 @@ def print_summary_for_1_submission(
                         error_msg_i = i + 1
                         while error_msg_i < len(log_file_lines):
                             raw_line = log_file_lines[error_msg_i].strip()
-                            if raw_line == "" or line_is_summary_table(
-                                raw_line
-                            ):
+                            if raw_line == "" or line_is_summary_table(raw_line):
                                 break
 
-                            msg = transform_err_msg(
-                                log_file_lines[error_msg_i]
-                            )
+                            msg = transform_err_msg(log_file_lines[error_msg_i])
                             # handler iter earlier to avoid ugly if condition
                             error_msg_i += 1
 
@@ -563,9 +561,7 @@ def print_summary_for_1_submission(
     print(f"\n{C.gray(' Begin Parsed Output '.center(80, '-'))}")
     print(C.gray(f"In {filename}\n"))
 
-    print_by_err(
-        group_by_err(failed_runs), actual_suspend_counts, args.num_suspends
-    )
+    print_by_err(group_by_err(failed_runs), actual_suspend_counts, args.num_suspends)
 
 
 def main():
@@ -575,7 +571,7 @@ def main():
     expected_num_results = args.num_boots * args.num_suspends  # noqa: N806
     print(
         C.low("[ INFO ]"),
-        f"Expecting ({args.num_boots} boots * {args.num_suspends} suspends) = "
+        f"Expecting ({args.num_boots} boots * {args.num_suspends} suspends) =",
         f"{expected_num_results} results",
     )
 
