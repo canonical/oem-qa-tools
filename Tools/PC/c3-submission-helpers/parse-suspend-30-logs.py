@@ -10,7 +10,7 @@ import tarfile
 import textwrap
 from collections import defaultdict
 from collections.abc import MutableMapping, Iterable
-from typing import Callable, Literal, TypedDict, cast
+from typing import Callable, Literal, TypedDict
 
 SPACE = "    "
 BRANCH = "│   "
@@ -28,7 +28,7 @@ RunsGroupedByError = MutableMapping[
 LogFilesByIndex = MutableMapping[int, MutableMapping[int, io.TextIOWrapper]]
 
 
-@dataclass
+@dataclass(slots=True)
 class Input:
     filenames: list[str]
     write_individual_files: bool
