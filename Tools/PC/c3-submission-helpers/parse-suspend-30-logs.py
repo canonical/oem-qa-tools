@@ -181,7 +181,7 @@ def parse_args() -> Input:
         "--no-transform",
         action="store_true",
         help=(
-            "Disables any form of error message tranformation "
+            "Disables any form of error message transformation "
             "except trimming whitespaces. "
             "By default, this script will attempt to remove timestamps and "
             "certain numbers to better group the error messages. "
