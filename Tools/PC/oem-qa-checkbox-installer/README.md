@@ -17,7 +17,7 @@ and also other essential packages.
          and find the string between `https://%{yourname}:`
          and `@private-ppa…` is your ppa_password.
    3. `api_key`:
-      1. Get your api key from [here](https://certification.canonical.com/me).
+      1. Get your api key from [C3](https://certification.canonical.com/me).
    4. `provider`: `stella`, `somerville` or `sutton`.
    5. `repository`: `stable`, `testing` or `daily`(QA should use `testing` as default).
 4. Run command `$ sh oem-qa-checkbox-installer.sh`.

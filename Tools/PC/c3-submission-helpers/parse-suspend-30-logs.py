@@ -108,7 +108,9 @@ FAIL_TYPES = ("Critical", "High", "Medium", "Low", "Other")
 
 
 def parse_args() -> Input:
-    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     p.add_argument(
         "-s",
         "--no-summary",
@@ -293,7 +295,9 @@ def open_log_file(filename: str, num_boots: int, num_suspends: int) -> tuple[
 def default_err_msg_transform(msg: str) -> str:
     # some known error message transforms to help group them together
     # this is disabled with --no-transform flag
-    kernel_msg_prefix_pattern = r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+    kernel_msg_prefix_pattern = (
+        r"(CRITICAL|HIGH|MEDIUM|LOW|OTHER) Kernel message:"
+    )
     timestamp_pattern = r"\[ *[0-9]+.[0-9]+\]"
 
     msg = re.sub(timestamp_pattern, "", msg)
@@ -321,7 +325,10 @@ def default_err_msg_transform(msg: str) -> str:
         str | re.Pattern[str], str | Callable[[re.Match[str]], str]
     ] = {
         r"slept for (.*) seconds,": "slept",
-        r"Needed type \[(.*)\], found \[(.*)\] (.*) (.*)": lambda match: f"Needed type [{match.group(1)}], found [{match.group(2)}] {match.group(4)}",
+        r"Needed type \[(.*)\], found \[(.*)\] (.*) (.*)": lambda match: (
+            f"Needed type [{match.group(1)}], found [{match.group(2)}] "
+            f"{match.group(4)}"
+        ),
     }
 
     for pattern, replacement in known_patterns.items():
@@ -369,18 +376,23 @@ def print_by_err(
             for pos, (boot_i, suspends) in enumerate(msg_group[msg].items()):
                 suspend_count = actual_suspend_counts[boot_i]
                 if suspend_count != expected_n_suspends:
-                    fail_rate_text = C.critical(f"{len(suspends)}/{suspend_count}")
+                    fail_rate_text = C.critical(
+                        f"{len(suspends)}/{suspend_count}"
+                    )
                 else:
                     fail_rate_text = f"{len(suspends)}/{str(suspend_count)}"
 
-                branch_text = LAST if pos == len(msg_group[msg]) - 1 else BRANCH
+                branch_text = (
+                    LAST if pos == len(msg_group[msg]) - 1 else BRANCH
+                )
 
                 wrapped_indices = textwrap.wrap(
                     str(suspends),
                     width=50,
                 )
                 line1 = (
-                    f"{SPACE} {SPACE} {TEE} " + f"Reboot {boot_i}: {wrapped_indices[0]}"
+                    f"{SPACE} {SPACE} {TEE} "
+                    + f"Reboot {boot_i}: {wrapped_indices[0]}"
                 )
                 print(line1)
                 for line in wrapped_indices[1:]:
@@ -505,10 +517,14 @@ def print_summary_for_1_submission(
                         error_msg_i = i + 1
                         while error_msg_i < len(log_file_lines):
                             raw_line = log_file_lines[error_msg_i].strip()
-                            if raw_line == "" or line_is_summary_table(raw_line):
+                            if raw_line == "" or line_is_summary_table(
+                                raw_line
+                            ):
                                 break
 
-                            msg = transform_err_msg(log_file_lines[error_msg_i])
+                            msg = transform_err_msg(
+                                log_file_lines[error_msg_i]
+                            )
                             # handler iter earlier to avoid ugly if condition
                             error_msg_i += 1
 
@@ -561,7 +577,9 @@ def print_summary_for_1_submission(
     print(f"\n{C.gray(' Begin Parsed Output '.center(80, '-'))}")
     print(C.gray(f"In {filename}\n"))
 
-    print_by_err(group_by_err(failed_runs), actual_suspend_counts, args.num_suspends)
+    print_by_err(
+        group_by_err(failed_runs), actual_suspend_counts, args.num_suspends
+    )
 
 
 def main():
