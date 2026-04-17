@@ -12,9 +12,9 @@ jobs:
         os: [ubuntu-22.04, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Run markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@v10
+        uses: DavidAnson/markdownlint-cli2-action@v23
         with:
           globs: '**/*.md'
       - name: Run ShellCheck
