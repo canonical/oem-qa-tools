@@ -33,6 +33,16 @@ jobs:
           checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04 -f json > full_manifest.json
           checkbox-cli expand com.canonical.certification::client-cert-desktop-24-04-automated -f json > auto_manifest.json
 
+      - name: Patch missing manifest entries
+        run: |
+          # has_suspend_support is not emitted by checkbox-cli expand; inject it if missing
+          for manifest in full_manifest.json auto_manifest.json; do
+            if ! jq -e '.[] | select(.id == "com.canonical.certification::has_suspend_support")' "$manifest" > /dev/null 2>&1; then
+              jq '. += [{"unit": "manifest entry", "id": "com.canonical.certification::has_suspend_support", "_name": "System Suspend Support", "_prompt": null}]' "$manifest" > tmp_manifest.json
+              mv tmp_manifest.json "$manifest"
+            fi
+          done
+
       - name: Generate GitHub Page (pc-full.html)
         uses: canonical/oem-qa-tools/.github/actions/manifest-select@main
         with:
