@@ -80,9 +80,7 @@ def main():
     parser.add_argument(
         "-r",
         "--repository",
-        help="Checkbox repository to use ({})".format(
-            ", ".join(CHECKBOX_REPOS)
-        ),
+        help="Checkbox repository to use ({})".format(", ".join(CHECKBOX_REPOS)),
     )
     args = parser.parse_args()
 
@@ -108,22 +106,13 @@ def create_config():
     """If boxer config file not found, this will ask the user a few questions
     and create one next to the boxer script."""
 
-    print(
-        "Hi! It looks like there is no boxer.conf file yet."
-        " Let's create one!"
-    )
+    print("Hi! It looks like there is no boxer.conf file yet." " Let's create one!")
     username = input("What's your Launchpad username? ")
     print()
-    print(
-        "Let's find the password "
-        "you need to access the OEM providers repository."
-    )
+    print("Let's find the password " "you need to access the OEM providers repository.")
     # The link to personal private ppa subscription management
     # <https://launchpad.net/~oem-services-qa/+archive/ubuntu/ppa>
-    print(
-        "Go to "
-        f"<https://launchpad.net/~{username}/+archivesubscriptions/10011>"
-    )
+    print("Go to " f"<https://launchpad.net/~{username}/+archivesubscriptions/10011>")
     print("You should see something like")
     print()
     print(f"\tdeb https://{username}:<password>@private-ppa...")
@@ -134,9 +123,7 @@ def create_config():
     print(", ".join(PROVIDERS))
     provider = input("What provider do you want to use by default? ")
     print()
-    print(
-        "Checkbox can be installed from the following repositories: ", end=""
-    )
+    print("Checkbox can be installed from the following repositories: ", end="")
     print(", ".join(CHECKBOX_REPOS))
     repository = input("Which repository do you want to use by default? ")
 
@@ -257,10 +244,7 @@ def add_oem_ppa_gpg():
     For more info, see:
     <https://www.linuxuprising.com/2021/01/apt-key-is-deprecated-how-to-add.html>
     """
-    print(
-        "Add OEM Services PPA public GPG key to "
-        "the trusted.gpg.d directory..."
-    )
+    print("Add OEM Services PPA public GPG key to " "the trusted.gpg.d directory...")
     cmd = (
         f'sudo sh -c \'echo "{OEM_PPA_GPG}" | '
         "gpg --dearmor > "
@@ -297,21 +281,22 @@ def pre_install():
     )
     run_command(cmd, shell=True)
 
-    # Add GPG keys from the different repositories.
-    commands = (
-        "sudo apt-key adv --keyserver keyserver.ubuntu.com "
-        "--recv-keys 2BBDF2BD 09D5DC1F 6BE75981",
+    subprocess.check_call(
+        [
+            "sudo",
+            "gpg",
+            "--keyserver",
+            "keyserver.ubuntu.com",
+            "--recv-keys",
+            "2BBDF2BD",  # checkbox
+            "09D5DC1F",  # oem services qa
+            "6BE75981",  # sutton
+        ]
     )
-    print("Running pre-install commands...")
-    for cmd in commands:
-        run_command(cmd)
 
 
 def install(provider):
-    print(
-        "Purging Checkbox-related packages "
-        "that might already be installed..."
-    )
+    print("Purging Checkbox-related packages " "that might already be installed...")
     cmd = "sudo apt-get purge -y .*plainbox.* .*checkbox.*"
     run_command(cmd)
 
