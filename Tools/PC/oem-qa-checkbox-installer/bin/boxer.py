@@ -297,14 +297,18 @@ def pre_install():
     )
     run_command(cmd, shell=True)
 
-    # Add GPG keys from the different repositories.
-    commands = (
-        "sudo apt-key adv --keyserver keyserver.ubuntu.com "
-        "--recv-keys 2BBDF2BD 09D5DC1F 6BE75981",
+    subprocess.check_call(
+        [
+            "sudo",
+            "gpg",
+            "--keyserver",
+            "keyserver.ubuntu.com",
+            "--recv-keys",
+            "2BBDF2BD",  # checkbox
+            "09D5DC1F",  # oem services qa
+            "6BE75981",  # sutton
+        ]
     )
-    print("Running pre-install commands...")
-    for cmd in commands:
-        run_command(cmd)
 
 
 def install(provider):
