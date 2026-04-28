@@ -104,6 +104,10 @@ a local search engine for job units and test plans. It supports two views:
   - `parser.py`: PXU file parsing logic (jobs + test plans)
   - `database.py`: SQLite schema (jobs and test_plans tables)
   - `templates/`: HTML/CSS/JS frontend
+- `providers/`: *(optional)* Local provider folders — place any custom or
+  OEM provider trees here. Jobs and test plans in this folder take
+  **priority** over the upstream checkbox repo; duplicates from the repo
+  are silently skipped. See [Local Providers](#local-providers) below.
 - `Dockerfile`: Container definition
 - `run.sh`: Startup script (venv → install → clone/pull → parse → serve)
 
@@ -160,11 +164,42 @@ sudo docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}"
 sudo systemctl restart docker
 ```
 
+## Local Providers
+
+Place any custom provider trees inside the `providers/` directory next to
+`run.sh`. The directory structure mirrors a normal Checkbox provider:
+
+```
+providers/
+    my-provider/
+        manage.py          ← namespace is read from here
+        units/
+            foo/
+                jobs.pxu
+                test-plan.pxu
+```
+
+When the database is built:
+
+1. All `.pxu` files under `providers/` are parsed **first** and their job
+   and test-plan IDs are recorded.
+2. The upstream checkbox git repo is then scanned; any unit whose ID was
+   already loaded from `providers/` is skipped.
+
+This means local providers can **override** upstream job definitions
+(e.g. to add missing jobs or corrected summaries) without modifying the
+checked-out checkbox repo.
+
+> **Rebuild trigger**: if `providers/` contains any `.pxu` files, the
+> database is always rebuilt on startup so local changes are picked up
+> automatically.
+
 ## Notes
 
 - The database is rebuilt every time the server starts
   (both locally and in Docker).
-- Both `unit: job` and legacy `plugin:`-style job blocks are parsed.
+- `unit: job`, legacy `plugin:`-style, and modern `flags: simple`
+  job blocks are all parsed correctly.
 - Test plan nested hierarchy is traversed recursively;
   cycle detection is built in.
 - The `exclude:` field in test plans is parsed and stored. Excluded jobs

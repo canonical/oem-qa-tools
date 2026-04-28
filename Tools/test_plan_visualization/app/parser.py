@@ -115,141 +115,140 @@ def parse_include_ids(raw: str) -> list:
     return ids
 
 
-def update_db(repo_path: str):
+def _scan_path(
+    db,
+    scan_path: str,
+    repo_root: str,
+    seen_job_ids: set,
+    seen_plan_ids: set,
+    priority: bool,
+):
     """
-    Scans the repo and updates the database.
+    Walk *scan_path* for .pxu files and insert jobs/test-plans into *db*.
+
+    priority=True  → local providers folder; add all units unconditionally
+                     and record their IDs in the seen sets.
+    priority=False → checkbox git repo; skip any unit whose ID was already
+                     added by a higher-priority source.
+
+    Returns (job_count, skipped_counts_dict).
     """
-    # Create tables if not exist
-    Base.metadata.create_all(bind=engine)
-
-    db = SessionLocal()
-
-    db.query(Job).delete()
-    db.query(TestPlan).delete()
-    db.commit()
-
-    print(f"Scanning {repo_path}...")
     count = 0
-
-    # Walk through the providers directory mainly?
-    # The user said "checkbox git repo". We scan everything or specific dirs?
-    # Usually jobs are in providers/ folders or similar.
-    # We will scan the whole thing but look for .pxu files.
-
     skipped_counts = {}
 
-    for root, dirs, files in os.walk(repo_path):
+    for root, _dirs, files in os.walk(scan_path):
         for file in files:
-            if file.endswith(".pxu"):
-                file_path = os.path.join(root, file)
-                try:
-                    for unit in parse_pxu(file_path):
-                        # Filter logic:
-                        # Include: unit: job, unit: template, or other
-                        # units that might have an ID we care about?
-                        # User said: "not include unit: eqiure to
-                        # test plan, manifest and category"
-                        # Common valid units for "jobs": 'job', 'template'
-                        # Explicitly exclude the ones mentioned.
-
-                        unit_type = unit.get("unit")
-                        if not unit_type:
-                            # PXU job units often omit 'unit:' and identify
-                            # themselves via 'plugin:' instead (legacy style).
-                            if unit.get("plugin"):
-                                unit_type = "job"
-                            else:
-                                continue
-
-                        # Normalize unit type checking
-                        if unit_type == "test plan":
-                            plan_id = unit.get("id", "")
-                            if not plan_id:
-                                continue
-                            provider = get_provider_namespace(
-                                file_path, repo_path
-                            )
-                            full_id = (
-                                f"{provider}::{plan_id}"
-                                if "::" not in plan_id
-                                else plan_id
-                            )
-                            include_ids = parse_include_ids(
-                                unit.get("include", "")
-                            )
-                            exclude_ids = parse_include_ids(
-                                unit.get("exclude", "")
-                            )
-                            nested_ids = parse_include_ids(
-                                unit.get("nested_part", "")
-                            )
-                            db.add(
-                                TestPlan(
-                                    plan_id=plan_id,
-                                    full_id=full_id,
-                                    provider=provider,
-                                    name=unit.get("_name", ""),
-                                    include=json.dumps(include_ids),
-                                    exclude=json.dumps(exclude_ids),
-                                    nested_part=json.dumps(nested_ids),
-                                    data=json.dumps(unit),
-                                )
-                            )
-                            skipped_counts["test plan"] = (
-                                skipped_counts.get("test plan", 0) + 1
-                            )
+            if not file.endswith(".pxu"):
+                continue
+            file_path = os.path.join(root, file)
+            try:
+                for unit in parse_pxu(file_path):
+                    unit_type = unit.get("unit")
+                    if not unit_type:
+                        # Legacy plugin: style  OR  modern flags: simple
+                        # (which implies a shell job with no explicit
+                        # unit/plugin field).
+                        flags_val = unit.get("flags", "")
+                        flag_tokens = flags_val.split()
+                        if (
+                            unit.get("plugin")
+                            or "simple" in flag_tokens
+                            or unit.get("command")
+                        ):
+                            unit_type = "job"
+                        else:
                             continue
 
-                        if unit_type in [
-                            "manifest entry",
-                            "category",
-                            "packaging meta-data",
-                            "exporter",
-                            "attachment",
-                            "resource",
-                        ]:
-                            skipped_counts[unit_type] = (
-                                skipped_counts.get(unit_type, 0) + 1
+                    # ── Test plans ────────────────────────────────────────
+                    if unit_type == "test plan":
+                        plan_id = unit.get("id", "")
+                        if not plan_id:
+                            continue
+                        if not priority and plan_id in seen_plan_ids:
+                            skipped_counts["test plan (dup)"] = (
+                                skipped_counts.get("test plan (dup)", 0) + 1
                             )
                             continue
-
-                        # We previously filtered strictly for job/template.
-                        # To catch "everything", we will rely on ID presence
-                        # and the exclusion list above.
-
-                        job_id = unit.get("id")
-                        if not job_id:
-                            # Log units without ID that are not excluded
-                            key = f"{unit_type} (no id)"
-                            skipped_counts[key] = (
-                                skipped_counts.get(key, 0) + 1
-                            )
-                            continue
-
-                        requires = unit.get("requires", "")
-                        manifest_deps = extract_manifest_requirements(requires)
-
-                        # Flatten fields
-                        environ = unit.get("environ", "")
-                        command = unit.get("command", "")
-                        command_envs = extract_environ_from_command(command)
-
-                        # Provider resolution
-                        provider = get_provider_namespace(file_path, repo_path)
-
-                        # Check if duplicate job_id exists (templates might
-                        # define same ID? unlikely for distinct units)
-                        # We used to dedup, but since we dropped unique
-                        # constraint and user wants ALL jobs
-                        # (even same ID across providers),
-                        # we just add it.
-
-                        declared_envs = environ.split() if environ else []
-                        all_envs = sorted(
-                            set(declared_envs) | set(command_envs)
+                        provider = get_provider_namespace(
+                            file_path, repo_root
                         )
+                        full_id = (
+                            f"{provider}::{plan_id}"
+                            if "::" not in plan_id
+                            else plan_id
+                        )
+                        include_ids = parse_include_ids(
+                            unit.get("include", "")
+                        )
+                        exclude_ids = parse_include_ids(
+                            unit.get("exclude", "")
+                        )
+                        nested_ids = parse_include_ids(
+                            unit.get("nested_part", "")
+                        )
+                        db.add(
+                            TestPlan(
+                                plan_id=plan_id,
+                                full_id=full_id,
+                                provider=provider,
+                                name=unit.get("_name", ""),
+                                include=json.dumps(include_ids),
+                                exclude=json.dumps(exclude_ids),
+                                nested_part=json.dumps(nested_ids),
+                                data=json.dumps(unit),
+                            )
+                        )
+                        seen_plan_ids.add(plan_id)
+                        skipped_counts["test plan"] = (
+                            skipped_counts.get("test plan", 0) + 1
+                        )
+                        continue
 
-                        job_entry = Job(
+                    # ── Non-job unit types to skip ─────────────────────────
+                    if unit_type in [
+                        "manifest entry",
+                        "category",
+                        "packaging meta-data",
+                        "exporter",
+                        "attachment",
+                        "resource",
+                    ]:
+                        skipped_counts[unit_type] = (
+                            skipped_counts.get(unit_type, 0) + 1
+                        )
+                        continue
+
+                    # ── Jobs ──────────────────────────────────────────────
+                    job_id = unit.get("id")
+                    if not job_id:
+                        key = f"{unit_type} (no id)"
+                        skipped_counts[key] = (
+                            skipped_counts.get(key, 0) + 1
+                        )
+                        continue
+
+                    if not priority and job_id in seen_job_ids:
+                        skipped_counts["job (dup)"] = (
+                            skipped_counts.get("job (dup)", 0) + 1
+                        )
+                        continue
+
+                    requires = unit.get("requires", "")
+                    manifest_deps = extract_manifest_requirements(requires)
+
+                    environ = unit.get("environ", "")
+                    command = unit.get("command", "")
+                    command_envs = extract_environ_from_command(command)
+
+                    provider = get_provider_namespace(file_path, repo_root)
+
+                    declared_envs = environ.split() if environ else []
+                    all_envs = sorted(
+                        set(declared_envs) | set(command_envs)
+                    )
+
+                    db.add(
+                        Job(
                             job_id=job_id,
                             provider=provider,
                             category_id=unit.get("category_id", ""),
@@ -261,16 +260,16 @@ def update_db(repo_path: str):
                             unit_type=unit_type,
                             data=json.dumps(unit),
                         )
-                        db.add(job_entry)
-                        count += 1
+                    )
+                    seen_job_ids.add(job_id)
+                    count += 1
 
-                        # If the job has flags: also-after-suspend, Checkbox
-                        # automatically generates a runtime variant prefixed
-                        # with 'after-suspend-'. Store it explicitly so test
-                        # plan include patterns resolve correctly.
-                        flags = unit.get("flags", "")
-                        if "also-after-suspend" in flags:
-                            as_id = "after-suspend-" + job_id
+                    # Expand also-after-suspend variants explicitly so that
+                    # test-plan include patterns resolve correctly.
+                    flags = unit.get("flags", "")
+                    if "also-after-suspend" in flags:
+                        as_id = "after-suspend-" + job_id
+                        if priority or as_id not in seen_job_ids:
                             as_unit = dict(unit, id=as_id)
                             db.add(
                                 Job(
@@ -286,15 +285,84 @@ def update_db(repo_path: str):
                                     data=json.dumps(as_unit),
                                 )
                             )
+                            seen_job_ids.add(as_id)
                             count += 1
-                except Exception as e:
-                    print(f"Error parsing {file_path}: {e}")
+            except Exception as e:
+                print(f"Error parsing {file_path}: {e}")
+
+    return count, skipped_counts
+
+
+def update_db(repo_path: str, providers_path: str = None):
+    """
+    Build the database from two sources:
+
+    1. Local *providers_path* directory (default: ``"providers"`` next to
+       the working directory) — parsed **first** with priority; its job and
+       test-plan IDs are recorded so duplicates from the upstream repo are
+       skipped.
+    2. Upstream checkbox git repo at *repo_path* — parsed second; any unit
+       whose ID was already inserted from the local providers folder is
+       silently skipped.
+
+    Pass ``providers_path=None`` (or omit it) to disable local-providers
+    loading entirely.
+    """
+    Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    db.query(Job).delete()
+    db.query(TestPlan).delete()
+    db.commit()
+
+    seen_job_ids: set = set()
+    seen_plan_ids: set = set()
+    total_count = 0
+    all_skipped: dict = {}
+
+    # ── 1. Local providers (priority) ─────────────────────────────────────
+    if providers_path is None:
+        providers_path = "providers"
+    if os.path.isdir(providers_path):
+        print(f"Scanning local providers at '{providers_path}'...")
+        cnt, skipped = _scan_path(
+            db,
+            providers_path,
+            providers_path,
+            seen_job_ids,
+            seen_plan_ids,
+            priority=True,
+        )
+        total_count += cnt
+        print(f"  {cnt} jobs loaded from local providers.")
+        for k, v in skipped.items():
+            all_skipped[k] = all_skipped.get(k, 0) + v
+    else:
+        print(
+            f"No local providers folder found at '{providers_path}', "
+            "skipping."
+        )
+
+    # ── 2. Checkbox git repo ───────────────────────────────────────────────
+    print(f"Scanning checkbox repo at '{repo_path}'...")
+    cnt, skipped = _scan_path(
+        db,
+        repo_path,
+        repo_path,
+        seen_job_ids,
+        seen_plan_ids,
+        priority=False,
+    )
+    total_count += cnt
+    for k, v in skipped.items():
+        all_skipped[k] = all_skipped.get(k, 0) + v
 
     db.commit()
     db.close()
-    print(f"Database updated. {count} jobs found.")
-    print("Skipped units summary:")
-    for k, v in skipped_counts.items():
+
+    print(f"Database updated. {total_count} jobs total.")
+    print("Unit summary:")
+    for k, v in all_skipped.items():
         print(f"  {k}: {v}")
 
 

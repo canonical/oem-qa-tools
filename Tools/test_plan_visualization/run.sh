@@ -42,9 +42,16 @@ if [ ! -f "checkbox_jobs.db" ]; then
     NEEDS_DB_UPDATE=true
 fi
 
+# If the local providers/ folder has any .pxu files, always rebuild so
+# changes to local providers are picked up on every run.
+if find providers -name "*.pxu" -print -quit 2>/dev/null | grep -q .; then
+    echo "Local providers/ folder has .pxu files, rebuilding database..."
+    NEEDS_DB_UPDATE=true
+fi
+
 if [ "$NEEDS_DB_UPDATE" = true ]; then
     echo "Updating database..."
-    python3 -c "from app.parser import update_db; update_db('checkbox_repo')"
+    python3 -c "from app.parser import update_db; update_db('checkbox_repo', 'providers')"
 fi
 
 echo "Starting Web Server..."
