@@ -169,7 +169,7 @@ sudo systemctl restart docker
 Place any custom provider trees inside the `providers/` directory next to
 `run.sh`. The directory structure mirrors a normal Checkbox provider:
 
-```
+```text
 providers/
     my-provider/
         manage.py          ← namespace is read from here
