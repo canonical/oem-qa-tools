@@ -210,6 +210,14 @@
         .cmp-row:hover { background:#f5f8ff; }
         .cmp-summary { font-family:inherit; font-size:.7rem; color:#999; margin-left:4px; }
         .compare-empty { text-align:center; padding:60px 24px; color:#bbb; font-size:.9rem; }
+        /* Compare progress bar */
+        .cmp-progress-wrap { width:100%; max-width:420px; }
+        .cmp-progress-label { font-size:.75rem; color:#4a90d9; font-weight:600; margin-bottom:4px; }
+        .cmp-progress-bar { height:6px; background:#e4e7ec; border-radius:3px; overflow:hidden; }
+        .cmp-progress-fill { height:100%; width:0%; background:linear-gradient(90deg,#4a90d9,#60b8ff);
+                             border-radius:3px; transition:width .25s ease; }
+        .cmp-pct { font-size:.68rem; color:#888; margin-left:4px; font-weight:normal;
+                   text-transform:none; letter-spacing:0; }
     </style>
 </head>
 <body>
@@ -725,36 +733,75 @@
             document.getElementById('cmp-suggest2').style.display = 'none';
         });
 
+        function _showProgress(status, results, label) {
+            status.innerHTML = `<div class="cmp-progress-wrap">
+                <div class="cmp-progress-label">${escHtml(label)}</div>
+                <div class="cmp-progress-bar"><div class="cmp-progress-fill" id="cmp-pbar"></div></div>
+            </div>`;
+            results.innerHTML = '';
+            // Animate bar 0 → 85% while request is in flight
+            let pct = 0;
+            const bar = document.getElementById('cmp-pbar');
+            const timer = setInterval(() => {
+                pct = pct < 85 ? pct + (85 - pct) * 0.12 : pct;
+                if (bar) bar.style.width = pct.toFixed(1) + '%';
+            }, 180);
+            return { timer, complete() { clearInterval(timer); if (bar) bar.style.width = '100%'; } };
+        }
+
         async function runCompare() {
             const p1 = document.getElementById('cmp-plan1').value.trim();
             const p2 = document.getElementById('cmp-plan2').value.trim();
             const status = document.getElementById('cmp-status');
             const results = document.getElementById('cmp-results');
             if (!p1 || !p2) { status.textContent = 'Enter both plan IDs.'; return; }
-            status.textContent = 'Comparing\u2026';
-            results.innerHTML = '';
+            const progress = _showProgress(status, results, 'Comparing plans\u2026');
             try {
                 const data = await fetch(`/api/compare-plans?plan1=${encodeURIComponent(p1)}&plan2=${encodeURIComponent(p2)}`).then(r => {
                     if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
                     return r.json();
                 });
+                progress.complete();
+                // Brief pause so the filled bar is visible before replacing
+                await new Promise(r => setTimeout(r, 200));
                 status.textContent = `Plan 1: ${data.plan1.total} jobs | Plan 2: ${data.plan2.total} jobs`;
 
-                function colHtml(jobs, label, cls) {
+                const total1 = data.plan1.total;
+                const total2 = data.plan2.total;
+                const nBoth  = data.in_both.length;
+                const nOnly1 = data.only_in_plan1.length;
+                const nOnly2 = data.only_in_plan2.length;
+
+                // Percentages relative to the union of all unique jobs
+                const union    = (nOnly1 + nBoth + nOnly2) || 1;
+                const pctOnly1 = (nOnly1 / union * 100).toFixed(1);
+                const pctBoth  = (nBoth  / union * 100).toFixed(1);
+                const pctOnly2 = (nOnly2 / union * 100).toFixed(1);
+                // How much of each plan is unique to it vs shared
+                const uniqPct1   = total1 ? (nOnly1 / total1 * 100).toFixed(1) : '0.0';
+                const uniqPct2   = total2 ? (nOnly2 / total2 * 100).toFixed(1) : '0.0';
+                const sharedPct1 = total1 ? (nBoth  / total1 * 100).toFixed(1) : '0.0';
+                const sharedPct2 = total2 ? (nBoth  / total2 * 100).toFixed(1) : '0.0';
+
+                function colHtml(jobs, label, cls, pctOfUnion, extraHint) {
                     const rows = jobs.length
                         ? jobs.map(j => `<div class="cmp-row">${escHtml(j.id)}${j.summary ? `<span class="cmp-summary">— ${escHtml(j.summary)}</span>` : ''}</div>`).join('')
                         : '<div style="color:#bbb;font-size:.8rem;padding:8px 4px">None</div>';
                     return `<div class="compare-col">
-                        <div class="compare-col-hd ${cls}">${label} (${jobs.length})</div>
+                        <div class="compare-col-hd ${cls}">${label}
+                            <span class="cmp-pct">${jobs.length} jobs &nbsp;|&nbsp; ${pctOfUnion}% of all unique jobs${extraHint ? ' &nbsp;|&nbsp; ' + extraHint : ''}</span>
+                        </div>
                         <div class="compare-col-body">${rows}</div>
                     </div>`;
                 }
                 results.className = 'compare-grid';
                 results.innerHTML =
-                    colHtml(data.only_in_plan1, `Only in ${data.plan1.name}`, 'col-only1') +
-                    colHtml(data.in_both,       'In Both', 'col-both') +
-                    colHtml(data.only_in_plan2, `Only in ${data.plan2.name}`, 'col-only2');
+                    colHtml(data.only_in_plan1, `Only in ${data.plan1.name}`, 'col-only1', pctOnly1, `${uniqPct1}% of plan 1`) +
+                    colHtml(data.in_both,       'In Both',                    'col-both',  pctBoth,  `Jaccard similarity: ${pctBoth}% overlap`) +
+                    colHtml(data.only_in_plan2, `Only in ${data.plan2.name}`, 'col-only2', pctOnly2, `${uniqPct2}% of plan 2`);
             } catch(e) {
+                progress.complete();
+                await new Promise(r => setTimeout(r, 150));
                 status.textContent = '';
                 results.className = 'compare-empty';
                 results.innerHTML = `<span style="color:#c5221f">Error: ${escHtml(String(e.message))}</span>`;

@@ -34,9 +34,16 @@ a local search engine for job units and test plans. It supports two views:
   current selections.
 - **Provider Resolution**: Automatically resolves provider namespaces
   from `manage.py`.
-- **Compare Plans**: Switch to the Compare view, enter two plan IDs, and see
-  a three-column diff — jobs only in Plan 1, jobs in both, and jobs only in
-  Plan 2 (excludes are applied before comparing).
+- **Compare Plans**: Switch to the Compare view, enter two plan IDs, and click
+  Compare. An animated progress bar shows while the comparison runs. Results
+  are presented as a three-column diff — jobs only in Plan 1, jobs in both,
+  and jobs only in Plan 2 (excludes are applied before comparing). Each column
+  header shows the job count, its percentage of all unique jobs across both
+  plans, and an additional hint:
+  - *Only-in* columns: percentage of that plan's total jobs that are exclusive
+    to it (e.g. `42.5% of plan 1`).
+  - *In Both* column: Jaccard similarity — the overlap as a percentage of the
+    union of both plans (e.g. `Jaccard similarity: 31.2% overlap`).
 
 ## Getting Started
 
@@ -121,7 +128,7 @@ a local search engine for job units and test plans. It supports two views:
 | `GET /api/testplans?job_id=` | Get the full test plan ancestry for a given job ID |
 | `GET /api/plan-tree?search=` | Search test plans and return their full nested tree with included jobs (excluded jobs marked) |
 | `GET /api/plan-details?plan_id=` | Get all attributes, include/exclude patterns, and nested parts for a single test plan |
-| `GET /api/compare-plans?plan1=&plan2=` | Compare effective job sets of two test plans (excludes applied), returning only-in-1, in-both, only-in-2 |
+| `GET /api/compare-plans?plan1=&plan2=` | Compare effective job sets of two test plans (excludes applied), returning only-in-1, in-both, only-in-2 with job counts and Jaccard similarity |
 <!-- markdownlint-enable MD013 -->
 
 ## Troubleshooting: Port 8888
