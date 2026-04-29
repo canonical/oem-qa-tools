@@ -30,7 +30,7 @@ if __name__ == "__main__":
     journal_config["Journal"]["Storage"] = "persistent"
     # journal_config["Journal"]["MaxFileSec"] = "180day"
     journal_config["Journal"]["SystemMaxFiles"] = "200"
-    journal_config["Journal"]["SystemMaxUse"] = "10G"
+    journal_config["Journal"]["SystemMaxUse"] = "50G"
 
     ok = (
         input(
@@ -51,6 +51,7 @@ if __name__ == "__main__":
     with open("/etc/systemd/journald.conf", "w") as f:
         journal_config.write(f)
 
+    sp.run(["sudo", "systemctl", "daemon-reload"])
     sp.run(["sudo", "systemctl", "restart", "systemd-journald"])
     info("Journal service has been restarted with the new config!")
     info("The backup config is at /etc/systemd/journald.conf.bak")
