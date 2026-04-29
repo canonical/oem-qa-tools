@@ -348,10 +348,11 @@ def get_plan_tree(search: str, db: Session = Depends(get_db)):
 
     def _matches_job(pattern: str, job_id: str) -> bool:
         try:
-            esc = _re.sub(r"\.(?!\*)", r"\\.", pattern)
-            esc = esc.replace(".*", "\x00")
-            esc = esc.replace(".", r"\.")
-            esc = esc.replace("\x00", ".*")
+            esc = (
+                pattern.replace(".*", "\x00")
+                .replace(".", r"\.")
+                .replace("\x00", ".*")
+            )
             return bool(_re.match("^" + esc + "$", job_id))
         except _re.error:
             return pattern == job_id
@@ -494,9 +495,8 @@ def compare_plans(plan1: str, plan2: str, db: Session = Depends(get_db)):
 
     def _matches(pattern: str, jid: str) -> bool:
         try:
-            esc = _re.sub(r"\.(?!\*)", r"\\.", pattern)
             esc = (
-                esc.replace(".*", "\x00")
+                pattern.replace(".*", "\x00")
                 .replace(".", r"\.")
                 .replace("\x00", ".*")
             )
