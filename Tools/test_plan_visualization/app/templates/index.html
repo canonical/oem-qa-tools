@@ -210,8 +210,44 @@
         .cmp-row:hover { background:#f5f8ff; }
         .cmp-summary { font-family:inherit; font-size:.7rem; color:#999; margin-left:4px; }
         .compare-empty { text-align:center; padding:60px 24px; color:#bbb; font-size:.9rem; }
-        /* Compare progress bar */
-        .cmp-progress-wrap { width:100%; max-width:420px; }
+        /* Manifest & Environ view */
+        .me-controls { padding:14px 24px; background:#fff; border-bottom:1px solid #e4e7ec;
+                       display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+                       position:sticky; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,.04); }
+        .me-controls label { font-size:.8rem; color:#555; font-weight:500; }
+        .me-controls input { padding:4px 10px; border:1px solid #d0d5dd; border-radius:5px;
+                             font-size:.8rem; width:360px; color:#1a1a2e; }
+        .me-view { padding:16px 24px 40px; }
+        .me-empty { text-align:center; padding:80px 24px; color:#bbb; }
+        .me-empty p { font-size:1rem; color:#aaa; margin:0 0 6px; }
+        .me-summary { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+        .me-chip-group { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.08);
+                         padding:10px 14px; flex:1; min-width:240px; }
+        .me-chip-title { font-size:.68rem; font-weight:700; text-transform:uppercase;
+                         letter-spacing:.07em; color:#999; margin-bottom:8px; }
+        .me-chip { display:inline-block; border-radius:3px; padding:2px 8px; font-size:.72rem;
+                   margin:2px; cursor:pointer; transition:opacity .1s; }
+        .me-chip.manifest { background:#e8f0fe; color:#1a73e8; }
+        .me-chip.manifest:hover, .me-chip.manifest.active { background:#1a73e8; color:#fff; }
+        .me-chip.environ { background:#fce8e6; color:#c5221f; }
+        .me-chip.environ:hover, .me-chip.environ.active { background:#c5221f; color:#fff; }
+        .me-table-wrap { overflow-x:auto; }
+        .me-table { width:100%; border-collapse:collapse; background:#fff;
+                    box-shadow:0 1px 4px rgba(0,0,0,.08); }
+        .me-table th { background:#1a1a2e; color:#c8d0e0; padding:8px 10px; text-align:left;
+                       font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+        .me-table td { padding:6px 10px; font-size:.78rem; border-bottom:1px solid #f2f4f7; vertical-align:top; }
+        .me-table tr:hover td { background:#f5f8ff; }
+        .me-job-id { font-family:'Courier New',monospace; font-size:.73rem; word-break:break-all; }
+        .me-plugin { background:#f1f3f4; color:#667; font-size:.65rem; padding:1px 5px;
+                     border-radius:3px; display:inline-block; margin-right:4px; }
+        .me-none { color:#ccc; font-style:italic; font-size:.73rem; }
+        .me-filter-banner { font-size:.75rem; background:#e8f0fe; color:#1a73e8; border-radius:5px;
+                            padding:6px 12px; margin-bottom:10px; display:none; align-items:center; gap:8px; }
+        .me-filter-banner.visible { display:flex; }
+        .btn-clear-filter { padding:2px 10px; background:#1a73e8; color:#fff; border:none;
+                            border-radius:4px; font-size:.73rem; cursor:pointer; }
+
         .cmp-progress-label { font-size:.75rem; color:#4a90d9; font-weight:600; margin-bottom:4px; }
         .cmp-progress-bar { height:6px; background:#e4e7ec; border-radius:3px; overflow:hidden; }
         .cmp-progress-fill { height:100%; width:0%; background:linear-gradient(90deg,#4a90d9,#60b8ff);
@@ -221,6 +257,7 @@
     </style>
 </head>
 <body>
+    <div id="g-loading-bar"></div>
     <header>
         <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
             <rect width="26" height="26" rx="6" fill="#4a90d9"/>
@@ -231,6 +268,7 @@
             <button id="view-btn-jobs" class="view-btn active" onclick="switchView('jobs')">Jobs</button>
             <button id="view-btn-plans" class="view-btn" onclick="switchView('plans')">Test Plans</button>
             <button id="view-btn-compare" class="view-btn" onclick="switchView('compare')">Compare</button>
+            <button id="view-btn-manifest" class="view-btn" onclick="switchView('manifest')">Manifest &amp; Environ</button>
         </div>
     </header>
 
@@ -333,7 +371,12 @@
                 <input type="search" id="cmp-plan2" placeholder="Search plan name or ID&hellip;" oninput="debouncedCompareSearch(2)">
             </label>
             <button class="btn-compare" onclick="runCompare()">Compare</button>
+            <button onclick="clearExpandCache()" title="Force re-run checkbox-cli expand (clears 10-min cache)"
+                    style="padding:5px 10px;font-size:.76rem;background:#f0f2f5;border:1px solid #d0d5dd;
+                           border-radius:5px;cursor:pointer;white-space:nowrap">&#8635; Refresh</button>
             <span id="cmp-status" style="font-size:.8rem;color:#aaa"></span>
+            <span id="cmp-source-badge" style="display:none;font-size:.72rem;padding:2px 7px;
+                   border-radius:10px;font-weight:600;margin-left:4px"></span>
         </div>
         <!-- Autocomplete dropdowns -->
         <div id="cmp-suggest1" style="display:none;position:absolute;z-index:50;background:#fff;border:1px solid #d0d5dd;border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;min-width:320px;font-size:.8rem;"></div>
@@ -343,8 +386,60 @@
         </div>
     </div><!-- /#compare-section -->
 
+    <div id="manifest-section" style="display:none">
+        <div class="me-controls">
+            <label>Plan
+                <input type="search" id="me-plan-input" placeholder="Search plan name or ID&hellip;"
+                       oninput="debouncedMeSearch()" style="width:400px">
+            </label>
+            <span id="me-status" style="font-size:.8rem;color:#aaa"></span>
+            <button id="me-export-btn" onclick="exportMeCSV()"
+                    style="display:none;margin-left:12px;padding:5px 12px;font-size:.78rem;
+                           background:#1a1a2e;color:#c8d0e0;border:none;border-radius:5px;
+                           cursor:pointer;white-space:nowrap">
+                &#8595; Export CSV
+            </button>
+        </div>
+        <!-- Autocomplete dropdown -->
+        <div id="me-suggest" style="display:none;position:absolute;z-index:50;background:#fff;border:1px solid #d0d5dd;border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;min-width:360px;font-size:.8rem;"></div>
+        <div class="me-view" id="me-results">
+            <div class="me-empty">
+                <p>Search for a test plan to get started</p>
+                <small>See which manifest flags and environ variables each job requires</small>
+            </div>
+        </div>
+    </div><!-- /#manifest-section -->
+
     <script>
         let currentJobs = [];
+
+        // ── Global loading bar ─────────────────────────────────────────
+        const _gbar = document.getElementById('g-loading-bar');
+        let _gbarTimer = null, _gbarPct = 0, _gbarActive = 0;
+
+        function _gbarStart() {
+            _gbarActive++;
+            clearInterval(_gbarTimer);
+            _gbarPct = 0;
+            _gbar.style.transition = 'none';
+            _gbar.style.transform = 'scaleX(0)';
+            _gbar.classList.add('running');
+            // Force reflow so the transition reset takes effect
+            void _gbar.offsetWidth;
+            _gbar.style.transition = 'transform .18s ease, opacity .3s ease';
+            _gbarTimer = setInterval(() => {
+                _gbarPct = _gbarPct < 0.85 ? _gbarPct + (0.85 - _gbarPct) * 0.1 : _gbarPct;
+                _gbar.style.transform = `scaleX(${_gbarPct.toFixed(3)})`;
+            }, 150);
+        }
+
+        function _gbarDone() {
+            _gbarActive = Math.max(0, _gbarActive - 1);
+            if (_gbarActive > 0) return;
+            clearInterval(_gbarTimer);
+            _gbar.style.transform = 'scaleX(1)';
+            setTimeout(() => { _gbar.classList.remove('running'); _gbarPct = 0; }, 300);
+        }
 
         function getParams() {
             const params = new URLSearchParams();
@@ -392,7 +487,12 @@
 
         async function searchJobs() {
             const params = getParams();
-            currentJobs = await fetch(`/api/jobs?${params}`).then(r => r.json());
+            _gbarStart();
+            try {
+                currentJobs = await fetch(`/api/jobs?${params}`).then(r => r.json());
+            } finally {
+                _gbarDone();
+            }
             renderJobs();
         }
 
@@ -452,7 +552,8 @@
             document.getElementById('modal-unit-badge').textContent = (job.data && job.data.unit) ? job.data.unit : 'job';
             document.getElementById('modal-overlay').classList.add('open');
             const body = document.getElementById('modal-body');
-            body.innerHTML = '<p style="color:#aaa;padding:8px 0">Loading test plans&hellip;</p>';
+            body.innerHTML = '<div class="loading-inline"><span class="spinner"></span>Loading test plans&hellip;</div>';
+            _gbarStart();
 
             // ── Test plan tree ──────────────────────────────────────────
             let plansHtml = '<p class="section-title">Included in Test Plans</p><div class="plan-tree" style="margin-bottom:24px">';
@@ -466,6 +567,8 @@
                 }
             } catch(e) {
                 plansHtml += '<p style="color:#c5221f">Failed to load test plans.</p>';
+            } finally {
+                _gbarDone();
             }
             plansHtml += '</div>';
 
@@ -494,12 +597,13 @@
 
         // ── View toggle ────────────────────────────────────────────────
         function switchView(view) {
-            ['jobs','plans','compare'].forEach(v => {
+            ['jobs','plans','compare','manifest'].forEach(v => {
                 document.getElementById('view-btn-' + v).classList.toggle('active', v === view);
                 document.getElementById(v + '-section').style.display = v === view ? '' : 'none';
             });
             if (view === 'plans') document.getElementById('plan-search').focus();
             if (view === 'compare') document.getElementById('cmp-plan1').focus();
+            if (view === 'manifest') document.getElementById('me-plan-input').focus();
         }
 
         // ── Plan view ──────────────────────────────────────────────────
@@ -518,8 +622,15 @@
                 counterEl.textContent = '';
                 return;
             }
-            resultsEl.innerHTML = '<div class="plan-empty"><p style="color:#bbb">Searching&hellip;</p></div>';
-            const data = await fetch(`/api/plan-tree?search=${encodeURIComponent(q)}`).then(r => r.json());
+            resultsEl.innerHTML = '<div class="loading-inline"><span class="spinner spinner-lg"></span>Searching&hellip;</div>';
+            counterEl.textContent = '';
+            _gbarStart();
+            let data;
+            try {
+                data = await fetch(`/api/plan-tree?search=${encodeURIComponent(q)}`).then(r => r.json());
+            } finally {
+                _gbarDone();
+            }
             if (!data.plans || !data.plans.length) {
                 resultsEl.innerHTML = `<div class="plan-empty"><p>No test plans found for &ldquo;${escHtml(q)}&rdquo;</p></div>`;
                 counterEl.textContent = '';
@@ -649,7 +760,8 @@
             document.getElementById('modal-unit-badge').textContent = 'test plan';
             document.getElementById('modal-overlay').classList.add('open');
             const body = document.getElementById('modal-body');
-            body.innerHTML = '<p style="color:#aaa;padding:8px 0">Loading&hellip;</p>';
+            body.innerHTML = '<div class="loading-inline"><span class="spinner"></span>Loading&hellip;</div>';
+            _gbarStart();
             try {
                 const data = await fetch(`/api/plan-details?plan_id=${encodeURIComponent(planId)}`).then(r => {
                     if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
@@ -689,6 +801,8 @@
                 body.innerHTML = html;
             } catch(e) {
                 body.innerHTML = `<p style="color:#c5221f">Failed to load plan details: ${escHtml(String(e))}</p>`;
+            } finally {
+                _gbarDone();
             }
         }
 
@@ -766,6 +880,17 @@
                 await new Promise(r => setTimeout(r, 200));
                 status.textContent = `Plan 1: ${data.plan1.total} jobs | Plan 2: ${data.plan2.total} jobs`;
 
+                // Source badge
+                const badge = document.getElementById('cmp-source-badge');
+                const srcLabels = { 'checkbox-cli': ['via checkbox-cli', '#1a6e3c', '#e6f4ea'],
+                                    'db':           ['via DB cache',     '#1a1a2e', '#e8eaf6'],
+                                    'python':       ['via Python',       '#b45309', '#fef3c7'] };
+                const [srcTxt, srcFg, srcBg] = srcLabels[data.source] || [data.source, '#555', '#eee'];
+                badge.textContent = srcTxt;
+                badge.style.color = srcFg;
+                badge.style.background = srcBg;
+                badge.style.display = '';
+
                 const total1 = data.plan1.total;
                 const total2 = data.plan2.total;
                 const nBoth  = data.in_both.length;
@@ -803,9 +928,229 @@
                 progress.complete();
                 await new Promise(r => setTimeout(r, 150));
                 status.textContent = '';
+                document.getElementById('cmp-source-badge').style.display = 'none';
                 results.className = 'compare-empty';
                 results.innerHTML = `<span style="color:#c5221f">Error: ${escHtml(String(e.message))}</span>`;
             }
+        }
+
+        async function clearExpandCache() {
+            await fetch('/api/clear-expand-cache', { method: 'POST' });
+            const badge = document.getElementById('cmp-source-badge');
+            badge.textContent = 'cache cleared';
+            badge.style.color = '#555';
+            badge.style.background = '#eee';
+            badge.style.display = '';
+            setTimeout(() => { badge.style.display = 'none'; }, 2000);
+        }
+
+        // ── Manifest & Environ view ────────────────────────────────────
+        let _meTimer = null;
+        let _meActiveManifest = null;
+        let _meActiveEnviron = null;
+        let _meData = null;
+
+        function debouncedMeSearch() {
+            clearTimeout(_meTimer);
+            _meTimer = setTimeout(() => showMeSuggestions(), 250);
+        }
+
+        async function showMeSuggestions() {
+            const input = document.getElementById('me-plan-input');
+            const suggest = document.getElementById('me-suggest');
+            const q = input.value.trim();
+            if (!q) { suggest.style.display = 'none'; return; }
+
+            // Show a loading row immediately so the user knows something is happening
+            const rect = input.getBoundingClientRect();
+            suggest.style.top  = (rect.bottom + window.scrollY + 2) + 'px';
+            suggest.style.left = rect.left + 'px';
+            suggest.style.display = 'block';
+            suggest.innerHTML = `<div style="padding:8px 12px;color:#aaa;font-size:.8rem;display:flex;align-items:center;gap:8px">
+                <span class="spinner"></span>Searching&hellip;</div>`;
+
+            let data;
+            try {
+                data = await fetch(`/api/plan-tree?search=${encodeURIComponent(q)}`).then(r => r.json());
+            } catch(e) {
+                suggest.innerHTML = `<div style="padding:8px 12px;color:#c5221f;font-size:.8rem">Search failed</div>`;
+                return;
+            }
+            // If the input changed while we were fetching, bail out
+            if (input.value.trim() !== q) return;
+            if (!data.plans || !data.plans.length) {
+                suggest.innerHTML = `<div style="padding:8px 12px;color:#aaa;font-size:.8rem">No plans found for &ldquo;${escHtml(q)}&rdquo;</div>`;
+                return;
+            }
+            suggest.innerHTML = data.plans.slice(0, 20).map(p =>
+                `<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #f0f2f5"
+                      onmousedown="loadMePlan('${escHtml(p.id).replace(/'/g,"\\'")}','${escHtml(p.name).replace(/'/g,"\\'")}')">
+                    <div style="font-weight:600;font-size:.8rem">${escHtml(p.name)}</div>
+                    <div style="font-size:.7rem;color:#aaa;font-family:monospace">${escHtml(p.id)}</div>
+                 </div>`
+            ).join('');
+        }
+
+        document.addEventListener('click', (e) => {
+            document.getElementById('me-suggest').style.display = 'none';
+        });
+
+        async function loadMePlan(id, name) {
+            document.getElementById('me-plan-input').value = id;
+            document.getElementById('me-suggest').style.display = 'none';
+            _meActiveManifest = null;
+            _meActiveEnviron = null;
+            const status = document.getElementById('me-status');
+            const results = document.getElementById('me-results');
+            status.innerHTML = '<span class="spinner" style="vertical-align:middle;margin-right:6px"></span>Loading…';
+            results.innerHTML = '<div class="loading-inline"><span class="spinner spinner-lg"></span>Loading manifest &amp; environ data…</div>';
+            _gbarStart();
+            try {
+                _meData = await fetch(`/api/plan-manifest-environ?plan_id=${encodeURIComponent(id)}`).then(r => {
+                    if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
+                    return r.json();
+                });
+                status.textContent = `${_meData.total_jobs} jobs · ${_meData.all_manifests.length} manifests · ${_meData.all_environs.length} environs`;
+                document.getElementById('me-export-btn').style.display = '';
+                renderMeView();
+            } catch(e) {
+                status.textContent = '';
+                document.getElementById('me-export-btn').style.display = 'none';
+                results.innerHTML = `<div class="me-empty"><p style="color:#c5221f">Error: ${escHtml(String(e.message))}</p></div>`;
+            } finally {
+                _gbarDone();
+            }
+        }
+
+        function renderMeView() {
+            if (!_meData) return;
+            const results = document.getElementById('me-results');
+
+            // Build chips
+            const manifestChips = _meData.all_manifests.map(m =>
+                `<span class="me-chip manifest${_meActiveManifest === m.key ? ' active' : ''}"
+                       onclick="filterMeBy('manifest','${escHtml(m.key).replace(/'/g,"\\'")}')">
+                    ${escHtml(m.key)}
+                    <span style="opacity:.65;font-size:.65rem">(${m.value_type || 'bool'})</span>
+                 </span>`
+            ).join('');
+
+            const environChips = _meData.all_environs.map(e =>
+                `<span class="me-chip environ${_meActiveEnviron === e ? ' active' : ''}"
+                       onclick="filterMeBy('environ','${escHtml(e).replace(/'/g,"\\'")}')">
+                    ${escHtml(e)}
+                 </span>`
+            ).join('');
+
+            // Filter jobs
+            let jobs = _meData.jobs;
+            let filterLabel = '';
+            if (_meActiveManifest) {
+                jobs = jobs.filter(j => j.manifest.includes(_meActiveManifest));
+                filterLabel = `manifest: ${_meActiveManifest}`;
+            } else if (_meActiveEnviron) {
+                jobs = jobs.filter(j => j.environ.includes(_meActiveEnviron));
+                filterLabel = `environ: ${_meActiveEnviron}`;
+            }
+
+            // Build table rows
+            const rows = jobs.map((j, i) => {
+                const mTags = j.manifest.map(m =>
+                    `<span class="tag man" style="cursor:pointer" onclick="filterMeBy('manifest','${escHtml(m).replace(/'/g,"\\'")}')">
+                        ${escHtml(m)}</span>`
+                ).join('');
+                const eTags = j.environ.map(e =>
+                    `<span class="tag env" style="cursor:pointer" onclick="filterMeBy('environ','${escHtml(e).replace(/'/g,"\\'")}')">
+                        ${escHtml(e)}</span>`
+                ).join('');
+                return `<tr>
+                    <td style="color:#bbb;font-size:.73rem">${i + 1}</td>
+                    <td><span class="me-plugin">${escHtml(j.plugin || j.unit_type || 'job')}</span><span class="me-job-id">${escHtml(j.id)}</span></td>
+                    <td style="font-size:.78rem;color:#444">${escHtml(j.summary || '')}</td>
+                    <td>${mTags || '<span class="me-none">—</span>'}</td>
+                    <td>${eTags || '<span class="me-none">—</span>'}</td>
+                </tr>`;
+            }).join('');
+
+            results.innerHTML = `
+                <div class="me-summary">
+                    <div class="me-chip-group">
+                        <div class="me-chip-title">Manifest flags (${_meData.all_manifests.length})
+                            <span style="font-size:.65rem;font-weight:400;color:#aaa;margin-left:4px">click to filter</span>
+                        </div>
+                        ${manifestChips || '<span style="color:#bbb;font-size:.75rem">None</span>'}
+                    </div>
+                    <div class="me-chip-group">
+                        <div class="me-chip-title">Environ variables (${_meData.all_environs.length})
+                            <span style="font-size:.65rem;font-weight:400;color:#aaa;margin-left:4px">click to filter</span>
+                        </div>
+                        ${environChips || '<span style="color:#bbb;font-size:.75rem">None</span>'}
+                    </div>
+                </div>
+                <div class="me-filter-banner${filterLabel ? ' visible' : ''}" id="me-filter-banner">
+                    Filtered by <strong>${escHtml(filterLabel)}</strong> — ${jobs.length} job${jobs.length !== 1 ? 's' : ''}
+                    <button class="btn-clear-filter" onclick="clearMeFilter()">Clear filter</button>
+                </div>
+                <div class="me-table-wrap">
+                    <table class="me-table">
+                        <thead><tr>
+                            <th>#</th>
+                            <th>Job ID</th>
+                            <th>Summary</th>
+                            <th>Manifest deps</th>
+                            <th>Environ vars</th>
+                        </tr></thead>
+                        <tbody>${rows || '<tr><td colspan="5" style="text-align:center;padding:32px;color:#bbb">No jobs match the current filter.</td></tr>'}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        function filterMeBy(type, value) {
+            if (type === 'manifest') {
+                _meActiveManifest = (_meActiveManifest === value) ? null : value;
+                _meActiveEnviron = null;
+            } else {
+                _meActiveEnviron = (_meActiveEnviron === value) ? null : value;
+                _meActiveManifest = null;
+            }
+            renderMeView();
+        }
+
+        function clearMeFilter() {
+            _meActiveManifest = null;
+            _meActiveEnviron = null;
+            renderMeView();
+        }
+
+        function exportMeCSV() {
+            if (!_meData) return;
+            // Apply same filter as renderMeView
+            let jobs = _meData.jobs;
+            if (_meActiveManifest) jobs = jobs.filter(j => j.manifest.includes(_meActiveManifest));
+            else if (_meActiveEnviron) jobs = jobs.filter(j => j.environ.includes(_meActiveEnviron));
+
+            const csvCell = v => '"' + String(v).replace(/"/g, '""') + '"';
+            const rows = [
+                ['#', 'Job ID', 'Summary', 'Manifest deps', 'Environ vars'].map(csvCell).join(','),
+                ...jobs.map((j, i) => [
+                    i + 1,
+                    j.id,
+                    j.summary || '',
+                    j.manifest.join(' | '),
+                    j.environ.join(' | ')
+                ].map(csvCell).join(','))
+            ];
+            const blob = new Blob([rows.join('\r\n')], { type: 'text/csv' });
+            const planId = document.getElementById('me-plan-input').value.trim();
+            const safeName = planId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+            const filterSuffix = _meActiveManifest ? `_manifest_${_meActiveManifest.replace(/[^a-zA-Z0-9_-]/g,'_')}`
+                               : _meActiveEnviron  ? `_environ_${_meActiveEnviron.replace(/[^a-zA-Z0-9_-]/g,'_')}`
+                               : '';
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${safeName}${filterSuffix}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
         }
 
         window.onload = async () => {

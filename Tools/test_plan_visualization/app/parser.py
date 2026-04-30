@@ -1,8 +1,52 @@
 import os
 import re
 import json
-from .database import Job, TestPlan, SessionLocal, engine, Base
+from .database import Job, ManifestEntry, TestPlan, PlanMembership, SessionLocal, engine, Base
 
+
+# ---------------------------------------------------------------------------
+# Pattern-matching helpers (shared between parser and main.py)
+# ---------------------------------------------------------------------------
+
+def _match_pat(pattern: str, jid: str) -> bool:
+    """Match a checkbox glob pattern (may contain .*) against a job ID."""
+    try:
+        esc = (
+            pattern.replace(".*", "\x00")
+            .replace(".", r"\.")
+            .replace("\x00", ".*")
+        )
+        return bool(re.match("^" + esc + "$", jid))
+    except re.error:
+        return pattern == jid
+
+
+def _normalize_for_template(s: str) -> str:
+    """
+    Normalise a job ID or include pattern for fuzzy template matching.
+    Collapses /{N}_ and /{var}_ index prefixes → /INDEX_
+    and _.*  / _{variable} suffixes → _WILDCARD.
+    """
+    s = re.sub(r"/(\d+|\{[^}]+\})_", "/INDEX_", s)
+    s = re.sub(r"_(\.\*|\{+[^}]+\}+)", "_WILDCARD", s)
+    return s
+
+
+def job_matches_pattern(pattern: str, job_id: str) -> bool:
+    """Return True if *job_id* matches the include/exclude *pattern*."""
+    bare_pat = pattern.split("::")[-1]
+    bare_job = job_id.split("::")[-1]
+    if _match_pat(bare_pat, bare_job) or _match_pat(bare_pat, job_id):
+        return True
+    # Template fuzzy match
+    if _normalize_for_template(bare_pat) == _normalize_for_template(bare_job):
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# PXU file parser
+# ---------------------------------------------------------------------------
 
 def parse_pxu(file_path):
     """
@@ -56,11 +100,7 @@ def extract_manifest_requirements(requires_str):
     """
     if not requires_str:
         return []
-
-    # Simple regex to find manifest.KEY
-    # We look for manifest.KEY
     matches = re.findall(r"manifest\.([a-zA-Z0-9_]+)", requires_str)
-    # Filter out 'ns' if it appears (manifest.ns)
     return list(set([m for m in matches if m != "ns"]))
 
 
@@ -71,26 +111,20 @@ def get_provider_namespace(file_path, repo_root):
     current_dir = os.path.dirname(os.path.abspath(file_path))
     repo_root = os.path.abspath(repo_root)
 
-    # Safety check to avoid infinite loop if outside repo
     while current_dir.startswith(repo_root):
         manage_path = os.path.join(current_dir, "manage.py")
         if os.path.exists(manage_path):
             try:
                 with open(manage_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                    # Look for namespace="com.foo.bar"
-                    # handling both single and double quotes
                     match = re.search(
                         r'namespace\s*=\s*[\'"]([^\'"]+)[\'"]', content
                     )
                     if match:
                         return match.group(1)
             except Exception:
-                pass  # If we can't read it, just continue or fallback
-            # Found manage.py but failed to parse? Or keep looking?
+                pass
             return "unknown"
-            # Usually manage.py defines the provider,
-            # so if found, that's the place.
 
         if current_dir == repo_root:
             break
@@ -101,18 +135,25 @@ def get_provider_namespace(file_path, repo_root):
 
 def parse_include_ids(raw: str) -> list:
     """
-    Parse an include or nested_part field value into a list of IDs/patterns,
-    stripping inline options like 'certification-status=blocker' and comments.
+    Parse an include, nested_part, or bootstrap_include field value into
+    a list of IDs/patterns, stripping inline options and comments.
     """
     ids = []
     for line in raw.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        # First token is the ID/pattern; rest are options
         token = line.split()[0]
         ids.append(token)
     return ids
+
+
+# ---------------------------------------------------------------------------
+# DB scanning
+# ---------------------------------------------------------------------------
+
+# Unit types that produce no runnable jobs and are not manifest entries.
+_SKIP_UNIT_TYPES = {"category", "packaging meta-data", "exporter"}
 
 
 def _scan_path(
@@ -121,15 +162,19 @@ def _scan_path(
     repo_root: str,
     seen_job_ids: set,
     seen_plan_ids: set,
+    seen_manifest_ids: set,
     priority: bool,
 ):
     """
-    Walk *scan_path* for .pxu files and insert jobs/test-plans into *db*.
+    Walk *scan_path* for .pxu files and insert units into *db*.
 
-    priority=True  → local providers folder; add all units unconditionally
-                     and record their IDs in the seen sets.
-    priority=False → checkbox git repo; skip any unit whose ID was already
-                     added by a higher-priority source.
+    Stores:
+    - test plans  → TestPlan table
+    - regular jobs, resource jobs, attachment jobs → Job table
+    - manifest entries → ManifestEntry table
+
+    priority=True  → local providers folder; always insert, record IDs.
+    priority=False → checkbox git repo; skip IDs already seen.
 
     Returns (job_count, skipped_counts_dict).
     """
@@ -143,11 +188,10 @@ def _scan_path(
             file_path = os.path.join(root, file)
             try:
                 for unit in parse_pxu(file_path):
-                    unit_type = unit.get("unit")
+                    unit_type = unit.get("unit", "").strip()
+
+                    # ── Infer unit type for legacy-style units ─────────────
                     if not unit_type:
-                        # Legacy plugin: style  OR  modern flags: simple
-                        # (which implies a shell job with no explicit
-                        # unit/plugin field).
                         flags_val = unit.get("flags", "")
                         flag_tokens = flags_val.split()
                         if (
@@ -159,7 +203,16 @@ def _scan_path(
                         else:
                             continue
 
-                    # ── Test plans ────────────────────────────────────────
+                    # ── Skip non-job/non-plan/non-manifest types ───────────
+                    if unit_type in _SKIP_UNIT_TYPES:
+                        skipped_counts[unit_type] = (
+                            skipped_counts.get(unit_type, 0) + 1
+                        )
+                        continue
+
+                    provider = get_provider_namespace(file_path, repo_root)
+
+                    # ── Test plans ─────────────────────────────────────────
                     if unit_type == "test plan":
                         plan_id = unit.get("id", "")
                         if not plan_id:
@@ -169,22 +222,10 @@ def _scan_path(
                                 skipped_counts.get("test plan (dup)", 0) + 1
                             )
                             continue
-                        provider = get_provider_namespace(
-                            file_path, repo_root
-                        )
                         full_id = (
                             f"{provider}::{plan_id}"
                             if "::" not in plan_id
                             else plan_id
-                        )
-                        include_ids = parse_include_ids(
-                            unit.get("include", "")
-                        )
-                        exclude_ids = parse_include_ids(
-                            unit.get("exclude", "")
-                        )
-                        nested_ids = parse_include_ids(
-                            unit.get("nested_part", "")
                         )
                         db.add(
                             TestPlan(
@@ -192,9 +233,18 @@ def _scan_path(
                                 full_id=full_id,
                                 provider=provider,
                                 name=unit.get("_name", ""),
-                                include=json.dumps(include_ids),
-                                exclude=json.dumps(exclude_ids),
-                                nested_part=json.dumps(nested_ids),
+                                include=json.dumps(
+                                    parse_include_ids(unit.get("include", ""))
+                                ),
+                                exclude=json.dumps(
+                                    parse_include_ids(unit.get("exclude", ""))
+                                ),
+                                nested_part=json.dumps(
+                                    parse_include_ids(unit.get("nested_part", ""))
+                                ),
+                                bootstrap_include=json.dumps(
+                                    parse_include_ids(unit.get("bootstrap_include", ""))
+                                ),
                                 data=json.dumps(unit),
                             )
                         )
@@ -204,21 +254,39 @@ def _scan_path(
                         )
                         continue
 
-                    # ── Non-job unit types to skip ─────────────────────────
-                    if unit_type in [
-                        "manifest entry",
-                        "category",
-                        "packaging meta-data",
-                        "exporter",
-                        "attachment",
-                        "resource",
-                    ]:
-                        skipped_counts[unit_type] = (
-                            skipped_counts.get(unit_type, 0) + 1
+                    # ── Manifest entries ───────────────────────────────────
+                    if unit_type == "manifest entry":
+                        entry_id = unit.get("id", "")
+                        if not entry_id:
+                            continue
+                        if not priority and entry_id in seen_manifest_ids:
+                            skipped_counts["manifest entry (dup)"] = (
+                                skipped_counts.get("manifest entry (dup)", 0) + 1
+                            )
+                            continue
+                        full_id = (
+                            f"{provider}::{entry_id}"
+                            if "::" not in entry_id
+                            else entry_id
+                        )
+                        db.add(
+                            ManifestEntry(
+                                entry_id=entry_id,
+                                full_id=full_id,
+                                provider=provider,
+                                name=unit.get("_name", ""),
+                                value_type=unit.get("value-type", ""),
+                                summary=unit.get("_summary", ""),
+                                data=json.dumps(unit),
+                            )
+                        )
+                        seen_manifest_ids.add(entry_id)
+                        skipped_counts["manifest entry"] = (
+                            skipped_counts.get("manifest entry", 0) + 1
                         )
                         continue
 
-                    # ── Jobs ──────────────────────────────────────────────
+                    # ── Jobs (regular, resource, attachment, template, …) ──
                     job_id = unit.get("id")
                     if not job_id:
                         key = f"{unit_type} (no id)"
@@ -240,12 +308,12 @@ def _scan_path(
                     command = unit.get("command", "")
                     command_envs = extract_environ_from_command(command)
 
-                    provider = get_provider_namespace(file_path, repo_root)
-
                     declared_envs = environ.split() if environ else []
                     all_envs = sorted(
                         set(declared_envs) | set(command_envs)
                     )
+
+                    plugin_val = unit.get("plugin", "")
 
                     db.add(
                         Job(
@@ -255,17 +323,17 @@ def _scan_path(
                             environ=json.dumps(all_envs),
                             manifest=json.dumps(manifest_deps),
                             command=command,
-                            summary=unit.get("summary", ""),
-                            description=unit.get("description", ""),
+                            summary=unit.get("_summary", unit.get("summary", "")),
+                            description=unit.get("_description", unit.get("description", "")),
                             unit_type=unit_type,
+                            plugin=plugin_val,
                             data=json.dumps(unit),
                         )
                     )
                     seen_job_ids.add(job_id)
                     count += 1
 
-                    # Expand also-after-suspend variants explicitly so that
-                    # test-plan include patterns resolve correctly.
+                    # Mirror also-after-suspend variants
                     flags = unit.get("flags", "")
                     if "also-after-suspend" in flags:
                         as_id = "after-suspend-" + job_id
@@ -279,44 +347,168 @@ def _scan_path(
                                     environ=json.dumps(all_envs),
                                     manifest=json.dumps(manifest_deps),
                                     command=command,
-                                    summary=unit.get("summary", ""),
-                                    description=unit.get("description", ""),
+                                    summary=unit.get("_summary", unit.get("summary", "")),
+                                    description=unit.get("_description", unit.get("description", "")),
                                     unit_type=unit_type,
+                                    plugin=plugin_val,
                                     data=json.dumps(as_unit),
                                 )
                             )
                             seen_job_ids.add(as_id)
                             count += 1
+
             except Exception as e:
                 print(f"Error parsing {file_path}: {e}")
 
     return count, skipped_counts
 
 
+# ---------------------------------------------------------------------------
+# Plan membership computation
+# ---------------------------------------------------------------------------
+
+def _compute_all_effective_jobs(all_plans, all_job_ids):
+    """
+    For every TestPlan, compute the set of job IDs that are effectively
+    included (after applying excludes at every level).  Follows both
+    nested_part *and* bootstrap_include chains so that resource/bootstrap
+    jobs referenced by sub-plans are included, matching `checkbox expand`.
+
+    Returns a dict: plan_full_id → frozenset of job_ids.
+    """
+    by_full_id = {p.full_id: p for p in all_plans}
+    by_bare_id = {p.plan_id: p for p in all_plans}
+
+    def resolve(ref):
+        return by_full_id.get(ref) or by_bare_id.get(ref.split("::")[-1])
+
+    memo = {}
+
+    def effective(plan_full_id, computing=None):
+        if plan_full_id in memo:
+            return memo[plan_full_id]
+        if computing is None:
+            computing = set()
+        if plan_full_id in computing:
+            return frozenset()  # cycle guard
+        computing = computing | {plan_full_id}
+
+        plan = by_full_id.get(plan_full_id)
+        if not plan:
+            return frozenset()
+
+        own_excludes = json.loads(plan.exclude) if plan.exclude else []
+        include_patterns = json.loads(plan.include) if plan.include else []
+        bootstrap_refs = json.loads(plan.bootstrap_include) if plan.bootstrap_include else []
+        nested_refs = json.loads(plan.nested_part) if plan.nested_part else []
+
+        result = set()
+
+        # 1. Direct include patterns matched against all job IDs
+        for pattern in include_patterns:
+            bare_pat = pattern.split("::")[-1]
+            norm_pat = _normalize_for_template(bare_pat)
+            for job_id in all_job_ids:
+                bare_job = job_id.split("::")[-1]
+                if (
+                    _match_pat(bare_pat, bare_job)
+                    or _match_pat(bare_pat, job_id)
+                    or _normalize_for_template(bare_job) == norm_pat
+                ):
+                    result.add(job_id)
+
+        # 2. Bootstrap include: resource jobs run before template expansion
+        for ref in bootstrap_refs:
+            bare_ref = ref.split("::")[-1]
+            for job_id in all_job_ids:
+                bare_job = job_id.split("::")[-1]
+                if (
+                    bare_ref == bare_job
+                    or ref == job_id
+                    or _match_pat(bare_ref, bare_job)
+                ):
+                    result.add(job_id)
+                    break
+
+        # 3. Recurse into nested_part (children carry their own excludes)
+        for ref in nested_refs:
+            child = resolve(ref)
+            if child:
+                result |= effective(child.full_id, computing)
+
+        # 4. Apply this plan's own excludes to the full accumulated set
+        if own_excludes:
+            result = {
+                jid
+                for jid in result
+                if not any(
+                    _match_pat(ep.split("::")[-1], jid.split("::")[-1])
+                    or _match_pat(ep.split("::")[-1], jid)
+                    for ep in own_excludes
+                )
+            }
+
+        result = frozenset(result)
+        memo[plan_full_id] = result
+        return result
+
+    return {p.full_id: effective(p.full_id) for p in all_plans}
+
+
+def compute_plan_membership(db):
+    """
+    Populate the plan_membership table with precomputed effective job sets.
+    Called once at the end of update_db() after all units are committed.
+    """
+    print("Computing plan membership…")
+    all_plans = db.query(TestPlan).all()
+    all_job_ids = [row.job_id for row in db.query(Job.job_id)]
+
+    membership = _compute_all_effective_jobs(all_plans, all_job_ids)
+
+    db.query(PlanMembership).delete()
+
+    rows = []
+    for plan_full_id, job_ids in membership.items():
+        for job_id in job_ids:
+            rows.append(PlanMembership(plan_full_id=plan_full_id, job_id=job_id))
+
+    db.bulk_save_objects(rows)
+    db.commit()
+
+    total = sum(len(v) for v in membership.values())
+    print(
+        f"Plan membership computed: {len(membership)} plans, "
+        f"{total} (plan, job) pairs."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
 def update_db(repo_path: str, providers_path: str = None):
     """
     Build the database from two sources:
 
-    1. Local *providers_path* directory (default: ``"providers"`` next to
-       the working directory) — parsed **first** with priority; its job and
-       test-plan IDs are recorded so duplicates from the upstream repo are
-       skipped.
-    2. Upstream checkbox git repo at *repo_path* — parsed second; any unit
-       whose ID was already inserted from the local providers folder is
-       silently skipped.
+    1. Local *providers_path* directory (priority) — parsed first; its IDs
+       are recorded so duplicates from the upstream repo are skipped.
+    2. Upstream checkbox git repo at *repo_path* — parsed second.
 
-    Pass ``providers_path=None`` (or omit it) to disable local-providers
-    loading entirely.
+    After loading all units, computes PlanMembership for fast compare.
     """
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     db.query(Job).delete()
     db.query(TestPlan).delete()
+    db.query(ManifestEntry).delete()
+    db.query(PlanMembership).delete()
     db.commit()
 
     seen_job_ids: set = set()
     seen_plan_ids: set = set()
+    seen_manifest_ids: set = set()
     total_count = 0
     all_skipped: dict = {}
 
@@ -324,13 +516,14 @@ def update_db(repo_path: str, providers_path: str = None):
     if providers_path is None:
         providers_path = "providers"
     if os.path.isdir(providers_path):
-        print(f"Scanning local providers at '{providers_path}'...")
+        print(f"Scanning local providers at '{providers_path}'…")
         cnt, skipped = _scan_path(
             db,
             providers_path,
             providers_path,
             seen_job_ids,
             seen_plan_ids,
+            seen_manifest_ids,
             priority=True,
         )
         total_count += cnt
@@ -344,13 +537,14 @@ def update_db(repo_path: str, providers_path: str = None):
         )
 
     # ── 2. Checkbox git repo ───────────────────────────────────────────────
-    print(f"Scanning checkbox repo at '{repo_path}'...")
+    print(f"Scanning checkbox repo at '{repo_path}'…")
     cnt, skipped = _scan_path(
         db,
         repo_path,
         repo_path,
         seen_job_ids,
         seen_plan_ids,
+        seen_manifest_ids,
         priority=False,
     )
     total_count += cnt
@@ -358,19 +552,18 @@ def update_db(repo_path: str, providers_path: str = None):
         all_skipped[k] = all_skipped.get(k, 0) + v
 
     db.commit()
-    db.close()
 
     print(f"Database updated. {total_count} jobs total.")
     print("Unit summary:")
-    for k, v in all_skipped.items():
+    for k, v in sorted(all_skipped.items()):
         print(f"  {k}: {v}")
+
+    # ── 3. Precompute plan membership ──────────────────────────────────────
+    compute_plan_membership(db)
+
+    db.close()
 
 
 if __name__ == "__main__":
-    # Test run
-    import sys
+    pass
 
-    if len(sys.argv) > 1:
-        update_db(sys.argv[1])
-    else:
-        print("Usage: python parser.py <path_to_checkbox_repo>")

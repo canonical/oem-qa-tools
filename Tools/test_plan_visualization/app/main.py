@@ -5,10 +5,56 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
+import subprocess
+import time
 
-from .database import get_db, Job, TestPlan, engine, Base
+from .database import get_db, Job, ManifestEntry, TestPlan, PlanMembership, engine, Base
 
-# Create tables
+# ---------------------------------------------------------------------------
+# checkbox-cli expand cache
+# ---------------------------------------------------------------------------
+_CHECKBOX_CLI = "checkbox.checkbox-cli"
+_EXPAND_TTL = 600  # seconds — re-run CLI after 10 min
+_EXPAND_CACHE: dict = {}  # plan_full_id -> (timestamp, {job_id: item_dict})
+
+# Units that are structural/metadata only — exclude from compare sets
+_SKIP_EXPAND_UNITS = frozenset({
+    "test plan", "category",
+    "packaging meta-data", "exporter",
+})
+
+
+def _expand_plan(plan_full_id: str) -> dict:
+    """
+    Run ``checkbox-cli expand -f json <plan_full_id>`` and return a dict
+    mapping each runnable-unit ID to its raw item dict.  Results are cached
+    for _EXPAND_TTL seconds.  Returns {} on any failure.
+    """
+    now = time.monotonic()
+    cached = _EXPAND_CACHE.get(plan_full_id)
+    if cached and now - cached[0] < _EXPAND_TTL:
+        return cached[1]
+    try:
+        r = subprocess.run(
+            [_CHECKBOX_CLI, "expand", "-f", "json", plan_full_id],
+            capture_output=True, text=True, timeout=90,
+        )
+        if r.returncode != 0 or not r.stdout.strip():
+            return {}
+        items = json.loads(r.stdout)
+        by_id = {
+            item["id"]: item
+            for item in items
+            if isinstance(item, dict)
+            and "id" in item
+            and item.get("unit", "job") not in _SKIP_EXPAND_UNITS
+        }
+        _EXPAND_CACHE[plan_full_id] = (now, by_id)
+        return by_id
+    except Exception:
+        return {}
+
+# Create tables (including new ones on first startup / migration)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -479,91 +525,26 @@ def get_plan_details(plan_id: str, db: Session = Depends(get_db)):
 @app.get("/api/compare-plans")
 def compare_plans(plan1: str, plan2: str, db: Session = Depends(get_db)):
     """
-    Compute the effective job sets of two test plans (respecting excludes
-    from each plan and all its nested parts) and return the diff.
+    Compare the effective job sets of two test plans.
+
+    Resolution priority:
+      1. checkbox-cli expand -f json  (authoritative, cached 10 min)
+      2. Precomputed PlanMembership table
+      3. On-the-fly Python pattern expansion (last resort)
     """
-    import re as _re
-
     all_plans = db.query(TestPlan).all()
-    all_jobs_list = db.query(Job).all()
-
     by_full_id = {p.full_id: p for p in all_plans}
     by_bare_id = {p.plan_id: p for p in all_plans}
 
     def resolve_plan(ref: str):
         return by_full_id.get(ref) or by_bare_id.get(ref.split("::")[-1])
 
-    def _matches(pattern: str, jid: str) -> bool:
-        try:
-            esc = (
-                pattern.replace(".*", "\x00")
-                .replace(".", r"\.")
-                .replace("\x00", ".*")
-            )
-            return bool(_re.match("^" + esc + "$", jid))
-        except _re.error:
-            return pattern == jid
-
-    def _normalize(s: str) -> str:
-        s = _re.sub(r"/(\d+|\{[^}]+\})_", "/INDEX_", s)
-        s = _re.sub(r"_(\.\*|\{+[^}]+\}+)", "_WILDCARD", s)
-        return s
-
-    jobs_by_id = {j.job_id: j for j in all_jobs_list}
-
-    def effective_jobs(plan, visited=None, inherited_excludes=None):
-        """Return set of job_ids effectively included
-        after applying excludes."""
-        if visited is None:
-            visited = set()
-        if inherited_excludes is None:
-            inherited_excludes = []
-        if plan.full_id in visited:
-            return set()
-        visited = visited | {plan.full_id}
-
-        own_excludes = json.loads(plan.exclude) if plan.exclude else []
-        all_excludes = inherited_excludes + own_excludes
-
-        result = set()
-        for pattern in (json.loads(plan.include) if plan.include else []):
-            bare_pat = pattern.split("::")[-1]
-            norm_pat = _normalize(bare_pat)
-            for j in all_jobs_list:
-                bare_job = j.job_id.split("::")[-1]
-                if (
-                    _matches(bare_pat, bare_job)
-                    or _matches(bare_pat, j.job_id)
-                    or _normalize(bare_job) == norm_pat
-                ):
-                    result.add(j.job_id)
-
-        for ref in (json.loads(plan.nested_part) if plan.nested_part else []):
-            child = resolve_plan(ref)
-            if child:
-                result |= effective_jobs(child, visited, all_excludes)
-
-        # Apply this plan's own excludes to the full accumulated set
-        if own_excludes:
-            result = {
-                jid
-                for jid in result
-                if not any(
-                    _matches(ep.split("::")[-1], jid.split("::")[-1])
-                    or _matches(ep.split("::")[-1], jid)
-                    for ep in own_excludes
-                )
-            }
-        return result
-
     p1 = resolve_plan(plan1)
     p2 = resolve_plan(plan2)
 
     if not p1 or not p2:
         from fastapi import HTTPException
-
         missing = plan1 if not p1 else plan2
-        # Log all known bare IDs to help debug
         known = sorted(by_bare_id.keys())[:20]
         raise HTTPException(
             status_code=404,
@@ -573,29 +554,216 @@ def compare_plans(plan1: str, plan2: str, db: Session = Depends(get_db)):
             ),
         )
 
-    set1 = effective_jobs(p1)
-    set2 = effective_jobs(p2)
+    # ── 1. Primary: checkbox-cli expand (most accurate) ───────────────────
+    source = "checkbox-cli"
+    map1 = _expand_plan(p1.full_id)
+    map2 = _expand_plan(p2.full_id)
+    set1 = set(map1.keys())
+    set2 = set(map2.keys())
+
+    # ── 2. Fallback: precomputed PlanMembership table ─────────────────────
+    if not set1 and not set2:
+        source = "db"
+        set1 = {
+            row.job_id
+            for row in db.query(PlanMembership.job_id).filter(
+                PlanMembership.plan_full_id == p1.full_id
+            )
+        }
+        set2 = {
+            row.job_id
+            for row in db.query(PlanMembership.job_id).filter(
+                PlanMembership.plan_full_id == p2.full_id
+            )
+        }
+
+    # ── 3. Last resort: on-the-fly Python expansion ───────────────────────
+    if not set1 and not set2:
+        source = "python"
+        import re as _re
+
+        all_jobs_list = db.query(Job).all()
+
+        def _matches(pattern: str, jid: str) -> bool:
+            try:
+                esc = (
+                    pattern.replace(".*", "\x00")
+                    .replace(".", r"\.")
+                    .replace("\x00", ".*")
+                )
+                return bool(_re.match("^" + esc + "$", jid))
+            except _re.error:
+                return pattern == jid
+
+        def _normalize(s: str) -> str:
+            s = _re.sub(r"/(\d+|\{[^}]+\})_", "/INDEX_", s)
+            s = _re.sub(r"_(\.\*|\{+[^}]+\}+)", "_WILDCARD", s)
+            return s
+
+        def effective_jobs(plan, visited=None):
+            if visited is None:
+                visited = set()
+            if plan.full_id in visited:
+                return set()
+            visited = visited | {plan.full_id}
+            own_excludes = json.loads(plan.exclude) if plan.exclude else []
+            result = set()
+            for pattern in (json.loads(plan.include) if plan.include else []):
+                bare_pat = pattern.split("::")[-1]
+                norm_pat = _normalize(bare_pat)
+                for j in all_jobs_list:
+                    bare_job = j.job_id.split("::")[-1]
+                    if (
+                        _matches(bare_pat, bare_job)
+                        or _matches(bare_pat, j.job_id)
+                        or _normalize(bare_job) == norm_pat
+                    ):
+                        result.add(j.job_id)
+            for ref in (json.loads(plan.nested_part) if plan.nested_part else []):
+                child = resolve_plan(ref)
+                if child:
+                    result |= effective_jobs(child, visited)
+            if own_excludes:
+                result = {
+                    jid for jid in result
+                    if not any(
+                        _matches(ep.split("::")[-1], jid.split("::")[-1])
+                        or _matches(ep.split("::")[-1], jid)
+                        for ep in own_excludes
+                    )
+                }
+            return result
+
+        set1 = effective_jobs(p1)
+        set2 = effective_jobs(p2)
+
+    # ── Build response ─────────────────────────────────────────────────────
+    # For CLI path: job metadata comes directly from expand output.
+    # For DB paths: look up from Job table.
+    jobs_by_id = {}
+    if source != "checkbox-cli":
+        jobs_by_id = {j.job_id: j for j in db.query(Job).filter(
+            Job.job_id.in_(list(set1 | set2))
+        )}
 
     def _job_info(jid):
-        j = jobs_by_id.get(jid)
-        return {"id": jid, "summary": j.summary or "" if j else ""}
+        # Prefer expand data (already in memory, has full metadata)
+        item = map1.get(jid) or map2.get(jid)
+        if item:
+            return {
+                "id": jid,
+                "summary": item.get("_summary", item.get("summary", "")),
+                "plugin": item.get("plugin", item.get("unit", "job")),
+            }
+        j = jobs_by_id.get(jid) or jobs_by_id.get(jid.split("::")[-1])
+        return {
+            "id": jid,
+            "summary": (j.summary or "") if j else "",
+            "plugin": (j.plugin or j.unit_type or "") if j else "",
+        }
 
     only1 = sorted(set1 - set2)
     only2 = sorted(set2 - set1)
     both = sorted(set1 & set2)
 
     return {
-        "plan1": {
-            "id": p1.full_id,
-            "name": p1.name or p1.plan_id,
-            "total": len(set1),
-        },
-        "plan2": {
-            "id": p2.full_id,
-            "name": p2.name or p2.plan_id,
-            "total": len(set2),
-        },
+        "plan1": {"id": p1.full_id, "name": p1.name or p1.plan_id, "total": len(set1)},
+        "plan2": {"id": p2.full_id, "name": p2.name or p2.plan_id, "total": len(set2)},
         "only_in_plan1": [_job_info(j) for j in only1],
         "only_in_plan2": [_job_info(j) for j in only2],
         "in_both": [_job_info(j) for j in both],
+        "source": source,
     }
+
+
+@app.post("/api/clear-expand-cache")
+def clear_expand_cache():
+    """Evict all cached checkbox-cli expand results so the next compare re-runs the CLI."""
+    count = len(_EXPAND_CACHE)
+    _EXPAND_CACHE.clear()
+    return {"cleared": count}
+
+
+@app.get("/api/plan-manifest-environ")
+def get_plan_manifest_environ(plan_id: str, db: Session = Depends(get_db)):
+    """
+    For a given test plan, return every effective job together with the
+    manifest keys it requires and the environment variables it uses.
+    Also returns aggregate lists of all unique manifest deps and environs
+    across the entire plan — useful for understanding hardware requirements.
+    """
+    all_plans = db.query(TestPlan).all()
+    by_full_id = {p.full_id: p for p in all_plans}
+    by_bare_id = {p.plan_id: p for p in all_plans}
+
+    plan = by_full_id.get(plan_id) or by_bare_id.get(plan_id.split("::")[-1])
+    if not plan:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Plan not found: '{plan_id}'")
+
+    # Get effective job IDs from precomputed membership
+    job_ids = [
+        row.job_id
+        for row in db.query(PlanMembership.job_id).filter(
+            PlanMembership.plan_full_id == plan.full_id
+        )
+    ]
+
+    if not job_ids:
+        return {
+            "plan": {"id": plan.full_id, "name": plan.name or plan.plan_id},
+            "total_jobs": 0,
+            "all_manifests": [],
+            "all_environs": [],
+            "jobs": [],
+            "note": "Membership not computed. Trigger a DB rebuild.",
+        }
+
+    # Load all job rows matching these IDs
+    jobs = db.query(Job).filter(Job.job_id.in_(job_ids)).all()
+
+    all_manifests: set = set()
+    all_environs: set = set()
+    result_jobs = []
+
+    for job in sorted(jobs, key=lambda j: j.job_id):
+        manifests = json.loads(job.manifest) if job.manifest else []
+        environs = json.loads(job.environ) if job.environ else []
+        all_manifests.update(manifests)
+        all_environs.update(environs)
+        result_jobs.append({
+            "id": job.job_id,
+            "summary": job.summary or "",
+            "plugin": job.plugin or job.unit_type or "job",
+            "unit_type": job.unit_type or "job",
+            "manifest": manifests,
+            "environ": environs,
+        })
+
+    # Also fetch manifest entry details (name, value_type) for display
+    manifest_details = {}
+    if all_manifests:
+        entries = db.query(ManifestEntry).filter(
+            ManifestEntry.entry_id.in_(list(all_manifests))
+        ).all()
+        for e in entries:
+            manifest_details[e.entry_id] = {
+                "name": e.name or e.entry_id,
+                "value_type": e.value_type or "boolean",
+                "summary": e.summary or "",
+            }
+
+    return {
+        "plan": {"id": plan.full_id, "name": plan.name or plan.plan_id},
+        "total_jobs": len(result_jobs),
+        "all_manifests": [
+            {
+                "key": m,
+                **manifest_details.get(m, {"name": m, "value_type": "boolean", "summary": ""}),
+            }
+            for m in sorted(all_manifests)
+        ],
+        "all_environs": sorted(all_environs),
+        "jobs": result_jobs,
+    }
+
