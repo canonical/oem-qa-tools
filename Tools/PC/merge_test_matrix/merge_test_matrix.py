@@ -520,7 +520,10 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             # Write empty separator row if there are extra keys (row 21)
             if extra_keys:
                 worksheet.write(
-                    21, row, "", WorkbookFormater.custom_format(workbook, bg_color="red")
+                    21,
+                    row,
+                    "",
+                    WorkbookFormater.custom_format(workbook, bg_color="red"),
                 )
 
             # Write extra keys data (starting at row 22)
