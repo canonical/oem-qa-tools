@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import argparse
 import copy
@@ -85,8 +87,9 @@ class InitialResultParser:
     def ethernet(self):
         networks = self._data.get("Ethernet")
         if networks:
-            return "\n".join([f"{tmp['device']}"
-                              for tmp in networks]).strip("\n")
+            return "\n".join([f"{tmp['device']}" for tmp in networks]).strip(
+                "\n"
+            )
         else:
             return "N/A"
 
@@ -117,8 +120,9 @@ class InitialResultParser:
     def touchpad(self):
         touchpads = self._data.get("Touchpad")
         if touchpads:
-            return "\n".join([f"{tmp['device']}"
-                              for tmp in touchpads]).strip("\n")
+            return "\n".join([f"{tmp['device']}" for tmp in touchpads]).strip(
+                "\n"
+            )
         else:
             return "N/A"
 
@@ -126,8 +130,9 @@ class InitialResultParser:
     def touchscreen(self):
         touchscreens = self._data.get("Touchscreen")
         if touchscreens:
-            return "\n".join([f"{tmp['device']}"
-                              for tmp in touchscreens]).strip("\n")
+            return "\n".join(
+                [f"{tmp['device']}" for tmp in touchscreens]
+            ).strip("\n")
         else:
             return "N/A"
 
@@ -194,20 +199,23 @@ class WorkbookFormater:
         return cell_format
 
     def _generate_format(self, **kwargs):
+        # Create a fresh format object to avoid state pollution
+        cell_format = self._workbook.add_format()
+
         for key, value in kwargs.items():
             if key == "bold" and value:
-                self._cell_format.set_bold()
+                cell_format.set_bold()
             if key == "bolder":
-                self._cell_format.set_border()
+                cell_format.set_border()
             if key == "font_size":
-                self._cell_format.set_size(value)
+                cell_format.set_size(value)
             if key == "font_name":
-                self._cell_format.set_font_name()
+                cell_format.set_font_name(value)
             if key == "font_color":
-                self._cell_format.set_font_color(value)
+                cell_format.set_font_color(value)
             if key == "bg_color":
-                self._cell_format.set_bg_color(value)
-        return self._cell_format
+                cell_format.set_bg_color(value)
+        return cell_format
 
     @classmethod
     def default_format(cls, workbook):
@@ -215,7 +223,7 @@ class WorkbookFormater:
 
     @classmethod
     def highlight_format(cls, workbook):
-        return cls(workbook)._generate_format(fond_color="red")
+        return cls(workbook)._generate_format(font_color="red")
 
     @classmethod
     def header_format(cls, workbook):
@@ -231,20 +239,56 @@ class WorkbookFormater:
         bg_color=def_bg_color,
     ):
         return cls(workbook)._generate_format(
-            bold=bold, font_size=font_size,
-            font_color=font_color, bg_color=bg_color
+            bold=bold,
+            font_size=font_size,
+            font_color=font_color,
+            bg_color=bg_color,
         )
+
+
+def _find_extra_keys(test_results):
+    """Find keys in JSON data that are not in TEST_MATRIX_MAPPING."""
+    # Get all mapped keys from TEST_MATRIX_MAPPING values
+    mapped_keys = set()
+    for value in TEST_MATRIX_MAPPING.values():
+        if value is None:
+            continue
+        elif isinstance(value, list):
+            mapped_keys.update(value)
+        else:
+            mapped_keys.add(value)
+
+    # Collect all keys from test results
+    all_keys = set()
+    for data in test_results:
+        all_keys.update(data.keys())
+
+    # Find extra keys not in mapping
+    extra_keys = sorted(all_keys - mapped_keys)
+    return extra_keys
 
 
 def generate_test_matrix(test_results, filename, no_highlight):
     filename += ".xlsx"
+
+    # Find extra keys to add after "Test scope"
+    extra_keys = _find_extra_keys(test_results)
+
+    # Create extended mapping with extra keys
+    extended_mapping = OrderedDict(TEST_MATRIX_MAPPING)
+    # Add empty row separator if there are extra keys
+    if extra_keys:
+        extended_mapping[""] = None
+    for extra_key in extra_keys:
+        extended_mapping[extra_key] = extra_key
+
     with xlsxwriter.Workbook(filename) as workbook:
         worksheet = workbook.add_worksheet("Platform")
         worksheet.set_column(0, 0, 25)
         worksheet.set_column(1, 10, 75)
         _maximum_height_mapping = {}
 
-        for idx, key in enumerate(TEST_MATRIX_MAPPING.keys()):
+        for idx, key in enumerate(extended_mapping.keys()):
             tmp_data_queue = {}
             tmp_color_quere = copy.deepcopy(SUPT_BG_COLORS)
             # Write row name
@@ -259,9 +303,10 @@ def generate_test_matrix(test_results, filename, no_highlight):
                 )
 
             # Write data
-            mapping_value = TEST_MATRIX_MAPPING.get(key)
+            mapping_value = extended_mapping.get(key)
             query_keys = (
-                mapping_value if isinstance(mapping_value, list)
+                mapping_value
+                if isinstance(mapping_value, list)
                 else [mapping_value]
             )
 
@@ -285,7 +330,8 @@ def generate_test_matrix(test_results, filename, no_highlight):
                         values = tmp_data[0]
                     else:
                         values = (
-                            "N/A" if len(tmp_data) == 1
+                            "N/A"
+                            if len(tmp_data) == 1
                             else "\n".join(tmp_data[1:])
                         )
 
@@ -315,24 +361,33 @@ def generate_test_matrix(test_results, filename, no_highlight):
 
                 if idx in [0, 1]:
                     worksheet.write(
-                        idx, row, values,
-                        WorkbookFormater.header_format(workbook)
+                        idx,
+                        row,
+                        values,
+                        WorkbookFormater.header_format(workbook),
                     )
                 else:
                     if no_highlight:
                         worksheet.write(
-                            idx, row, values,
-                            WorkbookFormater.default_format(workbook)
+                            idx,
+                            row,
+                            values,
+                            WorkbookFormater.default_format(workbook),
                         )
                     else:
-                        if key in [
-                            "BIOS",
-                            "Disk",
-                            "Memory",
-                            "Fingerprint",
-                            "Other Special peipherals",
-                            "Test scope",
-                        ] or values in ["", "N/A"]:
+                        if (
+                            key
+                            in [
+                                "BIOS",
+                                "Disk",
+                                "Memory",
+                                "Fingerprint",
+                                "Other Special peipherals",
+                                "Test scope",
+                            ]
+                            or key in extra_keys
+                            or values in ["", "N/A"]
+                        ):
                             bg_color = "white"
                         elif values in tmp_data_queue.keys():
                             bg_color = tmp_data_queue.get(values)
@@ -344,14 +399,21 @@ def generate_test_matrix(test_results, filename, no_highlight):
                             tmp_data_queue.update({values: bg_color})
 
                         worksheet.write(
-                            idx, row, values,
-                            WorkbookFormater.custom_format(workbook,
-                                                           bg_color=bg_color),
+                            idx,
+                            row,
+                            values,
+                            WorkbookFormater.custom_format(
+                                workbook, bg_color=bg_color
+                            ),
                         )
 
 
 def generate_test_matrix_v2(test_results, filename, no_highlight):
     filename += ".xlsx"
+
+    # Find extra keys to add after "Test scope"
+    extra_keys = _find_extra_keys(test_results)
+
     with xlsxwriter.Workbook(filename) as workbook:
         worksheet = workbook.add_worksheet("Platform")
         worksheet.set_column(0, 0, 25)
@@ -381,18 +443,22 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             "Test scope",
         ]
 
+        # Add empty row separator and extra keys after "Test scope"
+        if extra_keys:
+            titles.append("")  # Empty row separator
+        titles.extend(extra_keys)
+
         for idx, key in enumerate(titles):
             # Write row name
             row = 0
             if idx in [0, 1]:
                 worksheet.write(
-                    idx, row, key,
-                    WorkbookFormater.header_format(workbook))
+                    idx, row, key, WorkbookFormater.header_format(workbook)
+                )
                 worksheet.set_row(idx, 20)
             else:
                 worksheet.write(
-                    idx, row, key,
-                    WorkbookFormater.default_format(workbook)
+                    idx, row, key, WorkbookFormater.default_format(workbook)
                 )
                 worksheet.set_row(idx, 25)
 
@@ -413,6 +479,7 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             "disk": 18,
         }
         tmp_data = {}
+        row = 0
 
         for data in test_results:
 
@@ -420,116 +487,186 @@ def generate_test_matrix_v2(test_results, filename, no_highlight):
             parser = InitialResultParser(data)
 
             worksheet.write(
-                0, row, parser.platform_name,
-                WorkbookFormater.header_format(workbook)
+                0,
+                row,
+                parser.platform_name,
+                WorkbookFormater.header_format(workbook),
             )
             worksheet.write(
-                1, row, parser.sku,
-                WorkbookFormater.header_format(workbook)
+                1, row, parser.sku, WorkbookFormater.header_format(workbook)
             )
             worksheet.write(
-                2, row, parser.bios,
-                WorkbookFormater.default_format(workbook)
+                2, row, parser.bios, WorkbookFormater.default_format(workbook)
             )
             # Write empty data for chipset
             worksheet.write(
-                4, row, "",
-                WorkbookFormater.default_format(workbook))
+                4, row, "", WorkbookFormater.default_format(workbook)
+            )
             worksheet.write(
-                5, row, parser.memory,
-                WorkbookFormater.default_format(workbook)
+                5,
+                row,
+                parser.memory,
+                WorkbookFormater.default_format(workbook),
             )
             # Write empty data for other
             worksheet.write(
-                19, row, "",
-                WorkbookFormater.default_format(workbook))
+                19, row, "", WorkbookFormater.default_format(workbook)
+            )
             # Write empty data for test scope
             worksheet.write(
-                20, row, "",
-                WorkbookFormater.default_format(workbook))
+                20, row, "", WorkbookFormater.default_format(workbook)
+            )
+
+            # Write empty separator row if there are extra keys (row 21)
+            if extra_keys:
+                worksheet.write(
+                    21,
+                    row,
+                    "",
+                    WorkbookFormater.custom_format(workbook, bg_color="red"),
+                )
+
+            # Write extra keys data (starting at row 22)
+            for i, extra_key in enumerate(extra_keys):
+                extra_value = data.get(extra_key, "N/A")
+                # Convert to string if needed
+                if isinstance(extra_value, list):
+                    extra_value = "\n".join([str(v) for v in extra_value])
+                elif extra_value is None:
+                    extra_value = "N/A"
+                else:
+                    extra_value = str(extra_value)
+
+                worksheet.write(
+                    22 + i,
+                    row,
+                    extra_value,
+                    WorkbookFormater.default_format(workbook),
+                )
 
             if no_highlight:
                 worksheet.write(
-                    3, row, parser.cpu,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    6, row, parser.onboard_gpu,
+                    3,
+                    row,
+                    parser.cpu,
                     WorkbookFormater.default_format(workbook),
                 )
                 worksheet.write(
-                    7, row, parser.discrete_gpu,
+                    6,
+                    row,
+                    parser.onboard_gpu,
                     WorkbookFormater.default_format(workbook),
                 )
                 worksheet.write(
-                    8, row, parser.audio,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    9, row, parser.ethernet,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    10, row, parser.wlan,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    11, row, parser.bluetooth,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    12, row, parser.wwan,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    13, row, parser.touchscreen,
+                    7,
+                    row,
+                    parser.discrete_gpu,
                     WorkbookFormater.default_format(workbook),
                 )
                 worksheet.write(
-                    14, row, parser.panel,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    15, row, parser.touchpad,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    16, row, parser.webcam,
-                    WorkbookFormater.default_format(workbook)
-                )
-                worksheet.write(
-                    17, row, parser.fingerprint,
+                    8,
+                    row,
+                    parser.audio,
                     WorkbookFormater.default_format(workbook),
                 )
                 worksheet.write(
-                    18, row, parser.disk,
-                    WorkbookFormater.default_format(workbook)
+                    9,
+                    row,
+                    parser.ethernet,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    10,
+                    row,
+                    parser.wlan,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    11,
+                    row,
+                    parser.bluetooth,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    12,
+                    row,
+                    parser.wwan,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    13,
+                    row,
+                    parser.touchscreen,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    14,
+                    row,
+                    parser.panel,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    15,
+                    row,
+                    parser.touchpad,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    16,
+                    row,
+                    parser.webcam,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    17,
+                    row,
+                    parser.fingerprint,
+                    WorkbookFormater.default_format(workbook),
+                )
+                worksheet.write(
+                    18,
+                    row,
+                    parser.disk,
+                    WorkbookFormater.default_format(workbook),
                 )
             else:
                 for key, index in need_custom.items():
                     value = getattr(parser, key)
                     if value == "N/A" or value == "":
                         worksheet.write(
-                            index, row, value,
-                            WorkbookFormater.default_format(workbook)
+                            index,
+                            row,
+                            value,
+                            WorkbookFormater.default_format(workbook),
                         )
                     else:
                         if tmp_data.get(key) is None:
                             tmp_data.update(
-                                {key: {
-                                    "color_queue":
-                                    copy.deepcopy(SUPT_BG_COLORS),
-                                    "values": [],
-                                }}
+                                {
+                                    key: {
+                                        "color_queue": copy.deepcopy(
+                                            SUPT_BG_COLORS
+                                        ),
+                                        "values": [],
+                                    }
+                                }
                             )
                         if value not in tmp_data[key]["values"]:
                             tmp_data[key]["values"].append(value)
                         color_index = tmp_data[key]["values"].index(value)
-                        bg_color = tmp_data[key]["color_queue"][color_index]
+                        if color_index < len(tmp_data[key]["color_queue"]):
+                            bg_color = tmp_data[key]["color_queue"][
+                                color_index
+                            ]
+                        else:
+                            bg_color = "white"
                         worksheet.write(
-                            index, row, value,
-                            WorkbookFormater.custom_format(workbook,
-                                                           bg_color=bg_color),
+                            index,
+                            row,
+                            value,
+                            WorkbookFormater.custom_format(
+                                workbook, bg_color=bg_color
+                            ),
                         )
 
 
@@ -543,13 +680,33 @@ def _collect_test_results(folder_path, extension):
             ) as so:
                 print("\nChecking the content in {} tarball".format(cfile))
                 for filename in so.getmembers():
-                    expected_file = re.search(TEST_RESULT_PATTERN,
-                                              filename.name)
+                    # Validate path to prevent path traversal attacks
+                    if ".." in filename.name or filename.name.startswith("/"):
+                        print(
+                            "Skipping suspicious file path: {}".format(
+                                filename.name
+                            )
+                        )
+                        continue
+
+                    expected_file = re.search(
+                        TEST_RESULT_PATTERN, filename.name
+                    )
                     if expected_file:
-                        print("Loading initial test result from"
-                              "{}".format(filename))
-                        data = json.loads(so.extractfile(filename).read())
-                        initial_results.append(data)
+                        print(
+                            "Loading initial test result from"
+                            "{}".format(filename)
+                        )
+                        try:
+                            data = json.loads(so.extractfile(filename).read())
+                            initial_results.append(data)
+                        except json.JSONDecodeError as e:
+                            print(
+                                "Failed to parse JSON from {}: {}".format(
+                                    filename.name, e
+                                )
+                            )
+                            continue
         else:
             print(
                 "the extension file name is not expected. tarbal: "
