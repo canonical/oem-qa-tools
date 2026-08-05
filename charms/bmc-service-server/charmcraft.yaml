@@ -1,0 +1,68 @@
+# This file configures Charmcraft.
+# See https://juju.is/docs/sdk/charmcraft-config for guidance.
+
+# (Required)
+name: bmc-service-server
+
+# (Required)
+type: charm
+
+# (Recommended)
+title: BMC Service Server
+
+# (Required)
+summary: BMC Manager API service for OEM-QA and BMC management.
+
+# (Required)
+description: |
+  Deploys and runs the BMC Manager FastAPI service (bmc_service.py).
+  Fetches bmc_manager from a configurable Git repo (default canonical/oem-qa-tools)
+  and runs uvicorn with configurable port and log level.
+
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+
+parts:
+  bmc-service-server:
+    plugin: charm
+    source: .
+    charm-entrypoint: src/charm.py
+    charm-binary-python-packages: []
+    charm-python-packages: []
+    charm-requirements: [requirements.txt]
+    charm-strict-dependencies: false
+
+platforms:
+  all:
+    build-on:
+      - amd64
+    build-for:
+      - amd64
+
+config:
+  options:
+    port:
+      description: Port for the BMC API service.
+      type: int
+      default: 8000
+    log-level:
+      description: |
+        Log level for the service.
+        Acceptable values are "info", "debug", "warning", "error", "critical".
+      type: string
+      default: "info"
+    repo-url:
+      description: Git repository URL for bmc_manager source.
+      type: string
+      default: "https://github.com/canonical/oem-qa-tools"
+    branch:
+      description: Git branch or tag to check out.
+      type: string
+      default: "main"
+    source-path:
+      description: |
+        Subfolder inside the repo that contains the bmc_manager package.
+        In oem-qa-tools the package is under Tools/env-setup/bmc_manager.
+        Leave empty if the repo root is the bmc_manager tree.
+      type: string
+      default: "Tools/env-setup/bmc_manager"
