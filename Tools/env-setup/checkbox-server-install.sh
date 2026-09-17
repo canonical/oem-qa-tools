@@ -91,8 +91,8 @@ setup_eddystone()
 
     #Create beacon.sh
     printf " \033[1;35m Setup Beacon  \033[0m\n"
-    #Install beacon.sh (separate file kept in this directory for maintainability)
-    sudo cp beacon.sh /usr/bin/beacon.sh
+    #Install beacon.sh (from beacon-mgmt.sh kept in this directory for maintainability)
+    sudo cp beacon-mgmt.sh /usr/bin/beacon.sh
     sudo hciconfig hci0 leadv 3
     sudo hciconfig hci0 piscan
 
