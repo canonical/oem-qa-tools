@@ -1,44 +1,21 @@
 #!/bin/bash
 
 ###########################################################
-# Checkbox Server Installation Script
+# Checkbox Server Installation Script#
 # The server username is "s", and the password is "s".
-# Tested on Ubuntu 20.04 (focal), 22.04 (jammy) and 24.04 (noble).
+# The script is supported with 18.04 LTS and 20.04 LTS.
 # Originally migrate from https://git.launchpad.net/oem-qa-tools/tree/checkbox-server-install.sh
-#
-# 24.04 notes:
-#  - BLE beacon (Eddystone URL) uses the BlueZ mgmt interface (btmgmt) because
-#    raw HCI advertising (hciconfig leadv / hcitool cmd 0x08...) is rejected
-#    with status 0x0C (Command Disallowed) on Intel AX2xx + current kernels,
-#    while the mgmt path works everywhere.
-#  - OBEX server on non-focal releases uses the repo's own installer
-#    (bt_obex_test_server/install.sh, obexd + pydbus, works on jammy/noble).
-#    Note: like the rest of this script it must be launched from its own
-#    directory (Tools/env-setup/).
-#  - wol_server.py is referenced from the script directory instead of the
-#    current working directory.
 ###########################################################
-
-SETUP_USER="${SETUP_USER:-$(logname 2>/dev/null || echo "$SUDO_USER" || echo "$USER")}"
 
 setup_environment()
 {
     echo " "
     printf " \033[1;35m Setup Environment \033[0m\n"
-    # Grant passwordless sudo to the user running the setup
-    printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$SETUP_USER" | sudo tee /etc/sudoers.d/allowall >/dev/null
-    sudo chmod 440 /etc/sudoers.d/allowall
-    if sudo visudo -cf /etc/sudoers.d/allowall >/dev/null 2>&1; then
-        echo "sudoers.d/allowall: syntax OK for user '$SETUP_USER'"
-    else
-        echo "sudoers.d/allowall: VISUDO SYNTAX CHECK FAILED"
-    fi
+    echo "%s ALL =(root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/allowall
 
-    # Disable auto upgrade (keep the original file if already backed up)
-    if [ ! -f /etc/apt/apt.conf.d/20auto-upgrades.orig ]; then
-        sudo mv /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades.orig
-    fi
-    cat << "EOF" | sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null
+    # Disable auto upgrade
+    echo 's' | sudo -S mv /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades.orig
+    cat << "EOF" | sudo tee /etc/apt/apt.conf.d/20auto-upgrades
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Download-Upgradeable-Packages "0";
 APT::Periodic::AutocleanInterval "0";
@@ -46,9 +23,9 @@ APT::Periodic::Unattended-Upgrade "0";
 EOF
 
     #Turn off auto suspend and screen saving
-    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing' 2>/dev/null
-    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing' 2>/dev/null
-    gsettings set org.gnome.desktop.session idle-delay 'uint32 0' 2>/dev/null
+    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
+    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing'
+    gsettings set org.gnome.desktop.session idle-delay 'uint32 0'
 }
 
 setup_obex()
@@ -222,7 +199,7 @@ Terminal=true
 Name[en_US]=Starup script_iperf
 Name=Starup script_iperf
 Comment[en_US]=#
-Comment=#" > /etc/xdg/autostart/iperf.desktop'
+Comment=#" > /etc/xdg/autostart/iperf.desktop'	
 }
 
 
@@ -235,14 +212,7 @@ setup_wakeonlan()
     sudo apt install wakeonlan -y
     sudo apt install python3-fastapi -y
     sudo apt install uvicorn -y
-    # wol_server.py lives in the same directory as this script
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    if [ -f "$SCRIPT_DIR/wol_server.py" ]; then
-        sudo cp "$SCRIPT_DIR/wol_server.py" /usr/bin/
-        echo "wol_server.py copied from $SCRIPT_DIR to /usr/bin/"
-    else
-        echo "WARNING: $SCRIPT_DIR/wol_server.py not found - WOL server NOT installed"
-    fi
+    sudo cp wol_server.py /usr/bin/
 
     #Add Wakeonlan.desktop
     echo 's' | sudo -S bash -c 'echo "[Desktop Entry]
