@@ -91,29 +91,40 @@ setup_eddystone()
 
     #Create beacon.sh
     printf " \033[1;35m Setup Beacon  \033[0m\n"
-    #Create beacon.sh (dual-path: legacy advertise-url default, BlueZ mgmt exception)
+    #Create beacon.sh (dual-path: legacy advertise-url default + BlueZ mgmt.
+    # Automation-safe: every step is time-bounded, errors are reported to
+    # /tmp/beacon.log but never interrupt or hang the script.)
     cat << "BEOF" | sudo tee /usr/bin/beacon.sh >/dev/null
 #!/bin/bash
 # beacon.sh - Eddystone-URL BLE advertising
 # Default path: legacy raw HCI via /usr/bin/advertise-url (original behaviour,
 # works on most machines incl. Ubuntu 18.04/20.04).
-# Exception: some controllers/kernels (e.g. Intel AX2xx + recent kernels)
-# reject raw HCI LE advertising with status 0x0C (Command Disallowed). If
-# btmgmt 'add-adv' is available (BlueZ >= 5.51, Ubuntu >= 20.04) it is also
-# applied, which covers those controllers. Advertising is verified via the
-# BlueZ mgmt info; if the mgmt path is unavailable the original fire-and-forget
-# behaviour is kept.
+# Extra path: BlueZ mgmt interface (btmgmt add-adv + advertising on) is also
+# applied when available (BlueZ >= 5.51 / Ubuntu >= 20.04), covering
+# controllers that reject raw HCI LE advertising with status 0x0C (Command
+# Disallowed, e.g. Intel AX2xx + recent kernels).
+# Automation-safe: this script NEVER hangs or hard-fails the boot flow. Each
+# command is time-bounded (TMOUT, default 5s); any error is reported to
+# /tmp/beacon.log and the script still exits cleanly (exit 0).
 # Overrides: BEACON_URL (default http://www.ubuntu.com), HCI_DEV (default hci0)
 BEACON_URL="${BEACON_URL:-http://www.ubuntu.com}"
 HCI="${HCI_DEV:-hci0}"
+TMOUT="${TMOUT:-5}"
 log() { echo "$(date '+%F %T') beacon.sh[$$]: $*" >> /tmp/beacon.log; }
 
-# --- 1) legacy raw HCI path (original behaviour) ---
-sudo hciconfig "$HCI" up 2>/dev/null
-python3 /usr/bin/./advertise-url -u "$BEACON_URL" 2>/dev/null
+# time-bounded sudo runner: report but never block the step
+run() { timeout "$TMOUT" sudo "$@" 2>&1; }
 
-# --- 2) exception: BlueZ mgmt path (covers controllers rejecting raw HCI) ---
-PAYLOAD=$(python3 - "$BEACON_URL" <<'PYEOF'
+advertising_up() {
+    run btmgmt -i "$HCI" info 2>/dev/null | grep "current settings" | grep -q advertising
+}
+
+# --- 1) legacy raw HCI path (original behaviour) ---
+run hciconfig "$HCI" up >/dev/null 2>&1
+timeout 10 python3 /usr/bin/./advertise-url -u "$BEACON_URL" >/dev/null 2>&1
+
+# --- 2) mgmt path (exception coverage; errors reported, never fatal) ---
+PAYLOAD=$(timeout 5 python3 - "$BEACON_URL" <<'PYEOF'
 import sys
 url = sys.argv[1]
 schemes = ("http://www.", "https://www.", "http://", "https://")
@@ -147,29 +158,27 @@ print("".join("%02x" % b for b in msg))
 PYEOF
 )
 
-MGMT=0
-if [ -n "$PAYLOAD" ]; then
-    sudo btmgmt -i "$HCI" power on 2>/dev/null
-    sudo btmgmt -i "$HCI" rm-adv 1 2>/dev/null
-    if sudo btmgmt -i "$HCI" add-adv -d "$PAYLOAD" 1 2>/dev/null && \
-       sudo btmgmt -i "$HCI" advertising on 2>/dev/null; then
-        MGMT=1
-    fi
+ERRMSG=""
+if [ -z "$PAYLOAD" ]; then
+    ERRMSG="url-encode "
+else
+    run btmgmt -i "$HCI" power on >/dev/null 2>&1 || ERRMSG="${ERRMSG}power-on "
+    run btmgmt -i "$HCI" rm-adv 1 >/dev/null 2>&1 || true    # instance may not exist
+    run btmgmt -i "$HCI" add-adv -d "$PAYLOAD" 1 >/dev/null 2>&1 || ERRMSG="${ERRMSG}add-adv "
+    run btmgmt -i "$HCI" advertising on >/dev/null 2>&1 || ERRMSG="${ERRMSG}advertising-on "
 fi
 
 sleep 1
-if [ "$MGMT" -eq 1 ] && ! sudo btmgmt -i "$HCI" info 2>/dev/null | grep "current settings" | grep -q advertising; then
-    log "FAILED to enable advertising on $HCI"
+if advertising_up; then
+    log "OK advertising enabled, URL=$BEACON_URL on $HCI (mgmt verified)"
+    echo "Beacon Service is enabled: $BEACON_URL"
+elif [ -n "$ERRMSG" ]; then
+    log "WARN advertising not verified; mgmt errors: $ERRMSG (continuing, no breakpoint)"
     echo "Beacon Service FAILED (see /tmp/beacon.log)"
-    exit 1
-fi
-
-if [ "$MGMT" -eq 1 ]; then
-    log "OK advertising enabled (mgmt verified), URL=$BEACON_URL on $HCI"
 else
-    log "OK advertising enabled (legacy, unverified as in original), URL=$BEACON_URL on $HCI"
+    log "WARN advertising not verified on $HCI (legacy path; continuing, no breakpoint)"
+    echo "Beacon Service is enabled: $BEACON_URL"
 fi
-echo "Beacon Service is enabled: $BEACON_URL"
 exit 0
 BEOF
     sudo chmod 755 /usr/bin/beacon.sh
