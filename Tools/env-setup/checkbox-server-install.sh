@@ -1,21 +1,44 @@
 #!/bin/bash
 
 ###########################################################
-# Checkbox Server Installation Script#
+# Checkbox Server Installation Script
 # The server username is "s", and the password is "s".
-# The script is supported with 18.04 LTS and 20.04 LTS.
+# Tested on Ubuntu 20.04 (focal), 22.04 (jammy) and 24.04 (noble).
 # Originally migrate from https://git.launchpad.net/oem-qa-tools/tree/checkbox-server-install.sh
+#
+# 24.04 notes:
+#  - BLE beacon (Eddystone URL) uses the BlueZ mgmt interface (btmgmt) because
+#    raw HCI advertising (hciconfig leadv / hcitool cmd 0x08...) is rejected
+#    with status 0x0C (Command Disallowed) on Intel AX2xx + current kernels,
+#    while the mgmt path works everywhere.
+#  - OBEX server on non-focal releases uses the repo's own installer
+#    (bt_obex_test_server/install.sh, obexd + pydbus, works on jammy/noble).
+#    Note: like the rest of this script it must be launched from its own
+#    directory (Tools/env-setup/).
+#  - wol_server.py is referenced from the script directory instead of the
+#    current working directory.
 ###########################################################
+
+SETUP_USER="${SETUP_USER:-$(logname 2>/dev/null || echo "$SUDO_USER" || echo "$USER")}"
 
 setup_environment()
 {
     echo " "
     printf " \033[1;35m Setup Environment \033[0m\n"
-    echo "%s ALL =(root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/allowall
+    # Grant passwordless sudo to the user running the setup
+    printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$SETUP_USER" | sudo tee /etc/sudoers.d/allowall >/dev/null
+    sudo chmod 440 /etc/sudoers.d/allowall
+    if sudo visudo -cf /etc/sudoers.d/allowall >/dev/null 2>&1; then
+        echo "sudoers.d/allowall: syntax OK for user '$SETUP_USER'"
+    else
+        echo "sudoers.d/allowall: VISUDO SYNTAX CHECK FAILED"
+    fi
 
-    # Disable auto upgrade
-    echo 's' | sudo -S mv /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades.orig
-    cat << "EOF" | sudo tee /etc/apt/apt.conf.d/20auto-upgrades
+    # Disable auto upgrade (keep the original file if already backed up)
+    if [ ! -f /etc/apt/apt.conf.d/20auto-upgrades.orig ]; then
+        sudo mv /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/20auto-upgrades.orig
+    fi
+    cat << "EOF" | sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Download-Upgradeable-Packages "0";
 APT::Periodic::AutocleanInterval "0";
@@ -23,9 +46,9 @@ APT::Periodic::Unattended-Upgrade "0";
 EOF
 
     #Turn off auto suspend and screen saving
-    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
-    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing'
-    gsettings set org.gnome.desktop.session idle-delay 'uint32 0'
+    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing' 2>/dev/null
+    gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'nothing' 2>/dev/null
+    gsettings set org.gnome.desktop.session idle-delay 'uint32 0' 2>/dev/null
 }
 
 setup_obex()
@@ -83,20 +106,87 @@ setup_eddystone()
 {
     #Download advertise-url file to /usr/bin
     echo " "
-    printf " \033[1;35m Download Advertise-url file  \033[0m\n"
+    printf " \033[1;35m Setup Beacon (Eddystone URL, BlueZ mgmt path)  \033[0m\n"
     sudo apt-get install git -y
-    git clone https://github.com/google/eddystone.git
-    sudo cp eddystone/eddystone-url/implementations/linux/advertise-url /usr/bin/
-    rm -rf eddystone/
 
-    #Create beacon.sh
-    printf " \033[1;35m Setup Beacon  \033[0m\n"
-    echo 's' | sudo -S bash -c 'echo "#!/bin/bash
-python3 /usr/bin/./advertise-url -u http://www.ubuntu.com
-echo \"Beacon Service is enabled\"" > /usr/bin/beacon.sh'
+    #Create beacon.sh (general version: any adapter, any 20.04+ release)
+    cat << "BEOF" | sudo tee /usr/bin/beacon.sh >/dev/null
+#!/bin/bash
+# beacon.sh - Eddystone-URL BLE advertising (general, Ubuntu 20.04+)
+# Uses the BlueZ management interface (btmgmt): recent Intel controllers and
+# kernels reject raw HCI advertising (hciconfig leadv / hcitool cmd 0x08...)
+# with status 0x0C (Command Disallowed), while the mgmt path works everywhere.
+# Overrides: BEACON_URL (default http://www.ubuntu.com), HCI_DEV (default first hci)
+BEACON_URL="${BEACON_URL:-http://www.ubuntu.com}"
+HCI="${HCI_DEV:-$(ls /sys/class/bluetooth/ 2>/dev/null | head -n1)}"
+log() { echo "$(date '+%F %T') beacon.sh[$$]: $*" >> /tmp/beacon.log; }
+
+[ -z "$HCI" ] && { log "no Bluetooth adapter found"; echo "No Bluetooth adapter found"; exit 1; }
+
+PAYLOAD=$(python3 - "$BEACON_URL" <<'PYEOF'
+import sys
+url = sys.argv[1]
+schemes = ("http://www.", "https://www.", "http://", "https://")
+extensions = (".com/", ".org/", ".edu/", ".net/", ".info/", ".biz/", ".gov/",
+              ".com", ".org", ".edu", ".net", ".info", ".biz", ".gov")
+data = []
+for s, scheme in enumerate(schemes):
+    if url.startswith(scheme):
+        data.append(s)
+        i = len(scheme)
+        break
+else:
+    sys.exit("invalid URL scheme")
+while i < len(url):
+    if url[i] == ".":
+        for e, ext in enumerate(extensions):
+            if url.startswith(ext, i):
+                data.append(e)
+                i += len(ext)
+                break
+        else:
+            data.append(0x2E)
+            i += 1
+    else:
+        data.append(ord(url[i]))
+        i += 1
+if len(data) > 18:
+    sys.exit("encoded URL too long (max 18 bytes)")
+msg = [0x02, 0x01, 0x1a, 0x03, 0x03, 0xaa, 0xfe, 0x0d, 0x16, 0xaa, 0xfe, 0x10, 0xed] + data
+print("".join("%02x" % b for b in msg))
+PYEOF
+)
+
+if [ -z "$PAYLOAD" ]; then
+    log "URL encoding failed for $BEACON_URL"
+    echo "Beacon Service FAILED: URL encoding error (see /tmp/beacon.log)"
+    exit 1
+fi
+
+sudo hciconfig "$HCI" up 2>/dev/null
+sudo btmgmt -i "$HCI" power on 2>/dev/null
+sudo btmgmt -i "$HCI" rm-adv 1 2>/dev/null
+if ! sudo btmgmt -i "$HCI" add-adv -d "$PAYLOAD" 1 2>/dev/null; then
+    log "add-adv failed on $HCI"
+    echo "Beacon Service FAILED: add-adv error (see /tmp/beacon.log)"
+    exit 1
+fi
+if ! sudo btmgmt -i "$HCI" advertising on 2>/dev/null; then
+    log "advertising on failed on $HCI"
+    echo "Beacon Service FAILED: advertising error (see /tmp/beacon.log)"
+    exit 1
+fi
+
+if sudo btmgmt -i "$HCI" info 2>/dev/null | grep "current settings" | grep -q advertising; then
+    log "OK advertising enabled, URL=$BEACON_URL on $HCI"
+    echo "Beacon Service is enabled: $BEACON_URL"
+else
+    log "FAILED to enable advertising on $HCI"
+    echo "Beacon Service FAILED (see /tmp/beacon.log)"
+    exit 1
+fi
+BEOF
     sudo chmod 755 /usr/bin/beacon.sh
-    sudo hciconfig hci0 leadv 3
-    sudo hciconfig hci0 piscan
 
     #Add beacon.desktop
     echo 's' | sudo -S bash -c 'echo "[Desktop Entry]
@@ -132,7 +222,7 @@ Terminal=true
 Name[en_US]=Starup script_iperf
 Name=Starup script_iperf
 Comment[en_US]=#
-Comment=#" > /etc/xdg/autostart/iperf.desktop'	
+Comment=#" > /etc/xdg/autostart/iperf.desktop'
 }
 
 
@@ -145,7 +235,14 @@ setup_wakeonlan()
     sudo apt install wakeonlan -y
     sudo apt install python3-fastapi -y
     sudo apt install uvicorn -y
-    sudo cp wol_server.py /usr/bin/
+    # wol_server.py lives in the same directory as this script
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [ -f "$SCRIPT_DIR/wol_server.py" ]; then
+        sudo cp "$SCRIPT_DIR/wol_server.py" /usr/bin/
+        echo "wol_server.py copied from $SCRIPT_DIR to /usr/bin/"
+    else
+        echo "WARNING: $SCRIPT_DIR/wol_server.py not found - WOL server NOT installed"
+    fi
 
     #Add Wakeonlan.desktop
     echo 's' | sudo -S bash -c 'echo "[Desktop Entry]
