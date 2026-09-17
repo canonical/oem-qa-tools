@@ -115,6 +115,14 @@ log() { echo "$(date '+%F %T') beacon.sh[$$]: $*" >> /tmp/beacon.log; }
 # time-bounded sudo runner: report but never block the step
 run() { timeout "$TMOUT" sudo "$@" 2>&1; }
 
+# adapter must exist: btmgmt silently falls back to the first real index,
+# which would falsely report success for a typo'd HCI_DEV.
+if [ ! -d "/sys/class/bluetooth/$HCI" ]; then
+    log "WARN adapter $HCI not found (automation-safe, continuing)"
+    echo "Beacon Service FAILED: adapter $HCI not found (see /tmp/beacon.log)"
+    exit 0
+fi
+
 advertising_up() {
     run btmgmt -i "$HCI" info 2>/dev/null | grep "current settings" | grep -q advertising
 }
