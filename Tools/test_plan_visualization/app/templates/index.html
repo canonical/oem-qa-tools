@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkbox Job Database</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               margin: 0; background: #f7f8fa; color: #1a1a2e; }
+
+        /* Header */
+        header { background: #1a1a2e; padding: 14px 24px; display:flex; align-items:center; gap:12px;
+                 position:fixed; top:0; left:0; right:0; z-index:20; }
+        header h1 { margin:0; font-size:1.3rem; font-weight:700; color:#fff; }
+        header .subtitle { color:#8899bb; font-size:.82rem; margin-left:auto; }
+
+        /* Filters */
+        .sticky-top { position:sticky; top:0; z-index:10; background:#fff;
+                      box-shadow:0 2px 6px rgba(0,0,0,.08); }
+        .controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+                    padding:12px 24px; background:#fff; border-bottom:1px solid #e4e7ec; }
+        .controls label { font-size:.8rem; color:#555; display:flex; align-items:center; gap:4px; font-weight:500; }
+        .controls select { padding:4px 8px; border:1px solid #d0d5dd; border-radius:5px;
+                           font-size:.8rem; background:#fff; max-width:200px; color:#1a1a2e; }
+        .controls select:focus { outline:none; border-color:#4a90d9; box-shadow:0 0 0 2px rgba(74,144,217,.15); }
+        .filter-toggle { display:flex; align-items:center; gap:6px; font-size:.8rem; font-weight:500;
+                         color:#555; padding:4px 10px; border:1px solid #d0d5dd;
+                         border-radius:5px; background:#fff; cursor:pointer; }
+        .filter-toggle:has(input:checked) { border-color:#4a90d9; background:#f0f6ff; color:#1a73e8; }
+        .btn-reset { padding:4px 14px; background:#f2f4f7; border:1px solid #d0d5dd;
+                     border-radius:5px; font-size:.8rem; cursor:pointer; color:#444; }
+        .btn-reset:hover { background:#e4e7ec; }
+        .counter { font-size:.8rem; font-weight:600; color:#4a90d9; margin-left:auto; white-space:nowrap; }
+        .search-input { padding:4px 10px 4px 28px; border:1px solid #d0d5dd; border-radius:5px;
+                        font-size:.8rem; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;
+                        width:220px; color:#1a1a2e; }
+        .search-input:focus { outline:none; border-color:#4a90d9; box-shadow:0 0 0 2px rgba(74,144,217,.15); }
+        .search-input::placeholder { color:#bbb; }
+
+        /* Table */
+        .table-wrap { padding:0 24px 40px; overflow-x:auto; }
+        .col-hdr { width:100%; border-collapse:collapse; background:#1a1a2e; table-layout:fixed; }
+        table { width:100%; border-collapse:collapse; background:#fff;
+                box-shadow:0 1px 4px rgba(0,0,0,.08); table-layout:fixed; }
+        th { background:#1a1a2e; color:#c8d0e0; padding:9px 12px; text-align:left;
+             font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+        td { padding:8px 12px; font-size:.82rem; border-bottom:1px solid #f2f4f7; vertical-align:top; }
+        tr:last-child td { border-bottom:none; }
+        tr:hover td { background:#f5f8ff; }
+        .job-id  { font-family:'Courier New',monospace; font-size:.76rem; color:#1a1a2e; word-break:break-all; }
+        .tmpl-id { font-family:'Courier New',monospace; font-size:.73rem; color:#6c757d; word-break:break-all; }
+        .tag { display:inline-block; border-radius:3px; padding:1px 6px; font-size:.7rem; margin:1px; }
+        .tag.env { background:#fce8e6; color:#c5221f; }
+        .tag.man { background:#e8f0fe; color:#1a73e8; }
+        .btn-details { padding:3px 10px; background:#4a90d9; color:#fff; border:none;
+                       border-radius:4px; font-size:.75rem; cursor:pointer; white-space:nowrap; }
+        .btn-details:hover { background:#357abd; }
+        .no-results td { text-align:center; padding:48px; color:#aaa; font-size:.9rem; }
+
+        /* Modal overlay */
+        #modal-overlay { display:none; position:fixed; inset:0; background:rgba(10,15,30,.6);
+                         z-index:200; align-items:flex-start; justify-content:center;
+                         padding:40px 20px; overflow-y:auto; }
+        #modal-overlay.open { display:flex; }
+        #modal { background:#fff; width:100%; max-width:880px; border-radius:10px;
+                 box-shadow:0 12px 40px rgba(0,0,0,.25); overflow:hidden; }
+
+        /* Modal header */
+        #modal-header { background:#1a1a2e; padding:16px 20px;
+                        display:flex; align-items:flex-start; gap:10px; }
+        #modal-header-left { flex:1; min-width:0; }
+        .modal-meta { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+        .unit-badge { background:#4a90d9; color:#fff; border-radius:4px;
+                      padding:2px 8px; font-size:.68rem; font-weight:700;
+                      text-transform:uppercase; letter-spacing:.04em; }
+        #modal-title { color:#e8edf5; font-size:.9rem; font-family:'Courier New',monospace;
+                       word-break:break-all; line-height:1.4; }
+        #modal-close { background:none; border:none; color:#667; font-size:1.5rem;
+                       cursor:pointer; line-height:1; padding:0 4px; flex-shrink:0; }
+        #modal-close:hover { color:#fff; }
+
+        /* Modal body */
+        #modal-body { padding:20px; max-height:72vh; overflow-y:auto; }
+        .section-title { font-size:.72rem; font-weight:700; text-transform:uppercase;
+                         letter-spacing:.07em; color:#999; margin:0 0 12px;
+                         padding-bottom:6px; border-bottom:2px solid #f0f2f5; }
+
+        /* Test plan tree */
+        .plan-tree { margin-bottom:24px; }
+        .plan-node { display:flex; align-items:flex-start; gap:8px;
+                     padding:6px 6px 6px calc(var(--d) * 22px);
+                     border-radius:5px; margin-bottom:2px; }
+        .plan-node:hover { background:#f7f9ff; }
+        .depth-pill { flex-shrink:0; font-size:.65rem; font-weight:700;
+                      padding:2px 7px; border-radius:10px; line-height:1.4; }
+        .depth-0 { background:#e6f4ea; color:#137333; }
+        .depth-1 { background:#e8f0fe; color:#1a73e8; }
+        .depth-2 { background:#fce8e6; color:#c5221f; }
+        .depth-3 { background:#fef7e0; color:#b06000; }
+        .depth-n { background:#f1f3f4; color:#666; }
+        .plan-connector { color:#bbb; font-size:.8rem; flex-shrink:0; padding-top:2px; }
+        .plan-info { min-width:0; }
+        .plan-name { font-size:.84rem; font-weight:600; color:#1a1a2e; line-height:1.3; }
+        .plan-full-id { font-size:.7rem; color:#aaa; font-family:'Courier New',monospace;
+                        word-break:break-all; margin-top:1px; }
+
+        /* Attribute grid */
+        .attr-grid { display:grid; grid-template-columns:150px 1fr; gap:1px;
+                     background:#e4e7ec; border:1px solid #e4e7ec; border-radius:6px;
+                     overflow:hidden; margin-bottom:20px; }
+        .attr-key { background:#f8f9fb; padding:7px 10px; font-size:.78rem; font-weight:600;
+                    color:#555; word-break:break-word; }
+        .attr-val { background:#fff; padding:7px 10px; }
+        .attr-val pre { margin:0; white-space:pre-wrap; font-size:.76rem;
+                        font-family:'Courier New',monospace; color:#333; line-height:1.5; }
+
+        /* View toggle */
+        .view-toggle { display:flex; gap:2px; background:rgba(255,255,255,.1); border-radius:6px; padding:2px; margin-left:auto; }
+        .view-btn { padding:5px 16px; border:none; border-radius:4px; font-size:.8rem; font-weight:600;
+                    cursor:pointer; background:transparent; color:#8899bb; transition:all .15s; }
+        .view-btn.active { background:#fff; color:#1a1a2e; }
+        .view-btn:hover:not(.active) { color:#dde; }
+
+        /* Plan view controls */
+        .plan-controls { display:flex; align-items:center; gap:10px;
+                         padding:12px 24px; background:#fff; border-bottom:1px solid #e4e7ec;
+                         position:sticky; top:0; z-index:10;
+                         box-shadow:0 2px 4px rgba(0,0,0,.04); }
+        .plan-counter { font-size:.8rem; font-weight:600; color:#4a90d9; white-space:nowrap; }
+
+        /* Plan view body */
+        .plan-view { padding:16px 24px 40px; }
+        .plan-empty { text-align:center; padding:80px 24px; color:#bbb; }
+        .plan-empty p { font-size:1rem; margin:0 0 6px; color:#aaa; }
+        .plan-empty small { font-size:.82rem; }
+
+        /* Plan cards */
+        .plan-card { background:#fff; border-radius:8px;
+                     box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:10px; overflow:hidden; }
+        .plan-card-hd { display:flex; align-items:center; gap:8px; padding:10px 14px;
+                        cursor:pointer; }
+        .plan-card-hd:hover { background:#f7f9ff; }
+        .plan-toggle { font-size:.65rem; color:#aaa; transition:transform .15s; width:12px; flex-shrink:0; }
+        .plan-toggle.open { transform:rotate(90deg); }
+        .plan-card-info { flex:1; min-width:0; }
+        .plan-card-name { font-size:.88rem; font-weight:600; color:#1a1a2e; }
+        .plan-card-id   { font-size:.7rem; color:#aaa; font-family:'Courier New',monospace; margin-top:1px; word-break:break-all; }
+        .plan-card-stats { font-size:.7rem; color:#bbb; flex-shrink:0; }
+        .plan-card-bd { display:none; border-top:1px solid #f0f2f5; }
+        .plan-card-bd.open { display:block; }
+
+        /* Nested child plans */
+        .plan-children { padding:8px 10px; display:flex; flex-direction:column; gap:4px; }
+        .plan-child { border-left:3px solid #e8edf5; border-radius:0 6px 6px 0;
+                      background:#fafbfc; overflow:hidden; }
+        .plan-child .plan-card-hd { padding:7px 12px; }
+        .plan-child .plan-card-hd:hover { background:#f0f4ff; }
+        .plan-child .plan-card-bd { background:#fafbfc; }
+
+        /* Job list inside plan */
+        .job-list-wrap { padding:8px 14px 12px; }
+        .job-list-title { font-size:.68rem; font-weight:700; text-transform:uppercase;
+                          letter-spacing:.07em; color:#999; margin:0 0 6px;
+                          padding-bottom:4px; border-bottom:1px solid #f0f2f5; }
+        .plan-job-row { display:flex; align-items:baseline; gap:7px; padding:3px 4px;
+                        border-radius:3px; font-size:.78rem; }
+        .plan-job-row:hover { background:#f5f8ff; }
+        .plan-job-row.excluded { opacity:.55; }
+        .plan-job-row.excluded .plan-job-id { text-decoration:line-through; color:#999; }
+        .plan-job-plugin { background:#f1f3f4; color:#667; font-size:.65rem;
+                           padding:1px 5px; border-radius:3px; flex-shrink:0; }
+        .badge-excluded { background:#fce8e6; color:#c5221f; font-size:.6rem; font-weight:700;
+                          padding:1px 5px; border-radius:3px; flex-shrink:0; letter-spacing:.04em; }
+        .plan-job-id { font-family:'Courier New',monospace; color:#1a1a2e; font-size:.73rem; word-break:break-all; }
+        .plan-job-summary { color:#999; font-size:.73rem; }
+        .exclude-banner { font-size:.7rem; color:#c5221f; background:#fce8e6;
+                          border-radius:4px; padding:3px 8px; margin:4px 14px 0;
+                          display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+        .exclude-banner strong { font-weight:700; }
+        .excl-pat { font-family:'Courier New',monospace; background:#fff;
+                    border:1px solid #f5c6c2; border-radius:3px; padding:0 4px; }
+        .btn-plan-details { padding:2px 9px; background:transparent; color:#4a90d9;
+                            border:1px solid #4a90d9; border-radius:4px; font-size:.7rem;
+                            cursor:pointer; white-space:nowrap; flex-shrink:0; }
+        .btn-plan-details:hover { background:#4a90d9; color:#fff; }
+
+        /* Compare view */
+        .compare-controls { padding:14px 24px; background:#fff; border-bottom:1px solid #e4e7ec;
+                            display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+                            position:sticky; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,.04); }
+        .compare-controls label { font-size:.8rem; color:#555; font-weight:500; }
+        .compare-controls input { padding:4px 10px; border:1px solid #d0d5dd; border-radius:5px;
+                                  font-size:.8rem; width:320px; color:#1a1a2e; }
+        .btn-compare { padding:5px 18px; background:#4a90d9; color:#fff; border:none;
+                       border-radius:5px; font-size:.8rem; font-weight:600; cursor:pointer; }
+        .btn-compare:hover { background:#357abd; }
+        .compare-view { padding:16px 24px 40px; }
+        .compare-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+        .compare-col { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.08); overflow:hidden; }
+        .compare-col-hd { padding:9px 12px; font-size:.75rem; font-weight:700;
+                          text-transform:uppercase; letter-spacing:.05em; }
+        .col-only1 { background:#e8f0fe; color:#1a73e8; }
+        .col-both  { background:#e6f4ea; color:#137333; }
+        .col-only2 { background:#fce8e6; color:#c5221f; }
+        .compare-col-body { padding:6px 10px 10px; max-height:60vh; overflow-y:auto; }
+        .cmp-row { font-size:.76rem; font-family:'Courier New',monospace; padding:2px 4px;
+                   border-radius:3px; color:#1a1a2e; }
+        .cmp-row:hover { background:#f5f8ff; }
+        .cmp-summary { font-family:inherit; font-size:.7rem; color:#999; margin-left:4px; }
+        .compare-empty { text-align:center; padding:60px 24px; color:#bbb; font-size:.9rem; }
+        /* Manifest & Environ view */
+        .me-controls { padding:14px 24px; background:#fff; border-bottom:1px solid #e4e7ec;
+                       display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+                       position:sticky; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,.04); }
+        .me-controls label { font-size:.8rem; color:#555; font-weight:500; }
+        .me-controls input { padding:4px 10px; border:1px solid #d0d5dd; border-radius:5px;
+                             font-size:.8rem; width:360px; color:#1a1a2e; }
+        .me-view { padding:16px 24px 40px; }
+        .me-empty { text-align:center; padding:80px 24px; color:#bbb; }
+        .me-empty p { font-size:1rem; color:#aaa; margin:0 0 6px; }
+        .me-summary { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+        .me-chip-group { background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.08);
+                         padding:10px 14px; flex:1; min-width:240px; }
+        .me-chip-title { font-size:.68rem; font-weight:700; text-transform:uppercase;
+                         letter-spacing:.07em; color:#999; margin-bottom:8px; }
+        .me-chip { display:inline-block; border-radius:3px; padding:2px 8px; font-size:.72rem;
+                   margin:2px; cursor:pointer; transition:opacity .1s; }
+        .me-chip.manifest { background:#e8f0fe; color:#1a73e8; }
+        .me-chip.manifest:hover, .me-chip.manifest.active { background:#1a73e8; color:#fff; }
+        .me-chip.environ { background:#fce8e6; color:#c5221f; }
+        .me-chip.environ:hover, .me-chip.environ.active { background:#c5221f; color:#fff; }
+        .me-table-wrap { overflow-x:auto; }
+        .me-table { width:100%; border-collapse:collapse; background:#fff;
+                    box-shadow:0 1px 4px rgba(0,0,0,.08); }
+        .me-table th { background:#1a1a2e; color:#c8d0e0; padding:8px 10px; text-align:left;
+                       font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+        .me-table td { padding:6px 10px; font-size:.78rem; border-bottom:1px solid #f2f4f7; vertical-align:top; }
+        .me-table tr:hover td { background:#f5f8ff; }
+        .me-job-id { font-family:'Courier New',monospace; font-size:.73rem; word-break:break-all; }
+        .me-plugin { background:#f1f3f4; color:#667; font-size:.65rem; padding:1px 5px;
+                     border-radius:3px; display:inline-block; margin-right:4px; }
+        .me-none { color:#ccc; font-style:italic; font-size:.73rem; }
+        .me-filter-banner { font-size:.75rem; background:#e8f0fe; color:#1a73e8; border-radius:5px;
+                            padding:6px 12px; margin-bottom:10px; display:none; align-items:center; gap:8px; }
+        .me-filter-banner.visible { display:flex; }
+        .btn-clear-filter { padding:2px 10px; background:#1a73e8; color:#fff; border:none;
+                            border-radius:4px; font-size:.73rem; cursor:pointer; }
+
+        .cmp-progress-label { font-size:.75rem; color:#4a90d9; font-weight:600; margin-bottom:4px; }
+        .cmp-progress-bar { height:6px; background:#e4e7ec; border-radius:3px; overflow:hidden; }
+        .cmp-progress-fill { height:100%; width:0%; background:linear-gradient(90deg,#4a90d9,#60b8ff);
+                             border-radius:3px; transition:width .25s ease; }
+        .cmp-pct { font-size:.68rem; color:#888; margin-left:4px; font-weight:normal;
+                   text-transform:none; letter-spacing:0; }
+    </style>
+</head>
+<body>
+    <div id="g-loading-bar"></div>
+    <header>
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <rect width="26" height="26" rx="6" fill="#4a90d9"/>
+            <path d="M6 13h14M13 6v14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <h1>Checkbox Job Database</h1>
+        <div class="view-toggle">
+            <button id="view-btn-jobs" class="view-btn active" onclick="switchView('jobs')">Jobs</button>
+            <button id="view-btn-plans" class="view-btn" onclick="switchView('plans')">Test Plans</button>
+            <button id="view-btn-compare" class="view-btn" onclick="switchView('compare')">Compare</button>
+            <button id="view-btn-manifest" class="view-btn" onclick="switchView('manifest')">Manifest &amp; Environ</button>
+        </div>
+    </header>
+
+    <!-- Detail modal -->
+    <div id="modal-overlay" onclick="closeModal()">
+        <div id="modal" onclick="event.stopPropagation()">
+            <div id="modal-header">
+                <div id="modal-header-left">
+                    <div class="modal-meta">
+                        <span id="modal-unit-badge" class="unit-badge"></span>
+                    </div>
+                    <div id="modal-title"></div>
+                </div>
+                <button id="modal-close" onclick="closeModal()">&#x2715;</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="jobs-section">
+    <div class="sticky-top">
+    <div class="controls">
+        <label>Provider
+            <select id="provider" onchange="searchJobs(); updateOptions()">
+                <option value="">All</option>
+            </select>
+        </label>
+        <label>Category
+            <select id="category" onchange="searchJobs(); updateOptions()">
+                <option value="">All</option>
+            </select>
+        </label>
+        <label>Environ
+            <select id="environ" onchange="searchJobs(); updateOptions()">
+                <option value="">All</option>
+            </select>
+        </label>
+        <label>Manifest
+            <select id="manifest" onchange="searchJobs(); updateOptions()">
+                <option value="">All</option>
+            </select>
+        </label>
+        <label class="filter-toggle">
+            <input type="checkbox" id="has_template_id" onchange="searchJobs()"> Has Template ID
+        </label>
+        <input type="search" id="job-search" class="search-input"
+               placeholder="Search job ID or plan ID&hellip;" oninput="debouncedSearch()">
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+        <span id="counter" class="counter"></span>
+    </div>
+    <div style="padding:0 24px; overflow-x:auto;">
+        <table class="col-hdr">
+            <colgroup id="hdr-cols"></colgroup>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Job ID</th>
+                    <th>Template ID</th>
+                    <th>Provider</th>
+                    <th>Category</th>
+                    <th>Environ</th>
+                    <th>Manifest Deps</th>
+                    <th>Summary</th>
+                    <th></th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    </div><!-- /.sticky-top -->
+
+    <div class="table-wrap">
+        <table id="data-table">
+            <colgroup id="body-cols"></colgroup>
+            <tbody id="results"></tbody>
+        </table>
+    </div>
+    </div><!-- /#jobs-section -->
+
+    <div id="plans-section" style="display:none">
+        <div class="plan-controls">
+            <input type="search" id="plan-search" class="search-input"
+                   placeholder="Search test plan name or ID&hellip;" oninput="debouncedPlanSearch()"
+                   style="width:360px">
+            <span id="plan-counter" class="plan-counter"></span>
+        </div>
+        <div class="plan-view" id="plan-results">
+            <div class="plan-empty">
+                <p>Search for a test plan to get started</p>
+                <small>Type a plan name or ID in the search bar above</small>
+            </div>
+        </div>
+    </div><!-- /#plans-section -->
+
+    <div id="compare-section" style="display:none">
+        <div class="compare-controls">
+            <label>Plan 1
+                <input type="search" id="cmp-plan1" placeholder="Search plan name or ID&hellip;" oninput="debouncedCompareSearch(1)">
+            </label>
+            <label>Plan 2
+                <input type="search" id="cmp-plan2" placeholder="Search plan name or ID&hellip;" oninput="debouncedCompareSearch(2)">
+            </label>
+            <button class="btn-compare" onclick="runCompare()">Compare</button>
+            <button onclick="clearExpandCache()" title="Force re-run checkbox-cli expand (clears 10-min cache)"
+                    style="padding:5px 10px;font-size:.76rem;background:#f0f2f5;border:1px solid #d0d5dd;
+                           border-radius:5px;cursor:pointer;white-space:nowrap">&#8635; Refresh</button>
+            <span id="cmp-status" style="font-size:.8rem;color:#aaa"></span>
+            <span id="cmp-source-badge" style="display:none;font-size:.72rem;padding:2px 7px;
+                   border-radius:10px;font-weight:600;margin-left:4px"></span>
+        </div>
+        <!-- Autocomplete dropdowns -->
+        <div id="cmp-suggest1" style="display:none;position:absolute;z-index:50;background:#fff;border:1px solid #d0d5dd;border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;min-width:320px;font-size:.8rem;"></div>
+        <div id="cmp-suggest2" style="display:none;position:absolute;z-index:50;background:#fff;border:1px solid #d0d5dd;border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;min-width:320px;font-size:.8rem;"></div>
+        <div class="compare-view">
+            <div id="cmp-results" class="compare-empty">Enter two plan IDs above and click Compare.</div>
+        </div>
+    </div><!-- /#compare-section -->
+
+    <div id="manifest-section" style="display:none">
+        <div class="me-controls">
+            <label>Plan
+                <input type="search" id="me-plan-input" placeholder="Search plan name or ID&hellip;"
+                       oninput="debouncedMeSearch()" style="width:400px">
+            </label>
+            <span id="me-status" style="font-size:.8rem;color:#aaa"></span>
+            <button id="me-export-btn" onclick="exportMeCSV()"
+                    style="display:none;margin-left:12px;padding:5px 12px;font-size:.78rem;
+                           background:#1a1a2e;color:#c8d0e0;border:none;border-radius:5px;
+                           cursor:pointer;white-space:nowrap">
+                &#8595; Export CSV
+            </button>
+        </div>
+        <!-- Autocomplete dropdown -->
+        <div id="me-suggest" style="display:none;position:absolute;z-index:50;background:#fff;border:1px solid #d0d5dd;border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;min-width:360px;font-size:.8rem;"></div>
+        <div class="me-view" id="me-results">
+            <div class="me-empty">
+                <p>Search for a test plan to get started</p>
+                <small>See which manifest flags and environ variables each job requires</small>
+            </div>
+        </div>
+    </div><!-- /#manifest-section -->
+
+    <script>
+        let currentJobs = [];
+
+        // ── Global loading bar ─────────────────────────────────────────
+        const _gbar = document.getElementById('g-loading-bar');
+        let _gbarTimer = null, _gbarPct = 0, _gbarActive = 0;
+
+        function _gbarStart() {
+            _gbarActive++;
+            clearInterval(_gbarTimer);
+            _gbarPct = 0;
+            _gbar.style.transition = 'none';
+            _gbar.style.transform = 'scaleX(0)';
+            _gbar.classList.add('running');
+            // Force reflow so the transition reset takes effect
+            void _gbar.offsetWidth;
+            _gbar.style.transition = 'transform .18s ease, opacity .3s ease';
+            _gbarTimer = setInterval(() => {
+                _gbarPct = _gbarPct < 0.85 ? _gbarPct + (0.85 - _gbarPct) * 0.1 : _gbarPct;
+                _gbar.style.transform = `scaleX(${_gbarPct.toFixed(3)})`;
+            }, 150);
+        }
+
+        function _gbarDone() {
+            _gbarActive = Math.max(0, _gbarActive - 1);
+            if (_gbarActive > 0) return;
+            clearInterval(_gbarTimer);
+            _gbar.style.transform = 'scaleX(1)';
+            setTimeout(() => { _gbar.classList.remove('running'); _gbarPct = 0; }, 300);
+        }
+
+        function getParams() {
+            const params = new URLSearchParams();
+            const provider = document.getElementById('provider').value;
+            const category = document.getElementById('category').value;
+            const environ  = document.getElementById('environ').value;
+            const manifest = document.getElementById('manifest').value;
+            const hasTmpl  = document.getElementById('has_template_id').checked;
+            const search   = document.getElementById('job-search').value.trim();
+            if (provider) params.append('provider', provider);
+            if (category) params.append('category', category);
+            if (environ)  params.append('environ', environ);
+            if (manifest) params.append('manifest', manifest);
+            if (hasTmpl)  params.append('has_template_id', 'true');
+            if (search)   params.append('search', search);
+            return params;
+        }
+
+        async function updateOptions() {
+            const params = getParams();
+            const data = await fetch(`/api/options?${params}`).then(r => r.json());
+            updateSelect('provider', data.providers);
+            updateSelect('category', data.categories);
+            updateSelect('environ',  data.environs);
+            updateSelect('manifest', data.manifests);
+        }
+
+        function updateSelect(id, options) {
+            const select = document.getElementById(id);
+            const current = select.value;
+            select.innerHTML = '<option value="">All</option>';
+            options.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v; opt.textContent = v;
+                if (v === current) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        let _searchTimer = null;
+        function debouncedSearch() {
+            clearTimeout(_searchTimer);
+            _searchTimer = setTimeout(searchJobs, 300);
+        }
+
+        async function searchJobs() {
+            const params = getParams();
+            _gbarStart();
+            try {
+                currentJobs = await fetch(`/api/jobs?${params}`).then(r => r.json());
+            } finally {
+                _gbarDone();
+            }
+            renderJobs();
+        }
+
+        function renderJobs() {
+            const q = document.getElementById('job-search').value.trim().toLowerCase();
+
+            const tbody = document.getElementById('results');
+            tbody.innerHTML = '';
+            document.getElementById('counter').textContent = `${currentJobs.length} jobs`;
+
+            currentJobs.forEach((job, i) => {
+                const tr = document.createElement('tr');
+                const envTags = job.environ.map(e => `<span class="tag env">${e}</span>`).join('');
+                const manTags = job.manifest.map(m => `<span class="tag man">${m}</span>`).join('');
+                const provider = job.provider.split('::').pop();
+                const category = job.category.split('::').pop();
+                const highlight = q
+                    ? job.id.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+                        '<mark style="background:#fff3cd;border-radius:2px">$1</mark>')
+                    : job.id;
+                tr.innerHTML = `
+                    <td style="color:#bbb;font-size:.73rem">${i + 1}</td>
+                    <td><span class="job-id">${highlight}</span></td>
+                    <td><span class="tmpl-id">${job.template_id || ''}</span></td>
+                    <td style="font-size:.76rem;color:#667">${provider}</td>
+                    <td style="font-size:.76rem;color:#667">${category}</td>
+                    <td>${envTags}</td>
+                    <td>${manTags}</td>
+                    <td style="font-size:.8rem">${job.summary || ''}</td>
+                    <td><button class="btn-details" onclick="showDetails(${i})">Details</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (!currentJobs.length) {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="9">No jobs found matching your filters.</td></tr>';
+            }
+        }
+
+        function resetFilters() {
+            ['provider','category','environ','manifest'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('has_template_id').checked = false;
+            document.getElementById('job-search').value = '';
+            searchJobs();
+            updateOptions();
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('open');
+        }
+
+        async function showDetails(index) {
+            const job = currentJobs[index];
+            if (!job) return;
+
+            document.getElementById('modal-title').textContent = job.id;
+            document.getElementById('modal-unit-badge').textContent = (job.data && job.data.unit) ? job.data.unit : 'job';
+            document.getElementById('modal-overlay').classList.add('open');
+            const body = document.getElementById('modal-body');
+            body.innerHTML = '<div class="loading-inline"><span class="spinner"></span>Loading test plans&hellip;</div>';
+            _gbarStart();
+
+            // ── Test plan tree ──────────────────────────────────────────
+            let plansHtml = '<p class="section-title">Included in Test Plans</p><div class="plan-tree" style="margin-bottom:24px">';
+            try {
+                const data = await fetch(`/api/testplans?job_id=${encodeURIComponent(job.id)}`).then(r => r.json());
+                if (data.test_plans && data.test_plans.length > 0) {
+                    const roots = flatToTree(data.test_plans);
+                    plansHtml += roots.map(n => renderAncestorNode(n)).join('');
+                } else {
+                    plansHtml += '<p style="color:#bbb;font-size:.85rem;padding:4px 0">Not included in any test plan.</p>';
+                }
+            } catch(e) {
+                plansHtml += '<p style="color:#c5221f">Failed to load test plans.</p>';
+            } finally {
+                _gbarDone();
+            }
+            plansHtml += '</div>';
+
+            // ── Attributes ─────────────────────────────────────────────
+            const attrs = job.data || {};
+            const fieldOrder = ['id','template-id','_summary','_description','plugin','command',
+                                'category_id','requires','depends','environ','estimated_duration',
+                                'template-resource','template-filter','template-engine','flags','user'];
+            const skip = new Set(['unit']);
+            const keys = [
+                ...fieldOrder.filter(k => k in attrs && !skip.has(k)),
+                ...Object.keys(attrs).filter(k => !fieldOrder.includes(k) && !skip.has(k))
+            ];
+            let attrsHtml = '<p class="section-title" style="margin-top:20px">Job Attributes</p><div class="attr-grid">';
+            for (const k of keys) {
+                const v = String(attrs[k]).trim();
+                attrsHtml += `<div class="attr-key">${k}</div><div class="attr-val"><pre>${v}</pre></div>`;
+            }
+            attrsHtml += '</div>';
+
+            body.innerHTML = plansHtml + attrsHtml;
+        }
+
+        // Close modal on Escape
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+        // ── View toggle ────────────────────────────────────────────────
+        function switchView(view) {
+            ['jobs','plans','compare','manifest'].forEach(v => {
+                document.getElementById('view-btn-' + v).classList.toggle('active', v === view);
+                document.getElementById(v + '-section').style.display = v === view ? '' : 'none';
+            });
+            if (view === 'plans') document.getElementById('plan-search').focus();
+            if (view === 'compare') document.getElementById('cmp-plan1').focus();
+            if (view === 'manifest') document.getElementById('me-plan-input').focus();
+        }
+
+        // ── Plan view ──────────────────────────────────────────────────
+        let _planTimer = null;
+        function debouncedPlanSearch() {
+            clearTimeout(_planTimer);
+            _planTimer = setTimeout(searchPlans, 300);
+        }
+
+        async function searchPlans() {
+            const q = document.getElementById('plan-search').value.trim();
+            const resultsEl = document.getElementById('plan-results');
+            const counterEl = document.getElementById('plan-counter');
+            if (!q) {
+                resultsEl.innerHTML = '<div class="plan-empty"><p>Search for a test plan to get started</p><small>Type a plan name or ID in the search bar above</small></div>';
+                counterEl.textContent = '';
+                return;
+            }
+            resultsEl.innerHTML = '<div class="loading-inline"><span class="spinner spinner-lg"></span>Searching&hellip;</div>';
+            counterEl.textContent = '';
+            _gbarStart();
+            let data;
+            try {
+                data = await fetch(`/api/plan-tree?search=${encodeURIComponent(q)}`).then(r => r.json());
+            } finally {
+                _gbarDone();
+            }
+            if (!data.plans || !data.plans.length) {
+                resultsEl.innerHTML = `<div class="plan-empty"><p>No test plans found for &ldquo;${escHtml(q)}&rdquo;</p></div>`;
+                counterEl.textContent = '';
+                return;
+            }
+            counterEl.textContent = `${data.total} plan${data.total !== 1 ? 's' : ''}`;
+            resultsEl.innerHTML = data.plans.map(p => renderPlanCard(p, false)).join('');
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function renderPlanCard(plan, isChild) {
+            const uid = 'pc-' + Math.random().toString(36).slice(2);
+            const hasChildren = plan.children && plan.children.length > 0;
+            const hasJobs     = plan.jobs && plan.jobs.length > 0;
+            const hasBody     = hasChildren || hasJobs;
+
+            const activeJobs    = (plan.jobs || []).filter(j => !j.excluded);
+            const excludedJobs  = (plan.jobs || []).filter(j => j.excluded);
+
+            const stats = [
+                hasChildren ? `${plan.children.length} sub-plan${plan.children.length !== 1 ? 's' : ''}` : '',
+                activeJobs.length  ? `${activeJobs.length} job${activeJobs.length !== 1 ? 's' : ''}` : '',
+                excludedJobs.length ? `${excludedJobs.length} excluded` : '',
+            ].filter(Boolean).join(', ');
+
+            const childrenHtml = hasChildren
+                ? `<div class="plan-children">${plan.children.map(c => renderPlanCard(c, true)).join('')}</div>`
+                : '';
+
+            const excludeBanner = (plan.exclude_patterns && plan.exclude_patterns.length)
+                ? `<div class="exclude-banner"><strong>Excludes:</strong>${plan.exclude_patterns.map(p =>
+                    `<span class="excl-pat">${escHtml(p)}</span>`).join('')}</div>`
+                : '';
+
+            const jobsHtml = hasJobs
+                ? `<div class="job-list-wrap">
+                     <div class="job-list-title">Direct includes (${activeJobs.length} active${excludedJobs.length ? ', ' + excludedJobs.length + ' excluded' : ''})</div>
+                     ${plan.jobs.map(j =>
+                         `<div class="plan-job-row${j.excluded ? ' excluded' : ''}">
+                            <span class="plan-job-plugin">${escHtml(j.plugin || 'job')}</span>
+                            ${j.excluded ? '<span class="badge-excluded">EXCLUDED</span>' : ''}
+                            <span class="plan-job-id">${escHtml(j.id)}</span>
+                            ${j.summary ? `<span class="plan-job-summary">&mdash; ${escHtml(j.summary)}</span>` : ''}
+                          </div>`
+                     ).join('')}
+                   </div>`
+                : '';
+
+            const wrapper = isChild ? 'plan-child' : 'plan-card';
+            return `
+                <div class="${wrapper}">
+                    ${excludeBanner}
+                    <div class="plan-card-hd" onclick="togglePlanCard('${uid}', this)" ${!hasBody ? 'style="cursor:default"' : ''}>
+                        <span class="plan-toggle" id="ti-${uid}">${hasBody ? '&#9654;' : '&nbsp;'}</span>
+                        <div class="plan-card-info">
+                            <div class="plan-card-name">${escHtml(plan.name)}</div>
+                            <div class="plan-card-id">${escHtml(plan.id)}</div>
+                        </div>
+                        ${stats ? `<span class="plan-card-stats">${stats}</span>` : ''}
+                        <button class="btn-plan-details" onclick="event.stopPropagation();showPlanDetails('${escHtml(plan.id).replace(/'/g,"\\'")}')">Details</button>
+                    </div>
+                    <div class="plan-card-bd" id="${uid}">
+                        ${childrenHtml}
+                        ${jobsHtml}
+                    </div>
+                </div>`;
+        }
+
+        function togglePlanCard(uid, hd) {
+            const bd   = document.getElementById(uid);
+            const icon = document.getElementById('ti-' + uid);
+            if (!bd) return;
+            const open = bd.classList.toggle('open');
+            if (icon) icon.classList.toggle('open', open);
+        }
+
+        // ── Modal test plan tree helpers ───────────────────────────────
+        function flatToTree(flatList) {
+            const nodes = flatList.map(item => ({...item, children: []}));
+            const roots = [];
+            for (let i = 0; i < nodes.length; i++) {
+                if (nodes[i].depth === 0) {
+                    roots.push(nodes[i]);
+                } else {
+                    for (let j = i - 1; j >= 0; j--) {
+                        if (nodes[j].depth === nodes[i].depth - 1) {
+                            nodes[j].children.push(nodes[i]);
+                            break;
+                        }
+                    }
+                }
+            }
+            return roots;
+        }
+
+        function renderAncestorNode(node) {
+            const uid = 'an-' + Math.random().toString(36).slice(2);
+            const hasChildren = node.children && node.children.length > 0;
+            const isRoot = node.depth === 0;
+            const depthClass = node.depth <= 3 ? `depth-${node.depth}` : 'depth-n';
+            const label = isRoot ? 'direct' : 'part of';
+            const childrenHtml = hasChildren
+                ? `<div class="plan-children">${node.children.map(c => renderAncestorNode(c)).join('')}</div>`
+                : '';
+            return `
+                <div class="${isRoot ? 'plan-card' : 'plan-child'}">
+                    <div class="plan-card-hd" onclick="togglePlanCard('${uid}', this)" ${!hasChildren ? 'style="cursor:default"' : ''}>
+                        <span class="plan-toggle" id="ti-${uid}">${hasChildren ? '&#9654;' : '&nbsp;'}</span>
+                        <span class="depth-pill ${depthClass}" style="flex-shrink:0">${label}</span>
+                        <div class="plan-card-info" style="margin-left:8px">
+                            <div class="plan-card-name">${escHtml(node.name || node.id.split('::').pop())}</div>
+                            <div class="plan-card-id">${escHtml(node.id)}</div>
+                        </div>
+                    </div>
+                    <div class="plan-card-bd" id="${uid}">
+                        ${childrenHtml}
+                    </div>
+                </div>`;
+        }
+
+        // ── Plan Details modal ─────────────────────────────────────────
+        async function showPlanDetails(planId) {
+            document.getElementById('modal-title').textContent = planId;
+            document.getElementById('modal-unit-badge').textContent = 'test plan';
+            document.getElementById('modal-overlay').classList.add('open');
+            const body = document.getElementById('modal-body');
+            body.innerHTML = '<div class="loading-inline"><span class="spinner"></span>Loading&hellip;</div>';
+            _gbarStart();
+            try {
+                const data = await fetch(`/api/plan-details?plan_id=${encodeURIComponent(planId)}`).then(r => {
+                    if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
+                    return r.json();
+                });
+                const attrs = data.data || {};
+                const include    = data.include     || [];
+                const exclude    = data.exclude     || [];
+                const nestedPart = data.nested_part || [];
+                const fieldOrder = ['id','_name','_description','estimated_duration','include','exclude','nested_part','mandatory_include','bootstrap_include'];
+                const skip = new Set(['unit']);
+                const keys = [
+                    ...fieldOrder.filter(k => k in attrs && !skip.has(k)),
+                    ...Object.keys(attrs).filter(k => !fieldOrder.includes(k) && !skip.has(k))
+                ];
+                let html = '<p class="section-title">Plan Attributes</p><div class="attr-grid">';
+                for (const k of keys) {
+                    html += `<div class="attr-key">${escHtml(k)}</div><div class="attr-val"><pre>${escHtml(String(attrs[k] || '').trim())}</pre></div>`;
+                }
+                html += '</div>';
+
+                // Effective job counts summary
+                html += `<p class="section-title" style="margin-top:20px">Quick Summary</p>`;
+                html += `<div class="attr-grid">`;
+                html += `<div class="attr-key">Include patterns</div><div class="attr-val"><pre>${include.length}</pre></div>`;
+                if (exclude.length) html += `<div class="attr-key">Exclude patterns</div><div class="attr-val"><pre>${exclude.length}</pre></div>`;
+                html += `<div class="attr-key">Nested parts</div><div class="attr-val"><pre>${nestedPart.length}</pre></div>`;
+                html += `</div>`;
+
+                if (exclude.length) {
+                    html += `<p class="section-title" style="margin-top:20px">Exclude Patterns</p><div class="attr-grid">`;
+                    exclude.forEach(p => {
+                        html += `<div class="attr-key" style="color:#c5221f">exclude</div><div class="attr-val"><pre style="color:#c5221f">${escHtml(p)}</pre></div>`;
+                    });
+                    html += `</div>`;
+                }
+                body.innerHTML = html;
+            } catch(e) {
+                body.innerHTML = `<p style="color:#c5221f">Failed to load plan details: ${escHtml(String(e))}</p>`;
+            } finally {
+                _gbarDone();
+            }
+        }
+
+        // ── Compare ────────────────────────────────────────────────────
+        let _cmpTimer1 = null, _cmpTimer2 = null;
+        let _cmpPlanId1 = '', _cmpPlanId2 = '';
+
+        function debouncedCompareSearch(n) {
+            const timer = n === 1 ? '_cmpTimer1' : '_cmpTimer2';
+            clearTimeout(window[timer]);
+            window[timer] = setTimeout(() => showCompareSuggestions(n), 250);
+        }
+
+        async function showCompareSuggestions(n) {
+            const input = document.getElementById('cmp-plan' + n);
+            const suggest = document.getElementById('cmp-suggest' + n);
+            const q = input.value.trim();
+            if (!q) { suggest.style.display = 'none'; return; }
+            const data = await fetch(`/api/plan-tree?search=${encodeURIComponent(q)}`).then(r => r.json());
+            if (!data.plans || !data.plans.length) { suggest.style.display = 'none'; return; }
+            const rect = input.getBoundingClientRect();
+            suggest.style.top  = (rect.bottom + window.scrollY + 2) + 'px';
+            suggest.style.left = rect.left + 'px';
+            suggest.style.display = 'block';
+            suggest.innerHTML = data.plans.slice(0, 20).map(p =>
+                `<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #f0f2f5"
+                      onmousedown="selectComparePlan(${n},'${escHtml(p.id).replace(/'/g,"\\'")}','${escHtml(p.name).replace(/'/g,"\\'")}')">
+                    <div style="font-weight:600;font-size:.8rem">${escHtml(p.name)}</div>
+                    <div style="font-size:.7rem;color:#aaa;font-family:monospace">${escHtml(p.id)}</div>
+                 </div>`
+            ).join('');
+        }
+
+        function selectComparePlan(n, id, name) {
+            document.getElementById('cmp-plan' + n).value = id;
+            document.getElementById('cmp-suggest' + n).style.display = 'none';
+            if (n === 1) _cmpPlanId1 = id; else _cmpPlanId2 = id;
+        }
+
+        document.addEventListener('click', () => {
+            document.getElementById('cmp-suggest1').style.display = 'none';
+            document.getElementById('cmp-suggest2').style.display = 'none';
+        });
+
+        function _showProgress(status, results, label) {
+            status.innerHTML = `<div class="cmp-progress-wrap">
+                <div class="cmp-progress-label">${escHtml(label)}</div>
+                <div class="cmp-progress-bar"><div class="cmp-progress-fill" id="cmp-pbar"></div></div>
+            </div>`;
+            results.innerHTML = '';
+            // Animate bar 0 → 85% while request is in flight
+            let pct = 0;
+            const bar = document.getElementById('cmp-pbar');
+            const timer = setInterval(() => {
+                pct = pct < 85 ? pct + (85 - pct) * 0.12 : pct;
+                if (bar) bar.style.width = pct.toFixed(1) + '%';
+            }, 180);
+            return { timer, complete() { clearInterval(timer); if (bar) bar.style.width = '100%'; } };
+        }
+
+        async function runCompare() {
+            const p1 = document.getElementById('cmp-plan1').value.trim();
+            const p2 = document.getElementById('cmp-plan2').value.trim();
+            const status = document.getElementById('cmp-status');
+            const results = document.getElementById('cmp-results');
+            if (!p1 || !p2) { status.textContent = 'Enter both plan IDs.'; return; }
+            const progress = _showProgress(status, results, 'Comparing plans\u2026');
+            try {
+                const data = await fetch(`/api/compare-plans?plan1=${encodeURIComponent(p1)}&plan2=${encodeURIComponent(p2)}`).then(r => {
+                    if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
+                    return r.json();
+                });
+                progress.complete();
+                // Brief pause so the filled bar is visible before replacing
+                await new Promise(r => setTimeout(r, 200));
+                status.textContent = `Plan 1: ${data.plan1.total} jobs | Plan 2: ${data.plan2.total} jobs`;
+
+                // Source badge
+                const badge = document.getElementById('cmp-source-badge');
+                const srcLabels = { 'checkbox-cli': ['via checkbox-cli', '#1a6e3c', '#e6f4ea'],
+                                    'db':           ['via DB cache',     '#1a1a2e', '#e8eaf6'],
+                                    'python':       ['via Python',       '#b45309', '#fef3c7'] };
+                const [srcTxt, srcFg, srcBg] = srcLabels[data.source] || [data.source, '#555', '#eee'];
+                badge.textContent = srcTxt;
+                badge.style.color = srcFg;
+                badge.style.background = srcBg;
+                badge.style.display = '';
+
+                const total1 = data.plan1.total;
+                const total2 = data.plan2.total;
+                const nBoth  = data.in_both.length;
+                const nOnly1 = data.only_in_plan1.length;
+                const nOnly2 = data.only_in_plan2.length;
+
+                // Percentages relative to the union of all unique jobs
+                const union    = (nOnly1 + nBoth + nOnly2) || 1;
+                const pctOnly1 = (nOnly1 / union * 100).toFixed(1);
+                const pctBoth  = (nBoth  / union * 100).toFixed(1);
+                const pctOnly2 = (nOnly2 / union * 100).toFixed(1);
+                // How much of each plan is unique to it vs shared
+                const uniqPct1   = total1 ? (nOnly1 / total1 * 100).toFixed(1) : '0.0';
+                const uniqPct2   = total2 ? (nOnly2 / total2 * 100).toFixed(1) : '0.0';
+                const sharedPct1 = total1 ? (nBoth  / total1 * 100).toFixed(1) : '0.0';
+                const sharedPct2 = total2 ? (nBoth  / total2 * 100).toFixed(1) : '0.0';
+
+                function colHtml(jobs, label, cls, pctOfUnion, extraHint) {
+                    const rows = jobs.length
+                        ? jobs.map(j => `<div class="cmp-row">${escHtml(j.id)}${j.summary ? `<span class="cmp-summary">— ${escHtml(j.summary)}</span>` : ''}</div>`).join('')
+                        : '<div style="color:#bbb;font-size:.8rem;padding:8px 4px">None</div>';
+                    return `<div class="compare-col">
+                        <div class="compare-col-hd ${cls}">${label}
+                            <span class="cmp-pct">${jobs.length} jobs &nbsp;|&nbsp; ${pctOfUnion}% of all unique jobs${extraHint ? ' &nbsp;|&nbsp; ' + extraHint : ''}</span>
+                        </div>
+                        <div class="compare-col-body">${rows}</div>
+                    </div>`;
+                }
+                results.className = 'compare-grid';
+                results.innerHTML =
+                    colHtml(data.only_in_plan1, `Only in ${data.plan1.name}`, 'col-only1', pctOnly1, `${uniqPct1}% of plan 1`) +
+                    colHtml(data.in_both,       'In Both',                    'col-both',  pctBoth,  `Jaccard similarity: ${pctBoth}% overlap`) +
+                    colHtml(data.only_in_plan2, `Only in ${data.plan2.name}`, 'col-only2', pctOnly2, `${uniqPct2}% of plan 2`);
+            } catch(e) {
+                progress.complete();
+                await new Promise(r => setTimeout(r, 150));
+                status.textContent = '';
+                document.getElementById('cmp-source-badge').style.display = 'none';
+                results.className = 'compare-empty';
+                results.innerHTML = `<span style="color:#c5221f">Error: ${escHtml(String(e.message))}</span>`;
+            }
+        }
+
+        async function clearExpandCache() {
+            await fetch('/api/clear-expand-cache', { method: 'POST' });
+            const badge = document.getElementById('cmp-source-badge');
+            badge.textContent = 'cache cleared';
+            badge.style.color = '#555';
+            badge.style.background = '#eee';
+            badge.style.display = '';
+            setTimeout(() => { badge.style.display = 'none'; }, 2000);
+        }
+
+        // ── Manifest & Environ view ────────────────────────────────────
+        let _meTimer = null;
+        let _meActiveManifest = null;
+        let _meActiveEnviron = null;
+        let _meData = null;
+
+        function debouncedMeSearch() {
+            clearTimeout(_meTimer);
+            _meTimer = setTimeout(() => showMeSuggestions(), 250);
+        }
+
+        async function showMeSuggestions() {
+            const input = document.getElementById('me-plan-input');
+            const suggest = document.getElementById('me-suggest');
+            const q = input.value.trim();
+            if (!q) { suggest.style.display = 'none'; return; }
+
+            // Show a loading row immediately so the user knows something is happening
+            const rect = input.getBoundingClientRect();
+            suggest.style.top  = (rect.bottom + window.scrollY + 2) + 'px';
+            suggest.style.left = rect.left + 'px';
+            suggest.style.display = 'block';
+            suggest.innerHTML = `<div style="padding:8px 12px;color:#aaa;font-size:.8rem;display:flex;align-items:center;gap:8px">
+                <span class="spinner"></span>Searching&hellip;</div>`;
+
+            let data;
+            try {
+                data = await fetch(`/api/plan-tree?search=${encodeURIComponent(q)}`).then(r => r.json());
+            } catch(e) {
+                suggest.innerHTML = `<div style="padding:8px 12px;color:#c5221f;font-size:.8rem">Search failed</div>`;
+                return;
+            }
+            // If the input changed while we were fetching, bail out
+            if (input.value.trim() !== q) return;
+            if (!data.plans || !data.plans.length) {
+                suggest.innerHTML = `<div style="padding:8px 12px;color:#aaa;font-size:.8rem">No plans found for &ldquo;${escHtml(q)}&rdquo;</div>`;
+                return;
+            }
+            suggest.innerHTML = data.plans.slice(0, 20).map(p =>
+                `<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #f0f2f5"
+                      onmousedown="loadMePlan('${escHtml(p.id).replace(/'/g,"\\'")}','${escHtml(p.name).replace(/'/g,"\\'")}')">
+                    <div style="font-weight:600;font-size:.8rem">${escHtml(p.name)}</div>
+                    <div style="font-size:.7rem;color:#aaa;font-family:monospace">${escHtml(p.id)}</div>
+                 </div>`
+            ).join('');
+        }
+
+        document.addEventListener('click', (e) => {
+            document.getElementById('me-suggest').style.display = 'none';
+        });
+
+        async function loadMePlan(id, name) {
+            document.getElementById('me-plan-input').value = id;
+            document.getElementById('me-suggest').style.display = 'none';
+            _meActiveManifest = null;
+            _meActiveEnviron = null;
+            const status = document.getElementById('me-status');
+            const results = document.getElementById('me-results');
+            status.innerHTML = '<span class="spinner" style="vertical-align:middle;margin-right:6px"></span>Loading…';
+            results.innerHTML = '<div class="loading-inline"><span class="spinner spinner-lg"></span>Loading manifest &amp; environ data…</div>';
+            _gbarStart();
+            try {
+                _meData = await fetch(`/api/plan-manifest-environ?plan_id=${encodeURIComponent(id)}`).then(r => {
+                    if (!r.ok) return r.json().then(e => { throw new Error(e.detail || r.statusText); });
+                    return r.json();
+                });
+                status.textContent = `${_meData.total_jobs} jobs · ${_meData.all_manifests.length} manifests · ${_meData.all_environs.length} environs`;
+                document.getElementById('me-export-btn').style.display = '';
+                renderMeView();
+            } catch(e) {
+                status.textContent = '';
+                document.getElementById('me-export-btn').style.display = 'none';
+                results.innerHTML = `<div class="me-empty"><p style="color:#c5221f">Error: ${escHtml(String(e.message))}</p></div>`;
+            } finally {
+                _gbarDone();
+            }
+        }
+
+        function renderMeView() {
+            if (!_meData) return;
+            const results = document.getElementById('me-results');
+
+            // Build chips
+            const manifestChips = _meData.all_manifests.map(m =>
+                `<span class="me-chip manifest${_meActiveManifest === m.key ? ' active' : ''}"
+                       onclick="filterMeBy('manifest','${escHtml(m.key).replace(/'/g,"\\'")}')">
+                    ${escHtml(m.key)}
+                    <span style="opacity:.65;font-size:.65rem">(${m.value_type || 'bool'})</span>
+                 </span>`
+            ).join('');
+
+            const environChips = _meData.all_environs.map(e =>
+                `<span class="me-chip environ${_meActiveEnviron === e ? ' active' : ''}"
+                       onclick="filterMeBy('environ','${escHtml(e).replace(/'/g,"\\'")}')">
+                    ${escHtml(e)}
+                 </span>`
+            ).join('');
+
+            // Filter jobs
+            let jobs = _meData.jobs;
+            let filterLabel = '';
+            if (_meActiveManifest) {
+                jobs = jobs.filter(j => j.manifest.includes(_meActiveManifest));
+                filterLabel = `manifest: ${_meActiveManifest}`;
+            } else if (_meActiveEnviron) {
+                jobs = jobs.filter(j => j.environ.includes(_meActiveEnviron));
+                filterLabel = `environ: ${_meActiveEnviron}`;
+            }
+
+            // Build table rows
+            const rows = jobs.map((j, i) => {
+                const mTags = j.manifest.map(m =>
+                    `<span class="tag man" style="cursor:pointer" onclick="filterMeBy('manifest','${escHtml(m).replace(/'/g,"\\'")}')">
+                        ${escHtml(m)}</span>`
+                ).join('');
+                const eTags = j.environ.map(e =>
+                    `<span class="tag env" style="cursor:pointer" onclick="filterMeBy('environ','${escHtml(e).replace(/'/g,"\\'")}')">
+                        ${escHtml(e)}</span>`
+                ).join('');
+                return `<tr>
+                    <td style="color:#bbb;font-size:.73rem">${i + 1}</td>
+                    <td><span class="me-plugin">${escHtml(j.plugin || j.unit_type || 'job')}</span><span class="me-job-id">${escHtml(j.id)}</span></td>
+                    <td style="font-size:.78rem;color:#444">${escHtml(j.summary || '')}</td>
+                    <td>${mTags || '<span class="me-none">—</span>'}</td>
+                    <td>${eTags || '<span class="me-none">—</span>'}</td>
+                </tr>`;
+            }).join('');
+
+            results.innerHTML = `
+                <div class="me-summary">
+                    <div class="me-chip-group">
+                        <div class="me-chip-title">Manifest flags (${_meData.all_manifests.length})
+                            <span style="font-size:.65rem;font-weight:400;color:#aaa;margin-left:4px">click to filter</span>
+                        </div>
+                        ${manifestChips || '<span style="color:#bbb;font-size:.75rem">None</span>'}
+                    </div>
+                    <div class="me-chip-group">
+                        <div class="me-chip-title">Environ variables (${_meData.all_environs.length})
+                            <span style="font-size:.65rem;font-weight:400;color:#aaa;margin-left:4px">click to filter</span>
+                        </div>
+                        ${environChips || '<span style="color:#bbb;font-size:.75rem">None</span>'}
+                    </div>
+                </div>
+                <div class="me-filter-banner${filterLabel ? ' visible' : ''}" id="me-filter-banner">
+                    Filtered by <strong>${escHtml(filterLabel)}</strong> — ${jobs.length} job${jobs.length !== 1 ? 's' : ''}
+                    <button class="btn-clear-filter" onclick="clearMeFilter()">Clear filter</button>
+                </div>
+                <div class="me-table-wrap">
+                    <table class="me-table">
+                        <thead><tr>
+                            <th>#</th>
+                            <th>Job ID</th>
+                            <th>Summary</th>
+                            <th>Manifest deps</th>
+                            <th>Environ vars</th>
+                        </tr></thead>
+                        <tbody>${rows || '<tr><td colspan="5" style="text-align:center;padding:32px;color:#bbb">No jobs match the current filter.</td></tr>'}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        function filterMeBy(type, value) {
+            if (type === 'manifest') {
+                _meActiveManifest = (_meActiveManifest === value) ? null : value;
+                _meActiveEnviron = null;
+            } else {
+                _meActiveEnviron = (_meActiveEnviron === value) ? null : value;
+                _meActiveManifest = null;
+            }
+            renderMeView();
+        }
+
+        function clearMeFilter() {
+            _meActiveManifest = null;
+            _meActiveEnviron = null;
+            renderMeView();
+        }
+
+        function exportMeCSV() {
+            if (!_meData) return;
+            // Apply same filter as renderMeView
+            let jobs = _meData.jobs;
+            if (_meActiveManifest) jobs = jobs.filter(j => j.manifest.includes(_meActiveManifest));
+            else if (_meActiveEnviron) jobs = jobs.filter(j => j.environ.includes(_meActiveEnviron));
+
+            const csvCell = v => '"' + String(v).replace(/"/g, '""') + '"';
+            const rows = [
+                ['#', 'Job ID', 'Summary', 'Manifest deps', 'Environ vars'].map(csvCell).join(','),
+                ...jobs.map((j, i) => [
+                    i + 1,
+                    j.id,
+                    j.summary || '',
+                    j.manifest.join(' | '),
+                    j.environ.join(' | ')
+                ].map(csvCell).join(','))
+            ];
+            const blob = new Blob([rows.join('\r\n')], { type: 'text/csv' });
+            const planId = document.getElementById('me-plan-input').value.trim();
+            const safeName = planId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+            const filterSuffix = _meActiveManifest ? `_manifest_${_meActiveManifest.replace(/[^a-zA-Z0-9_-]/g,'_')}`
+                               : _meActiveEnviron  ? `_environ_${_meActiveEnviron.replace(/[^a-zA-Z0-9_-]/g,'_')}`
+                               : '';
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${safeName}${filterSuffix}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        window.onload = async () => {
+            // Sync column widths: measure header th widths after first render and apply to body cols
+            function syncCols() {
+                const ths = document.querySelectorAll('.col-hdr th');
+                const hdrCols = document.getElementById('hdr-cols');
+                const bodyCols = document.getElementById('body-cols');
+                hdrCols.innerHTML = '';
+                bodyCols.innerHTML = '';
+                ths.forEach(th => {
+                    const w = th.offsetWidth + 'px';
+                    const c1 = document.createElement('col'); c1.style.width = w;
+                    const c2 = document.createElement('col'); c2.style.width = w;
+                    hdrCols.appendChild(c1);
+                    bodyCols.appendChild(c2);
+                });
+            }
+            await searchJobs();
+            await updateOptions();
+            // Set .sticky-top top offset to sit below the sticky header
+            const headerH = document.querySelector('header').offsetHeight;
+            document.body.style.paddingTop = headerH + 'px';
+            document.querySelector('.sticky-top').style.top = headerH + 'px';
+            document.querySelector('.plan-controls').style.top = headerH + 'px';
+            document.querySelector('.compare-controls').style.top = headerH + 'px';
+            syncCols();
+        };
+    </script>
+</body>
+</html>
