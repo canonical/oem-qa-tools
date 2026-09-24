@@ -8,7 +8,7 @@ If the test script changes, this script also need to be changed
 to report accurately
 
 
-This is intended for checkbox 8.0 and newer. 
+This is intended for checkbox 8.0 and newer.
 Older submissions should use the legacy parser
 """
 
