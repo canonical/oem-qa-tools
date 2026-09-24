@@ -119,8 +119,8 @@ class SubmissionTarReader:
         self.raw_tar = tarfile.open(filepath)
 
         slash_dot = r"\."
-        warm_prefix = "test_output/com.canonical.certification__warm-boot-loop-test"  # noqa: E501
-        cold_prefix = "test_output/com.canonical.certification__cold-boot-loop-test"  # noqa: E501
+        warm_prefix = "test_output/com.canonical.certification__warm-boot-loop-test-"  # noqa: E501
+        cold_prefix = "test_output/com.canonical.certification__cold-boot-loop-test-"  # noqa: E501
         # it's always the prefix followed by a multi-digit number
         # NOTE: stderr outputs are in files that end with ".err"
         warm_boot_stdout_pattern = f"{warm_prefix}[0-9]+$"
@@ -168,7 +168,7 @@ class SubmissionTarReader:
     ) -> io.TextIOWrapper | None:
         prefix = (
             "test_output/com.canonical.certification__"
-            + f"{boot_type}-boot-loop-test"
+            + f"{boot_type}-boot-loop-test-"
         )
         if channel == "stderr":
             suffix = ".stderr"
