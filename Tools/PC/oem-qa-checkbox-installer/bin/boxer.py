@@ -110,19 +110,19 @@ def create_config():
     and create one next to the boxer script."""
 
     print(
-        "Hi! It looks like there is no boxer.conf file yet."
-        " Let's create one!"
+        "Hi! It looks like there is no boxer.conf file yet.",
+        "Let's create one!"
     )
     username = input("What's your Launchpad username? ")
     print()
     print(
-        "Let's find the password "
+        "Let's find the password",
         "you need to access the OEM providers repository."
     )
     # The link to personal private ppa subscription management
     # <https://launchpad.net/~oem-services-qa/+archive/ubuntu/ppa>
     print(
-        "Go to "
+        "Go to",
         f"<https://launchpad.net/~{username}/+archivesubscriptions/10011>"
     )
     print("You should see something like")
