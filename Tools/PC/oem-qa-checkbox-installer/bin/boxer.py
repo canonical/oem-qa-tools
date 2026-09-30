@@ -3,8 +3,9 @@
 import argparse
 import configparser
 import os
-import subprocess
+import subprocess as sp
 import time
+from pathlib import Path
 
 VERSION = "2.2"
 PROVIDERS = (
@@ -97,8 +98,8 @@ def main():
 
     pre_install()
     # We remove any existing PPA before adding the new ones
-    setup_public_ppa(repository, username, ppa_password, remove=True)
-    setup_public_ppa(repository, username, ppa_password)
+    setup_public_ppa(repository, remove=True)
+    setup_public_ppa(repository)
     setup_stress_ng_ppa("ppa:colin-king/stress-ng")
     setup_oem_ppa(username, ppa_password)
     install(provider)
@@ -160,38 +161,40 @@ def create_config():
     time.sleep(3)
 
 
-def setup_stress_ng_ppa(ppa):
+def setup_stress_ng_ppa(ppa: str):
     """
     Setup required stress-ng PPAs to install Checkbox OEM stack.
     By default, it adds the PPAs. If `remove` is set, the PPAs are removed.
     """
     print("Setting up the stress-ng PPAs...")
     print("Removing installed stress-ng ...")
-    run_command("sudo apt remove stress-ng -y")
+    # run_command("sudo apt remove stress-ng -y")
+    sp.run(["sudo", "apt", "remove", "stress-ng", "-y"], check=True)
     print(f"Adding PPA {ppa}...")
-    command = f"sudo add-apt-repository -y {ppa}"
-    run_command(command)
+    sp.run(["sudo", "add-apt-repository", "-y", ppa], check=True)
 
     # disable the stress-ng in the checkbox-dev PPA
-    pin_content = """
-Package: stress-ng
-Pin: release o=LP-PPA-colin-king-stress-ng
-Pin-Priority: 1001
+    # need to use a tmp file here because we need to call sudo later
+    tmp_file_path = Path("/tmp/no-stress-ng-from-checkbox-dev")
+    with tmp_file_path.open("w") as f:
+        f.writelines(
+            [
+                "Package: stress-ng\n",
+                "Pin: release o=LP-PPA-colin-king-stress-ng\n",
+                "Pin-Priority: 1001\n",
+                "\n",
+                "Package: stress-ng\n",
+                "Pin: release o=LP-PPA-checkbox-dev-beta\n",
+                "Pin-Priority: -1\n",
+            ]
+        )
 
-Package: stress-ng
-Pin: release o=LP-PPA-checkbox-dev-beta
-Pin-Priority: -1
-"""
-    with open("/tmp/no-stress-ng-from-checkbox-dev", "w") as f:
-        f.write(pin_content)
-
-    pin_file = "/etc/apt/preferences.d/no-stress-ng-from-checkbox-dev"
-    command = f"sudo cp /tmp/no-stress-ng-from-checkbox-dev {pin_file}"
-    run_command(command)
-    run_command("sudo apt update")
+    pin_file = Path("/etc/apt/preferences.d/no-stress-ng-from-checkbox-dev")
+    sp.run(["sudo", "cp", tmp_file_path, pin_file], check=True)
+    sp.run(["sudo", "apt", "update"], check=True)
 
 
-def setup_public_ppa(repo, username, password, remove=False):
+def setup_public_ppa(repo: str, remove: bool = False):
     """
     Setup required public PPAs to install Checkbox OEM stack.
     By default, it adds the PPAs. If `remove` is set, the PPAs are removed.
@@ -209,11 +212,12 @@ def setup_public_ppa(repo, username, password, remove=False):
     for ppa in repos:
         if remove:
             print(f"Removing PPA {ppa}...")
-            command = f"sudo add-apt-repository -y -r {ppa}"
+            command = ["sudo", "add-apt-repository", "-y", "-r", ppa]
         else:
             print(f"Adding PPA {ppa}...")
-            command = f"sudo add-apt-repository -y {ppa}"
-        run_command(command)
+            command = ["sudo", "add-apt-repository", "-y", ppa]
+
+        sp.run(command, check=True)
 
 
 def add_oem_source_list():
@@ -222,19 +226,18 @@ def add_oem_source_list():
     """
     print("Adding the OEM Providers PPA...")
     cmd = "lsb_release -sc"
-    output = subprocess.run(cmd.split(), capture_output=True, check=True)
+    output = sp.run(["lsb_release", "-sc"], capture_output=True, check=True)
     ubuntu_codename = output.stdout.decode().strip()
     source_list = OEM_SOURCE_LIST.format(codename=ubuntu_codename)
     cmd = (
         f'sudo sh -c \'echo "{source_list}" > '
         f"/etc/apt/sources.list.d/oem-services-qa-ubuntu-ppa.list'"
     )
-    run_command(cmd, shell=True)
-    cmd = "sudo apt update"
-    run_command(cmd)
+    sp.run(cmd, shell=True, check=True)
+    sp.run(["sudo", "apt", "update"], check=True)
 
 
-def add_auth_conf(username, password):
+def add_auth_conf(username: str, password: str):
     """
     Add authentication data for the OEM Services PPA to auth.conf.d
     """
@@ -248,7 +251,7 @@ def add_auth_conf(username, password):
         f'sudo sh -c \'echo "{auth_conf}" > '
         "/etc/apt/auth.conf.d/oem-services-qa-ubuntu-ppa.conf'"
     )
-    run_command(cmd, shell=True)
+    sp.run(cmd, shell=True, check=True)
 
 
 def add_oem_ppa_gpg():
@@ -266,10 +269,10 @@ def add_oem_ppa_gpg():
         "gpg --dearmor > "
         "/etc/apt/trusted.gpg.d/oem-services-qa-ubuntu-ppa.gpg'"
     )
-    run_command(cmd, shell=True)
+    sp.run(cmd, shell=True, check=True)
 
 
-def setup_oem_ppa(username, password):
+def setup_oem_ppa(username: str, password: str):
     """
     Setup the OEM providers PPA.
     """
@@ -278,26 +281,18 @@ def setup_oem_ppa(username, password):
     add_oem_source_list()
 
 
-def run_command(command, shell=False, check=True):
-    if not shell:
-        command = command.split()
-    try:
-        subprocess.run(command, shell=shell, check=check)
-    except subprocess.CalledProcessError as e:
-        raise SystemExit(f"{TColors.FAIL}Error:{TColors.ENDC} {e}")
-
-
 def pre_install():
     # Add sudoer setting file to allow Checkbox to run sudo commands without
     # having to enter the sudo password.
     user = os.getenv("USER")
-    cmd = (
+    sp.run(
         f"echo '{user} ALL=(ALL:ALL) NOPASSWD: ALL' | "
-        "sudo tee /etc/sudoers.d/checkbox"
+        "sudo tee /etc/sudoers.d/checkbox",
+        shell=True,
+        check=True,
     )
-    run_command(cmd, shell=True)
 
-    subprocess.check_call(
+    sp.run(
         [
             "sudo",
             "gpg",
@@ -307,40 +302,59 @@ def pre_install():
             "2BBDF2BD",  # checkbox
             "09D5DC1F",  # oem services qa
             "6BE75981",  # sutton
-        ]
+        ],
+        check=True,
     )
 
 
-def install(provider):
+def install(provider: str):
+    assert provider in PROVIDERS, f"Unknown provider {provider}"
     print(
         "Purging Checkbox-related packages "
         "that might already be installed..."
     )
-    cmd = "sudo apt-get purge -y .*plainbox.* .*checkbox.*"
-    run_command(cmd)
+    sp.run(
+        ["sudo", "apt-get", "purge", "--yes", ".*plainbox.*", ".*checkbox.*"],
+        check=True,
+    )
 
     print("Installing Checkbox base packages...")
-    cmd = (
-        "sudo DEBIAN_FRONTEND=noninteractive apt install -y "
-        "--allow-downgrades --allow-remove-essential "
-        "--allow-change-held-packages "
-        "checkbox-ng "
-        "checkbox-provider-resource "
-        "checkbox-provider-certification-client "
-        "checkbox-provider-base "
-        "canonical-certification-client"
+    sp.run(
+        [
+            "sudo",
+            "apt",
+            "install",
+            "--yes",
+            "--allow-downgrades",
+            "--allow-remove-essential",
+            "--allow-change-held-packages",
+            "checkbox-ng",
+            "checkbox-provider-resource",
+            "checkbox-provider-certification-client",
+            "checkbox-provider-base",
+            "canonical-certification-client",
+        ],
+        check=True,
+        env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
     )
-    run_command(cmd)
 
     print(f"Installing provider {provider}...")
     # Add DEBIAN_FRONTEND=noninteractive
     # to avoid interruption, example: postfix
-    cmd = (
-        "sudo DEBIAN_FRONTEND=noninteractive apt install -y "
-        "--allow-downgrades --allow-remove-essential "
-        "--allow-change-held-packages plainbox-provider-oem-" + provider
+    sp.run(
+        [
+            "sudo",
+            "apt",
+            "install",
+            "-y",
+            "--allow-downgrades",
+            "--allow-remove-essential",
+            "--allow-change-held-packages",
+            f"plainbox-provider-oem-{provider}",
+        ],
+        check=True,
+        env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
     )
-    run_command(cmd)
 
 
 if __name__ == "__main__":
