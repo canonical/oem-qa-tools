@@ -111,19 +111,19 @@ def create_config():
 
     print(
         "Hi! It looks like there is no boxer.conf file yet.",
-        "Let's create one!"
+        "Let's create one!",
     )
     username = input("What's your Launchpad username? ")
     print()
     print(
         "Let's find the password",
-        "you need to access the OEM providers repository."
+        "you need to access the OEM providers repository.",
     )
     # The link to personal private ppa subscription management
     # <https://launchpad.net/~oem-services-qa/+archive/ubuntu/ppa>
     print(
         "Go to",
-        f"<https://launchpad.net/~{username}/+archivesubscriptions/10011>"
+        f"<https://launchpad.net/~{username}/+archivesubscriptions/10011>",
     )
     print("You should see something like")
     print()
@@ -322,6 +322,8 @@ def install(provider: str):
     sp.run(
         [
             "sudo",
+            "env",
+            "DEBIAN_FRONTEND=noninteractive",
             "apt",
             "install",
             "--yes",
@@ -335,7 +337,6 @@ def install(provider: str):
             "canonical-certification-client",
         ],
         check=True,
-        env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
     )
 
     print(f"Installing provider {provider}...")
@@ -344,6 +345,8 @@ def install(provider: str):
     sp.run(
         [
             "sudo",
+            "env",
+            "DEBIAN_FRONTEND=noninteractive",
             "apt",
             "install",
             "-y",
@@ -353,7 +356,6 @@ def install(provider: str):
             f"plainbox-provider-oem-{provider}",
         ],
         check=True,
-        env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
     )
 
 
