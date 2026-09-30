@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import requests
-import json
 import configparser
+import json
+
+import requests
 
 print("\nGetting ID info from C3...")
 

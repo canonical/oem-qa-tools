@@ -64,7 +64,7 @@ class TColors:
 
 
 def main():
-    print("== Boxer v{} ==".format(VERSION))
+    print(f"== Boxer v{VERSION} ==")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "command",
@@ -208,10 +208,10 @@ def setup_public_ppa(repo, username, password, remove=False):
     repos = checkbox_repo + [FWTS_REPO, PC_ENABLE_REPO]
     for ppa in repos:
         if remove:
-            print("Removing PPA {}...".format(ppa))
+            print(f"Removing PPA {ppa}...")
             command = f"sudo add-apt-repository -y -r {ppa}"
         else:
-            print("Adding PPA {}...".format(ppa))
+            print(f"Adding PPA {ppa}...")
             command = f"sudo add-apt-repository -y {ppa}"
         run_command(command)
 
@@ -222,7 +222,7 @@ def add_oem_source_list():
     """
     print("Adding the OEM Providers PPA...")
     cmd = "lsb_release -sc"
-    output = subprocess.run(cmd.split(), capture_output=True)
+    output = subprocess.run(cmd.split(), capture_output=True, check=True)
     ubuntu_codename = output.stdout.decode().strip()
     source_list = OEM_SOURCE_LIST.format(codename=ubuntu_codename)
     cmd = (
@@ -332,7 +332,7 @@ def install(provider):
     )
     run_command(cmd)
 
-    print("Installing provider {}...".format(provider))
+    print(f"Installing provider {provider}...")
     # Add DEBIAN_FRONTEND=noninteractive
     # to avoid interruption, example: postfix
     cmd = (
